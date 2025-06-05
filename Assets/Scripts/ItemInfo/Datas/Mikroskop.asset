@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5105f8e9546348439b3b28c1c205836, type: 3}
+  m_Name: Mikroskop
+  m_EditorClassIdentifier: 
+  itemName: Mikroskop Olympus CX23
+  itemDescription: "Mikroskop Olympus CX23 adalah mikroskop optik berkualitas tinggi
+    yang dirancang untuk pendidikan dan penelitian dasar di bidang biologi dan medis.
+    Dilengkapi dengan lensa objektif achromatic, sistem pencahayaan LED hemat energi,
+    serta kepala binokular ergonomis dengan sudut 30\xB0, mikroskop ini memberikan
+    kenyamanan dan kualitas gambar yang optimal. Dengan pilihan perbesaran hingga
+    100x, meja preparat presisi, serta desain kokoh dan portabel, Olympus CX23 menjadi
+    pilihan ideal bagi mahasiswa, guru, dan peneliti yang membutuhkan mikroskop andal
+    dengan harga terjangkau.\r"
+  galleryImages:
+  - {fileID: 21300000, guid: 2f000209e28fe4f44aceb35ce46fca2c, type: 3}

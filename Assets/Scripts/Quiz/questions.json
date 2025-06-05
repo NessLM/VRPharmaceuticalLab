@@ -1,0 +1,529 @@
+{
+  "questions": [
+    {
+      "question": "Mikroskop Olympus CX23 dirancang untuk penggunaan di bidang...",
+      "answers": [
+        {
+          "text": "Teknik mesin",
+          "isCorrect": false
+        },
+        {
+          "text": "Pendidikan dan penelitian dasar",
+          "isCorrect": true
+        },
+        {
+          "text": "Arsitektur",
+          "isCorrect": false
+        },
+        {
+          "text": "Konstruksi",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Sistem pencahayaan pada Mikroskop Olympus CX23 menggunakan...",
+      "answers": [
+        {
+          "text": "Lampu bohlam biasa",
+          "isCorrect": false
+        },
+        {
+          "text": "LED hemat energi",
+          "isCorrect": true
+        },
+        {
+          "text": "Lampu neon",
+          "isCorrect": false
+        },
+        {
+          "text": "Laser",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Mikroskop Olympus CX23 memiliki sudut kepala binokular sebesar...",
+      "answers": [
+        {
+          "text": "15°",
+          "isCorrect": false
+        },
+        {
+          "text": "45°",
+          "isCorrect": false
+        },
+        {
+          "text": "60°",
+          "isCorrect": false
+        },
+        {
+          "text": "30°",
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "question": "Maksimal perbesaran Mikroskop Olympus CX23 adalah...",
+      "answers": [
+        {
+          "text": "400x",
+          "isCorrect": false
+        },
+        {
+          "text": "1000x",
+          "isCorrect": false
+        },
+        {
+          "text": "100x",
+          "isCorrect": true
+        },
+        {
+          "text": "40x",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Salah satu keunggulan dari Mikroskop Olympus CX23 adalah...",
+      "answers": [
+        {
+          "text": "Beratnya sangat berat",
+          "isCorrect": false
+        },
+        {
+          "text": "Tidak portabel",
+          "isCorrect": false
+        },
+        {
+          "text": "Kokoh dan portabel",
+          "isCorrect": true
+        },
+        {
+          "text": "Memerlukan listrik tinggi",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Fungsi utama dari Centrifuge LC-04S adalah untuk...",
+      "answers": [
+        {
+          "text": "Menimbang bahan kimia",
+          "isCorrect": false
+        },
+        {
+          "text": "Mengukur volume cairan",
+          "isCorrect": false
+        },
+        {
+          "text": "Memisahkan partikel berdasarkan densitas",
+          "isCorrect": true
+        },
+        {
+          "text": "Mencampur larutan",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Berapa kecepatan maksimum Centrifuge LC-04S?",
+      "answers": [
+        {
+          "text": "500 RPM",
+          "isCorrect": false
+        },
+        {
+          "text": "4000 RPM",
+          "isCorrect": true
+        },
+        {
+          "text": "6000 RPM",
+          "isCorrect": false
+        },
+        {
+          "text": "2000 RPM",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Centrifuge LC-04S memiliki kapasitas maksimal...",
+      "answers": [
+        {
+          "text": "4 tabung",
+          "isCorrect": false
+        },
+        {
+          "text": "10 tabung",
+          "isCorrect": false
+        },
+        {
+          "text": "8 tabung",
+          "isCorrect": false
+        },
+        {
+          "text": "6 tabung",
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "question": "Salah satu fitur keamanan Centrifuge LC-04S adalah...",
+      "answers": [
+        {
+          "text": "Lampu LED",
+          "isCorrect": false
+        },
+        {
+          "text": "Sensor ketidakseimbangan",
+          "isCorrect": true
+        },
+        {
+          "text": "Penutup transparan",
+          "isCorrect": false
+        },
+        {
+          "text": "Remote control",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Timbangan neraca biasanya digunakan di bidang...",
+      "answers": [
+        {
+          "text": "Teknik sipil",
+          "isCorrect": false
+        },
+        {
+          "text": "Farmasi",
+          "isCorrect": true
+        },
+        {
+          "text": "Pertambangan",
+          "isCorrect": false
+        },
+        {
+          "text": "Arsitektur",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Timbangan neraca memiliki tingkat akurasi hingga...",
+      "answers": [
+        {
+          "text": "Meteran",
+          "isCorrect": false
+        },
+        {
+          "text": "Sentimeter",
+          "isCorrect": false
+        },
+        {
+          "text": "Gram dan miligram",
+          "isCorrect": true
+        },
+        {
+          "text": "Kilogram",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Beberapa timbangan neraca modern dilengkapi dengan fitur...",
+      "answers": [
+        {
+          "text": "Lampu sorot",
+          "isCorrect": false
+        },
+        {
+          "text": "Kalibrasi otomatis",
+          "isCorrect": true
+        },
+        {
+          "text": "Pompa udara",
+          "isCorrect": false
+        },
+        {
+          "text": "Pengatur suhu",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Mortar biasanya digunakan untuk...",
+      "answers": [
+        {
+          "text": "Menyaring cairan",
+          "isCorrect": false
+        },
+        {
+          "text": "Menghaluskan bahan padat",
+          "isCorrect": true
+        },
+        {
+          "text": "Menimbang bahan",
+          "isCorrect": false
+        },
+        {
+          "text": "Mengeringkan larutan",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Bahan umum pembuatan mortar adalah...",
+      "answers": [
+        {
+          "text": "Plastik",
+          "isCorrect": false
+        },
+        {
+          "text": "Karet",
+          "isCorrect": false
+        },
+        {
+          "text": "Porselen",
+          "isCorrect": true
+        },
+        {
+          "text": "Kayu",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Gelas ukur digunakan untuk mengukur...",
+      "answers": [
+        {
+          "text": "Suhu",
+          "isCorrect": false
+        },
+        {
+          "text": "Volume cairan",
+          "isCorrect": true
+        },
+        {
+          "text": "Massa benda",
+          "isCorrect": false
+        },
+        {
+          "text": "Tekanan udara",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Gelas ukur biasanya dibuat dari bahan...",
+      "answers": [
+        {
+          "text": "Logam",
+          "isCorrect": false
+        },
+        {
+          "text": "Kayu",
+          "isCorrect": false
+        },
+        {
+          "text": "Kaca atau plastik tahan bahan kimia",
+          "isCorrect": true
+        },
+        {
+          "text": "Keramik",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Fungsi mulut gelas ukur yang didesain khusus adalah untuk...",
+      "answers": [
+        {
+          "text": "Menyaring cairan",
+          "isCorrect": false
+        },
+        {
+          "text": "Menimbang bahan",
+          "isCorrect": false
+        },
+        {
+          "text": "Menuangkan cairan dengan mudah",
+          "isCorrect": true
+        },
+        {
+          "text": "Menahan tekanan",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Labu ukur memiliki bentuk...",
+      "answers": [
+        {
+          "text": "Silinder",
+          "isCorrect": false
+        },
+        {
+          "text": "Persegi",
+          "isCorrect": false
+        },
+        {
+          "text": "Labu dengan leher panjang",
+          "isCorrect": true
+        },
+        {
+          "text": "Kubus",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Kelebihan labu ukur dibandingkan gelas ukur adalah...",
+      "answers": [
+        {
+          "text": "Volume lebih besar",
+          "isCorrect": false
+        },
+        {
+          "text": "Skala ganda",
+          "isCorrect": false
+        },
+        {
+          "text": "Akurasi lebih tinggi",
+          "isCorrect": true
+        },
+        {
+          "text": "Harga lebih murah",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Gelas ukur Pyrex memiliki keunggulan tahan terhadap...",
+      "answers": [
+        {
+          "text": "Tekanan udara",
+          "isCorrect": false
+        },
+        {
+          "text": "Suhu ekstrem",
+          "isCorrect": true
+        },
+        {
+          "text": "Tegangan listrik",
+          "isCorrect": false
+        },
+        {
+          "text": "Gaya gravitasi",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Gelas ukur Pyrex terbuat dari bahan...",
+      "answers": [
+        {
+          "text": "Plastik biasa",
+          "isCorrect": false
+        },
+        {
+          "text": "Karet silikon",
+          "isCorrect": false
+        },
+        {
+          "text": "Kaca borosilikat",
+          "isCorrect": true
+        },
+        {
+          "text": "Logam",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Automatic Autoclave Sterilizer SA-232X Gemmy digunakan untuk...",
+      "answers": [
+        {
+          "text": "Mencampur bahan",
+          "isCorrect": false
+        },
+        {
+          "text": "Mensterilkan alat dengan uap panas",
+          "isCorrect": true
+        },
+        {
+          "text": "Mengukur volume cairan",
+          "isCorrect": false
+        },
+        {
+          "text": "Menimbang bahan",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Salah satu fitur keamanan autoklaf SA-232X adalah...",
+      "answers": [
+        {
+          "text": "Penyaring udara",
+          "isCorrect": false
+        },
+        {
+          "text": "Pengunci pintu otomatis",
+          "isCorrect": true
+        },
+        {
+          "text": "Rem tangan",
+          "isCorrect": false
+        },
+        {
+          "text": "Sistem pendingin",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Rotator Gemmy VRN 200 berfungsi untuk...",
+      "answers": [
+        {
+          "text": "Menimbang bahan",
+          "isCorrect": false
+        },
+        {
+          "text": "Menghancurkan bahan padat",
+          "isCorrect": false
+        },
+        {
+          "text": "Mencampur sampel dengan rotasi konstan",
+          "isCorrect": true
+        },
+        {
+          "text": "Mensterilkan alat laboratorium",
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "question": "Botol obat sering dilengkapi dengan fitur...",
+      "answers": [
+        {
+          "text": "Pemanas",
+          "isCorrect": false
+        },
+        {
+          "text": "Tutup kedap udara",
+          "isCorrect": true
+        },
+        {
+          "text": "Sistem pendingin",
+          "isCorrect": false
+        },
+        {
+          "text": "Lampu indikator",
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

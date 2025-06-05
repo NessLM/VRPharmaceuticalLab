@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5105f8e9546348439b3b28c1c205836, type: 3}
+  m_Name: Gelas Pyrex 50ml
+  m_EditorClassIdentifier: 
+  itemName: Gelas Ukur Pyrex 50ml
+  itemDescription: Gelas ukur Pyrex adalah alat laboratorium berbentuk silinder yang
+    terbuat dari kaca borosilikat tahan panas dan bahan kimia, digunakan untuk mengukur
+    volume cairan dengan presisi. Keunggulan utama gelas ukur Pyrex adalah ketahanannya
+    terhadap perubahan suhu ekstrem, sehingga cocok untuk digunakan dalam pemanasan
+    atau pendinginan larutan tanpa risiko retak. Skala pengukuran yang tercetak jelas
+    pada permukaannya memungkinkan pembacaan yang akurat, sementara desainnya yang
+    stabil dengan mulut yang dirancang untuk menuangkan cairan dengan mudah menjadikannya
+    alat penting dalam eksperimen kimia, farmasi, dan biologi.
+  galleryImages:
+  - {fileID: 21300000, guid: 483c220a99f90c647bdd5ec5f3a0f767, type: 3}

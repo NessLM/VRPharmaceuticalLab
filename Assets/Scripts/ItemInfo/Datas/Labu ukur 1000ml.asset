@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5105f8e9546348439b3b28c1c205836, type: 3}
+  m_Name: Labu ukur 1000ml
+  m_EditorClassIdentifier: 
+  itemName: Labu Ukur 1000ml
+  itemDescription: 'Labu ukur adalah alat laboratorium berbentuk labu dengan leher
+    panjang dan skala tunggal yang digunakan untuk mengukur volume cairan dengan
+    presisi tinggi. Terbuat dari kaca atau plastik tahan bahan kimia, labu ukur biasanya
+    digunakan dalam pembuatan larutan dengan konsentrasi tertentu, seperti dalam
+    titrasi atau analisis kuantitatif. Lehernya yang sempit membantu memastikan pengukuran
+    yang akurat, sementara garis tanda pada leher menunjukkan volume maksimum yang
+    dapat diisi. Dengan tutup yang rapat, labu ukur juga memungkinkan pencampuran
+    larutan secara homogen tanpa risiko tumpah, menjadikannya peralatan penting dalam
+    laboratorium kimia, farmasi, dan biologi.
+
+'
+  galleryImages:
+  - {fileID: 21300000, guid: 6f7aa138332b75d4ba0b1ba298b7ad99, type: 3}

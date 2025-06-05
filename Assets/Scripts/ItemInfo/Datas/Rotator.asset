@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5105f8e9546348439b3b28c1c205836, type: 3}
+  m_Name: Rotator
+  m_EditorClassIdentifier: 
+  itemName: Rotator Gemmy VRN 200
+  itemDescription: Rotator Gemmy VRN-200 adalah alat laboratorium yang digunakan
+    untuk mencampur sampel secara merata dengan gerakan rotasi yang konstan. Alat
+    ini dirancang untuk aplikasi dalam bidang biologi, kimia, dan farmasi, seperti
+    pencampuran larutan, inkubasi antibodi, atau ekstraksi sampel. Dengan kecepatan
+    rotasi yang dapat disesuaikan, VRN-200 memastikan homogenisasi yang optimal tanpa
+    menyebabkan gelembung udara atau gangguan pada sampel sensitif. Dilengkapi dengan
+    motor berkinerja tinggi dan dudukan yang dapat disesuaikan untuk berbagai ukuran
+    tabung, rotator ini memberikan efisiensi dan kenyamanan dalam pengoperasian,
+    menjadikannya pilihan ideal untuk laboratorium penelitian dan klinis.
+  galleryImages:
+  - {fileID: 21300000, guid: e8433deb7c775014d86336501009138f, type: 3}

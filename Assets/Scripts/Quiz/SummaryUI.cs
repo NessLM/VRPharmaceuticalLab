@@ -1,5 +1,7 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Networking;
+using System.Collections;
 
 public class SummaryUI : GameEventListener<SummaryData>
 {
@@ -26,5 +28,30 @@ public class SummaryUI : GameEventListener<SummaryData>
         scoreText.text = string.Concat("Score\n", data.score);
         correctAnswersText.text = string.Concat("Correct Answers\n", data.correctAnswer);
         wrongAnswersText.text = string.Concat("Wrong Answers\n", data.wrongAnswer);
+
+        // Kirim ke database via PHP
+        StartCoroutine(KirimKeDatabase(nameInput.text, classInput.text, data.score));
+    }
+
+    IEnumerator KirimKeDatabase(string nama, string kelas, int score)
+    {
+        WWWForm form = new WWWForm();
+        form.AddField("nama", nama);
+        form.AddField("kelas", kelas);
+        form.AddField("score", score);
+
+        using (UnityWebRequest www = UnityWebRequest.Post("http://localhost/virtual-lab/simpan_quiz.php", form))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log("Data berhasil dikirim: " + www.downloadHandler.text);
+            }
+            else
+            {
+                Debug.LogError("Gagal kirim data: " + www.error);
+            }
+        }
     }
 }

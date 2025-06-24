@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
@@ -40,7 +40,7 @@ public class SummaryUI : GameEventListener<SummaryData>
         form.AddField("kelas", kelas);
         form.AddField("score", score);
 
-        using (UnityWebRequest www = UnityWebRequest.Post("http://localhost/virtual-lab/simpan_quiz.php", form))
+        using (UnityWebRequest www = UnityWebRequest.Post("https://vrlabfarmasismkn5pkp.fun/simpan_quiz.php", form))
         {
             yield return www.SendWebRequest();
 

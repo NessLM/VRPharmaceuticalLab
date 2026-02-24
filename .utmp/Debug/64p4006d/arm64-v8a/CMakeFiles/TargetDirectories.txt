@@ -1,0 +1,5 @@
+C:/Users/nazah/OneDrive/Dokumen/VR Lab/VRPharmaceuticalLab/.utmp/Debug/64p4006d/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/nazah/OneDrive/Dokumen/VR Lab/VRPharmaceuticalLab/.utmp/Debug/64p4006d/arm64-v8a/CMakeFiles/rebuild_cache.dir
+C:/Users/nazah/OneDrive/Dokumen/VR Lab/VRPharmaceuticalLab/.utmp/Debug/64p4006d/arm64-v8a/GameActivity/CMakeFiles/game.dir
+C:/Users/nazah/OneDrive/Dokumen/VR Lab/VRPharmaceuticalLab/.utmp/Debug/64p4006d/arm64-v8a/GameActivity/CMakeFiles/edit_cache.dir
+C:/Users/nazah/OneDrive/Dokumen/VR Lab/VRPharmaceuticalLab/.utmp/Debug/64p4006d/arm64-v8a/GameActivity/CMakeFiles/rebuild_cache.dir

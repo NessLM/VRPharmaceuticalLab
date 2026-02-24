@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 012e494c525f3dc4c8c3b1b4dcdc1b81, type: 3}
+  m_Name: Simulasi Mortar
+  m_EditorClassIdentifier: 
+  itemName: Simulasi Mortar
+  itemDescription: Mortar farmasi digunakan dengan cara memasukkan bahan ke dalam
+    mortar, lalu alu (pestle) digerakkan dengan tekanan ringan sambil diputar hingga
+    bahan halus atau tercampur merata.
+  galleryVideos:
+  - {fileID: 32900000, guid: def55ec1c8b91ba459387da2dc036573, type: 3}

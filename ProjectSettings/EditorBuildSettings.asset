@@ -8,6 +8,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/VRLab.unity
     guid: f9f935f315adf9c4fb3464ac958b2152
+  - enabled: 1
+    path: Assets/Scenes/VRLabSimulation.unity
+    guid: b6dfe845595889d41a1790f64b4452a2
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}

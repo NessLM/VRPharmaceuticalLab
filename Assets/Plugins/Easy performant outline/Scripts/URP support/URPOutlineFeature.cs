@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using System;
 using System.Reflection;
+using UnityEngine.Rendering.Universal;
 
 #if URP_OUTLINE
 

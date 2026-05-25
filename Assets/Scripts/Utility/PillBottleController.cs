@@ -1,0 +1,237 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
+
+public class PillBottleController : MonoBehaviour
+{
+    [Header("Lid Animation")]
+    [SerializeField] private Transform lid;
+    [SerializeField] private Transform lidOpenPoint;
+    [SerializeField] private float lidMoveDuration = 0.8f;
+    [SerializeField] private float lidLiftHeight = 0.25f;
+    [SerializeField] private float lidHiddenDelay = 0.2f;
+
+    [Header("Bottle Grab")]
+    [SerializeField] private XRGrabInteractable bottleGrab;
+    [SerializeField] private Rigidbody bottleRigidbody;
+
+    [Header("Pill Spawning")]
+    [SerializeField] private GameObject pillPrefab;
+    [SerializeField] private Transform pillSpawnPoint;
+    [SerializeField] private int requiredPillCount = 3;
+    [SerializeField] private float spawnDelay = 0.25f;
+
+    [Header("Pour Detection")]
+    [SerializeField] private float pourAngleThreshold = 80f;
+
+private Vector3 bottleStartPosition;
+private Quaternion bottleStartRotation;
+private Coroutine returnRoutine;
+
+    private bool isOpened = false;
+    private bool isGrabbed = false;
+    private bool isPouring = false;
+    private bool hasPoured = false;
+
+    private void Start()
+    {
+
+        bottleStartPosition = transform.position;
+bottleStartRotation = transform.rotation;
+        if (bottleGrab != null)
+        {
+            bottleGrab.enabled = false;
+
+            bottleGrab.selectEntered.AddListener(OnBottleGrabbed);
+            bottleGrab.selectExited.AddListener(OnBottleReleased);
+        }
+
+        // Awal game: botol diam dulu, tidak jatuh saat menu muncul.
+        if (bottleRigidbody != null)
+        {
+            bottleRigidbody.useGravity = false;
+            bottleRigidbody.isKinematic = true;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (bottleGrab != null)
+        {
+            bottleGrab.selectEntered.RemoveListener(OnBottleGrabbed);
+            bottleGrab.selectExited.RemoveListener(OnBottleReleased);
+        }
+    }
+
+    private void Update()
+    {
+        if (!isOpened || !isGrabbed || hasPoured || isPouring)
+            return;
+
+        float angle = Vector3.Angle(pillSpawnPoint.forward, Vector3.down);
+
+        if (angle <= pourAngleThreshold)
+        {
+            StartCoroutine(SpawnPills());
+        }
+    }
+
+    public void OpenBottle()
+    {
+        if (isOpened)
+            return;
+
+        isOpened = true;
+        StartCoroutine(OpenBottleRoutine());
+    }
+
+    private IEnumerator OpenBottleRoutine()
+    {
+        if (lid != null && lidOpenPoint != null)
+        {
+            Vector3 startPosition = lid.position;
+            Quaternion startRotation = lid.rotation;
+
+            Vector3 liftPosition = startPosition + Vector3.up * lidLiftHeight;
+
+            float elapsed = 0f;
+
+            while (elapsed < lidMoveDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / lidMoveDuration;
+
+                lid.position = Vector3.Lerp(startPosition, liftPosition, t);
+                lid.rotation = startRotation;
+
+                yield return null;
+            }
+
+            lid.position = liftPosition;
+
+            lid.gameObject.SetActive(false);
+            yield return new WaitForSeconds(lidHiddenDelay);
+
+            lid.SetParent(null, true);
+
+            lid.position = lidOpenPoint.position;
+            lid.rotation = lidOpenPoint.rotation;
+            lid.gameObject.SetActive(true);
+        }
+
+        if (bottleGrab != null)
+        {
+            bottleGrab.enabled = true;
+        }
+
+        // Setelah botol terbuka: physics botol aktif.
+        if (bottleRigidbody != null)
+        {
+            bottleRigidbody.isKinematic = false;
+            bottleRigidbody.useGravity = true;
+        }
+
+        Debug.Log("Botol terbuka. Botol sekarang bisa digrab.");
+    }
+
+  private void OnBottleGrabbed(SelectEnterEventArgs args)
+{
+    if (bottleRigidbody != null)
+    {
+        bottleRigidbody.linearVelocity = Vector3.zero;
+        bottleRigidbody.angularVelocity = Vector3.zero;
+        bottleRigidbody.useGravity = false;
+        bottleRigidbody.isKinematic = true;
+    }
+
+    StartCoroutine(EnablePourAfterDelay());
+}
+    private IEnumerator EnablePourAfterDelay()
+    {
+        yield return new WaitForSeconds(0.5f);
+        isGrabbed = true;
+    }
+
+    private void OnBottleReleased(SelectExitEventArgs args)
+{
+    isGrabbed = false;
+
+    if (returnRoutine != null)
+    {
+        StopCoroutine(returnRoutine);
+    }
+
+    returnRoutine = StartCoroutine(ReturnBottleToStart());
+}
+
+private IEnumerator ReturnBottleToStart()
+{
+    if (bottleRigidbody != null)
+    {
+        bottleRigidbody.linearVelocity = Vector3.zero;
+        bottleRigidbody.angularVelocity = Vector3.zero;
+        bottleRigidbody.useGravity = false;
+        bottleRigidbody.isKinematic = true;
+    }
+
+    Vector3 startPosition = transform.position;
+    Quaternion startRotation = transform.rotation;
+
+    float duration = 0.5f;
+    float elapsed = 0f;
+
+    while (elapsed < duration)
+    {
+        elapsed += Time.deltaTime;
+        float t = elapsed / duration;
+
+        transform.position = Vector3.Lerp(startPosition, bottleStartPosition, t);
+        transform.rotation = Quaternion.Slerp(startRotation, bottleStartRotation, t);
+
+        yield return null;
+    }
+
+    transform.position = bottleStartPosition;
+    transform.rotation = bottleStartRotation;
+}   
+
+    private IEnumerator SpawnPills()
+    {
+        isPouring = true;
+
+        for (int i = 0; i < requiredPillCount; i++)
+        {
+            SpawnOnePill();
+            yield return new WaitForSeconds(spawnDelay);
+        }
+
+        hasPoured = true;
+        isPouring = false;
+
+        Debug.Log("Pil keluar sesuai jumlah resep.");
+    }
+
+    private void SpawnOnePill()
+    {
+        if (pillPrefab == null || pillSpawnPoint == null)
+        {
+            Debug.LogWarning("Pill Prefab atau Pill Spawn Point belum diisi.");
+            return;
+        }
+
+        GameObject newPill = Instantiate(
+            pillPrefab,
+            pillSpawnPoint.position,
+            pillSpawnPoint.rotation
+        );
+
+        newPill.SetActive(true);
+
+        Rigidbody rb = newPill.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.AddForce(pillSpawnPoint.forward * 0.1f, ForceMode.Impulse);
+        }
+    }
+}

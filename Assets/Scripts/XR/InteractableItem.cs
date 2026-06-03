@@ -14,8 +14,6 @@ public class InteractableItem : MonoBehaviour
     Vector3 startPos;
     Vector3 startRot;
 
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         xrGrab = GetComponent<XRGrabInteractable>();
@@ -27,6 +25,7 @@ public class InteractableItem : MonoBehaviour
 
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = true;
+        rb.useGravity = false;
 
         outlinable = GetComponent<Outlinable>();
         outlinable.enabled = false;
@@ -54,29 +53,34 @@ public class InteractableItem : MonoBehaviour
 
     private void OnRelease(SelectExitEventArgs arg0)
     {
-        Debug.Log("Release");
+        Debug.Log("[InteractableItem] Released");
+        // Kill active tweens before starting new ones
+        DOTween.Kill(transform);
+
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
         rb.isKinematic = true;
-        transform.DOMove(startPos, 1).SetEase(Ease.OutCubic);
-        transform.DORotate(startRot, 1).SetEase(Ease.OutCubic);
+        rb.useGravity = false;
+
+        transform.DOMove(startPos, 1f).SetEase(Ease.OutCubic);
+        transform.DORotate(startRot, 1f).SetEase(Ease.OutCubic);
     }
 
     private void OnGrab(SelectEnterEventArgs arg0)
     {
-        Debug.Log("Grab");
+        Debug.Log("[InteractableItem] Grabbed");
+        // Kill active return tweens when grabbed again
+        DOTween.Kill(transform);
+
         rb.isKinematic = false;
+        rb.useGravity = false; // XRI controls movement; gravity causes unwanted drops
         ShowInfoPanel(false);
         outlinable.enabled = false;
     }
 
     void ShowInfoPanel(bool isEnable)
     {
-        if (isEnable)
-        {
-            infoPanel.SetActive(true);
-        }
-        else
-        {
-            infoPanel.SetActive(false);
-        }
+        if (infoPanel != null)
+            infoPanel.SetActive(isEnable);
     }
 }

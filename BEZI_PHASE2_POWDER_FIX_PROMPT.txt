@@ -1,0 +1,90 @@
+You are working on my Unity VR project VRPharmaceuticalLab.
+
+Scene:
+Assets/Scenes/VRLabSimulation.unity
+
+Goal:
+Fix Phase 2 Difenhidramin powder interaction in Play Mode.
+
+Current problems:
+1. Difenhidramin jar does not emit any powder spill when the lid is open and the jar is tilted or upside down.
+2. sendokTanduk can fall/drop downward and must remain stable after release.
+3. Moving sendokTanduk near the Difenhidramin mouth does not trigger scoop animation or powder on spoon.
+4. I manually tuned the size of sendokTanduk/PowderHoldPoint/PowderOnSpoonVisual. Preserve my authored transform/scale.
+
+Important scene objects:
+- Models/Interactable/Difenhidramin
+- Models/Interactable/Difenhidramin/tutup
+- Models/Interactable/Difenhidramin/PowderVisualRoot/InternalPowderMesh
+- Models/Interactable/Difenhidramin/MouthRig
+- Models/Interactable/Difenhidramin/MouthRig/PowderSpillOrigin
+- Models/Interactable/Difenhidramin/MouthRig/ScoopAccessZone
+- Models/Interactable/Difenhidramin/MouthRig/ScoopEntryAnchor
+- Models/Interactable/Difenhidramin/MouthRig/ScoopInsideAnchor
+- Models/Interactable/Difenhidramin/MouthRig/ScoopExitAnchor
+- Models/Interactable/Difenhidramin/MouthRig/GhostSpoonVisual
+- Models/Interactable/sendokTanduk
+- Models/Interactable/sendokTanduk/SpoonTip
+- Models/Interactable/sendokTanduk/PowderHoldPoint
+- Models/Interactable/sendokTanduk/PowderHoldPoint/PowderOnSpoonVisual
+
+Do not touch:
+- washer/liquid system
+- Gelas pyrex
+- Gelas ukur
+- mortar logic
+- balance/timbangan
+- pipette
+- XR rig
+- Bottle.fbx.meta GUID
+- InternalPowderMeshVisual shape or parameters
+- botol_CTM 2
+
+Required architecture:
+1. MouthRig must be a child of Difenhidramin, not root scene.
+2. MouthRig must follow Difenhidramin position and rotation in Play Mode.
+3. PowderSpillOrigin must rotate with the jar. Use dot product between PowderSpillOrigin.up and Vector3.down to detect mouth-down tilt.
+4. If lid is open and jar mouth faces downward/side-down, emit small controlled off-white powder particles from PowderSpillOrigin.
+5. Do not use persistent particles for internal powder. Internal powder remains mesh-only.
+6. sendokTanduk must keep XRGrabInteractable and HornSpoon.
+7. sendokTanduk should have useGravity false and should stop/freeze on release, but must still be grabbable.
+8. Scoop should not rely on UI Press. Use XR Activate if available, plus fallback proximity from SpoonTip or spoon collider near ScoopInsideAnchor.
+9. Scoop should use GhostSpoonVisual animation, not force-move the real grabbed spoon.
+10. On valid scoop, call HornSpoon.AddPowder(amount) and show PowderOnSpoonVisual.
+11. Preserve my authored PowderOnSpoonVisual scale/transform. The HornSpoon script should not overwrite it every fill.
+
+Crosscheck before editing:
+- Missing scripts = 0
+- Duplicate YAML IDs = 0
+- Difenhidramin has PowderContainer
+- Difenhidramin/tutup has BottleLid and is linked
+- InternalPowderMeshVisual exists and remains active
+- sendokTanduk has Rigidbody, XRGrabInteractable, HornSpoon
+- PowderOnSpoonVisual has MeshRenderer/MeshFilter and is visual only
+- No PowderParticleBed in scene
+
+Implementation suggestions:
+- Add or verify a runtime safety binder so MouthRig is parented to Difenhidramin at Awake/Start and localPosition is near jar mouth, approximately (0, 0.43, 0).
+- Add or verify NoGravityReleaseStabilizer on sendokTanduk.
+- In ScoopBottleTarget, do both trigger detection and proximity detection:
+  - HornSpoon.TipTransform near ScoopInsideAnchor
+  - spoon colliders ClosestPoint near ScoopInsideAnchor
+- If the spoon is near the mouth, lid is open, spoon is empty, and container has powder, run ghost scoop animation and then add powder to spoon.
+- In PowderSpillFXController, do not require angularVelocity too strictly. If mouthDown is high enough, emit a small trickle even when the jar is held still upside down.
+
+Play Mode validation:
+1. In Hierarchy, MouthRig appears under Difenhidramin, not root.
+2. Open Difenhidramin lid.
+3. Tilt jar 90 to 180 degrees. Expected: small powder spill from jar mouth.
+4. Hold sendokTanduk near jar mouth. Expected: ghost spoon animation or powder pickup feedback.
+5. PowderOnSpoonVisual appears on the real spoon.
+6. Release sendokTanduk in air. Expected: it does not fall and remains grabbable.
+7. Console has no new errors.
+
+Report:
+- Root cause found
+- Exact scene objects changed
+- Exact scripts changed
+- Inspector fields to verify
+- Play Mode test result
+- Remaining risk

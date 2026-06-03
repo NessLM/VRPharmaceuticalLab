@@ -3,18 +3,24 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
+/// <summary>
+/// Controls pill dispensing from a bottle.
+/// Works alongside BottleLid: pills only pour when lid IsOpen.
+///
+/// Setup:
+///   - Assign bottleGrab (XRGrabInteractable on the bottle body).
+///   - Assign pillPrefab and pillSpawnPoint.
+///   - Optionally assign bottleLid to gate pill dispensing.
+/// </summary>
 public class PillBottleController : MonoBehaviour
 {
-    [Header("Lid Animation")]
-    [SerializeField] private Transform lid;
-    [SerializeField] private Transform lidOpenPoint;
-    [SerializeField] private float lidMoveDuration = 0.8f;
-    [SerializeField] private float lidLiftHeight = 0.25f;
-    [SerializeField] private float lidHiddenDelay = 0.2f;
-
     [Header("Bottle Grab")]
     [SerializeField] private XRGrabInteractable bottleGrab;
     [SerializeField] private Rigidbody bottleRigidbody;
+
+    [Header("Lid Reference")]
+    [Tooltip("BottleLid component on the cap. Pills only dispense when lid IsOpen. Leave empty to skip check.")]
+    [SerializeField] private BottleLid bottleLid;
 
     [Header("Pill Spawning")]
     [SerializeField] private GameObject pillPrefab;
@@ -23,35 +29,34 @@ public class PillBottleController : MonoBehaviour
     [SerializeField] private float spawnDelay = 0.25f;
 
     [Header("Pour Detection")]
+    [Tooltip("Angle from spawnPoint.forward to Vector3.down. Smaller = more tilted needed.")]
     [SerializeField] private float pourAngleThreshold = 80f;
 
-private Vector3 bottleStartPosition;
-private Quaternion bottleStartRotation;
-private Coroutine returnRoutine;
+    private Vector3 _bottleStartPosition;
+    private Quaternion _bottleStartRotation;
+    private Coroutine _returnRoutine;
 
-    private bool isOpened = false;
-    private bool isGrabbed = false;
-    private bool isPouring = false;
-    private bool hasPoured = false;
+    private bool _isGrabbed = false;
+    private bool _isPouring = false;
+    private bool _hasPoured = false;
+
+    private bool LidIsOpen => bottleLid == null || bottleLid.IsOpen;
 
     private void Start()
     {
+        _bottleStartPosition = transform.position;
+        _bottleStartRotation = transform.rotation;
 
-        bottleStartPosition = transform.position;
-bottleStartRotation = transform.rotation;
-        if (bottleGrab != null)
-        {
-            bottleGrab.enabled = false;
-
-            bottleGrab.selectEntered.AddListener(OnBottleGrabbed);
-            bottleGrab.selectExited.AddListener(OnBottleReleased);
-        }
-
-        // Awal game: botol diam dulu, tidak jatuh saat menu muncul.
         if (bottleRigidbody != null)
         {
             bottleRigidbody.useGravity = false;
             bottleRigidbody.isKinematic = true;
+        }
+
+        if (bottleGrab != null)
+        {
+            bottleGrab.selectEntered.AddListener(OnBottleGrabbed);
+            bottleGrab.selectExited.AddListener(OnBottleReleased);
         }
     }
 
@@ -66,139 +71,75 @@ bottleStartRotation = transform.rotation;
 
     private void Update()
     {
-        if (!isOpened || !isGrabbed || hasPoured || isPouring)
+        if (!_isGrabbed || !LidIsOpen || _hasPoured || _isPouring || pillSpawnPoint == null)
             return;
 
         float angle = Vector3.Angle(pillSpawnPoint.forward, Vector3.down);
-
         if (angle <= pourAngleThreshold)
         {
             StartCoroutine(SpawnPills());
         }
     }
 
-    public void OpenBottle()
+    private void OnBottleGrabbed(SelectEnterEventArgs args)
     {
-        if (isOpened)
-            return;
-
-        isOpened = true;
-        StartCoroutine(OpenBottleRoutine());
-    }
-
-    private IEnumerator OpenBottleRoutine()
-    {
-        if (lid != null && lidOpenPoint != null)
-        {
-            Vector3 startPosition = lid.position;
-            Quaternion startRotation = lid.rotation;
-
-            Vector3 liftPosition = startPosition + Vector3.up * lidLiftHeight;
-
-            float elapsed = 0f;
-
-            while (elapsed < lidMoveDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = elapsed / lidMoveDuration;
-
-                lid.position = Vector3.Lerp(startPosition, liftPosition, t);
-                lid.rotation = startRotation;
-
-                yield return null;
-            }
-
-            lid.position = liftPosition;
-
-            lid.gameObject.SetActive(false);
-            yield return new WaitForSeconds(lidHiddenDelay);
-
-            lid.SetParent(null, true);
-
-            lid.position = lidOpenPoint.position;
-            lid.rotation = lidOpenPoint.rotation;
-            lid.gameObject.SetActive(true);
-        }
-
-        if (bottleGrab != null)
-        {
-            bottleGrab.enabled = true;
-        }
-
-        // Setelah botol terbuka: physics botol aktif.
         if (bottleRigidbody != null)
         {
-            bottleRigidbody.isKinematic = false;
-            bottleRigidbody.useGravity = true;
+            bottleRigidbody.linearVelocity = Vector3.zero;
+            bottleRigidbody.angularVelocity = Vector3.zero;
+            bottleRigidbody.useGravity = false;
+            bottleRigidbody.isKinematic = true;
         }
 
-        Debug.Log("Botol terbuka. Botol sekarang bisa digrab.");
+        StartCoroutine(EnablePourAfterDelay());
     }
 
-  private void OnBottleGrabbed(SelectEnterEventArgs args)
-{
-    if (bottleRigidbody != null)
-    {
-        bottleRigidbody.linearVelocity = Vector3.zero;
-        bottleRigidbody.angularVelocity = Vector3.zero;
-        bottleRigidbody.useGravity = false;
-        bottleRigidbody.isKinematic = true;
-    }
-
-    StartCoroutine(EnablePourAfterDelay());
-}
     private IEnumerator EnablePourAfterDelay()
     {
-        yield return new WaitForSeconds(0.5f);
-        isGrabbed = true;
+        yield return new WaitForSeconds(0.4f);
+        _isGrabbed = true;
     }
 
     private void OnBottleReleased(SelectExitEventArgs args)
-{
-    isGrabbed = false;
-
-    if (returnRoutine != null)
     {
-        StopCoroutine(returnRoutine);
+        _isGrabbed = false;
+
+        if (_returnRoutine != null)
+            StopCoroutine(_returnRoutine);
+
+        _returnRoutine = StartCoroutine(ReturnBottleToStart());
     }
 
-    returnRoutine = StartCoroutine(ReturnBottleToStart());
-}
-
-private IEnumerator ReturnBottleToStart()
-{
-    if (bottleRigidbody != null)
+    private IEnumerator ReturnBottleToStart()
     {
-        bottleRigidbody.linearVelocity = Vector3.zero;
-        bottleRigidbody.angularVelocity = Vector3.zero;
-        bottleRigidbody.useGravity = false;
-        bottleRigidbody.isKinematic = true;
+        if (bottleRigidbody != null)
+        {
+            bottleRigidbody.linearVelocity = Vector3.zero;
+            bottleRigidbody.angularVelocity = Vector3.zero;
+            bottleRigidbody.useGravity = false;
+            bottleRigidbody.isKinematic = true;
+        }
+
+        Vector3 startPosition = transform.position;
+        Quaternion startRotation = transform.rotation;
+        const float duration = 0.5f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            transform.position = Vector3.Lerp(startPosition, _bottleStartPosition, t);
+            transform.rotation = Quaternion.Slerp(startRotation, _bottleStartRotation, t);
+            yield return null;
+        }
+
+        transform.SetPositionAndRotation(_bottleStartPosition, _bottleStartRotation);
     }
-
-    Vector3 startPosition = transform.position;
-    Quaternion startRotation = transform.rotation;
-
-    float duration = 0.5f;
-    float elapsed = 0f;
-
-    while (elapsed < duration)
-    {
-        elapsed += Time.deltaTime;
-        float t = elapsed / duration;
-
-        transform.position = Vector3.Lerp(startPosition, bottleStartPosition, t);
-        transform.rotation = Quaternion.Slerp(startRotation, bottleStartRotation, t);
-
-        yield return null;
-    }
-
-    transform.position = bottleStartPosition;
-    transform.rotation = bottleStartRotation;
-}   
 
     private IEnumerator SpawnPills()
     {
-        isPouring = true;
+        _isPouring = true;
 
         for (int i = 0; i < requiredPillCount; i++)
         {
@@ -206,32 +147,24 @@ private IEnumerator ReturnBottleToStart()
             yield return new WaitForSeconds(spawnDelay);
         }
 
-        hasPoured = true;
-        isPouring = false;
-
-        Debug.Log("Pil keluar sesuai jumlah resep.");
+        _hasPoured = true;
+        _isPouring = false;
+        Debug.Log("[PillBottleController] Pills dispensed.");
     }
 
     private void SpawnOnePill()
     {
         if (pillPrefab == null || pillSpawnPoint == null)
         {
-            Debug.LogWarning("Pill Prefab atau Pill Spawn Point belum diisi.");
+            Debug.LogWarning("[PillBottleController] pillPrefab or pillSpawnPoint not assigned.");
             return;
         }
 
-        GameObject newPill = Instantiate(
-            pillPrefab,
-            pillSpawnPoint.position,
-            pillSpawnPoint.rotation
-        );
-
+        GameObject newPill = Instantiate(pillPrefab, pillSpawnPoint.position, pillSpawnPoint.rotation);
         newPill.SetActive(true);
 
         Rigidbody rb = newPill.GetComponent<Rigidbody>();
         if (rb != null)
-        {
             rb.AddForce(pillSpawnPoint.forward * 0.1f, ForceMode.Impulse);
-        }
     }
 }

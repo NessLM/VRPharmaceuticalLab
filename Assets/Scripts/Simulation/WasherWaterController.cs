@@ -8,12 +8,24 @@ public class WasherWaterController : MonoBehaviour
     [Header("Water Hit Zone")]
     public Collider waterHitZone;
 
+    [Header("Water Source")]
+    public WaterSource waterSource;
+
     [Header("Status Indicator")]
     public Renderer statusIndicatorRenderer;
     public Material waterOnMaterial;
     public Material waterOffMaterial;
 
     public bool IsWaterOn { get; private set; }
+
+    private void Awake()
+    {
+        if (waterSource == null && waterHitZone != null)
+            waterSource = waterHitZone.GetComponent<WaterSource>();
+
+        if (waterSource == null)
+            waterSource = GetComponent<WaterSource>();
+    }
 
     private void Start()
     {
@@ -39,7 +51,11 @@ public class WasherWaterController : MonoBehaviour
     {
         IsWaterOn = active;
 
-        if (waterParticle != null)
+        if (waterSource != null)
+        {
+            waterSource.SetFlow(active);
+        }
+        else if (waterParticle != null)
         {
             if (active)
                 waterParticle.Play();
@@ -47,7 +63,7 @@ public class WasherWaterController : MonoBehaviour
                 waterParticle.Stop();
         }
 
-        if (waterHitZone != null)
+        if (waterSource == null && waterHitZone != null)
         {
             waterHitZone.enabled = active;
         }

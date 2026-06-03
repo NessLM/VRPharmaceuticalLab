@@ -58,11 +58,17 @@ public class ToolSurfaceSnap : MonoBehaviour
         isHeld = true;
         isSnapping = false;
 
-        rb.isKinematic = false;
         rb.useGravity = false;
-
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+
+        // Kinematic XRI movement type requires isKinematic=true at all times for
+        // MovePosition/MoveRotation. Only switch to non-kinematic for VelocityTracking
+        // or Instantaneous modes where XRI drives the Rigidbody via physics directly.
+        bool requiresNonKinematic = grabInteractable != null
+            && grabInteractable.movementType != XRBaseInteractable.MovementType.Kinematic;
+        if (requiresNonKinematic)
+            rb.isKinematic = false;
     }
 
     private void OnRelease(SelectExitEventArgs args)

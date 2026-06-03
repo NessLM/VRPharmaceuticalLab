@@ -14,7 +14,6 @@ public class InteractableMortar : MonoBehaviour
     Vector3 startPos;
     Vector3 startRot;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         xrGrab = GetComponent<XRGrabInteractable>();
@@ -26,6 +25,7 @@ public class InteractableMortar : MonoBehaviour
 
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = true;
+        rb.useGravity = false;
 
         outlinable = GetComponent<Outlinable>();
         outlinable.enabled = false;
@@ -38,7 +38,6 @@ public class InteractableMortar : MonoBehaviour
 
     private void OnActivated(ActivateEventArgs arg0)
     {
-        // toggle panel manual dengan tombol trigger
         ShowInfoPanel(!infoPanel.activeSelf);
     }
 
@@ -54,42 +53,41 @@ public class InteractableMortar : MonoBehaviour
 
     private void OnRelease(SelectExitEventArgs arg0)
     {
-        Debug.Log("Release");
-        rb.isKinematic = true;
+        Debug.Log("[InteractableMortar] Released");
+        DOTween.Kill(transform);
 
-        // panel hilang otomatis saat dilepas
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.isKinematic = true;
+        rb.useGravity = false;
+
         ShowInfoPanel(false);
 
-        transform.DOMove(startPos, 1).SetEase(Ease.OutCubic);
-        transform.DORotate(startRot, 1).SetEase(Ease.OutCubic);
+        transform.DOMove(startPos, 1f).SetEase(Ease.OutCubic);
+        transform.DORotate(startRot, 1f).SetEase(Ease.OutCubic);
     }
 
     private void OnGrab(SelectEnterEventArgs arg0)
     {
-        Debug.Log("Grab");
+        Debug.Log("[InteractableMortar] Grabbed");
+        DOTween.Kill(transform);
+
         rb.isKinematic = false;
+        rb.useGravity = false; // Prevent gravity-drop during XRI tracking
 
-        // panel muncul otomatis saat digrab
         ShowInfoPanel(true);
-
         outlinable.enabled = false;
+
+        var dataHandler = infoPanel != null
+            ? infoPanel.GetComponent<InteractableMortarDataHandler>()
+            : null;
+
+        dataHandler?.Initialize();
     }
 
     void ShowInfoPanel(bool isEnable)
     {
         if (infoPanel != null)
-        {
             infoPanel.SetActive(isEnable);
-
-            // kalau panel diaktifkan, isi dulu datanya
-            if (isEnable)
-            {
-                var dataHandler = infoPanel.GetComponent<InteractableMortarDataHandler>();
-                if (dataHandler != null)
-                {
-                    dataHandler.Initialize();
-                }
-            }
-        }
     }
 }

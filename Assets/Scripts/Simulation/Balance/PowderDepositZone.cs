@@ -1,0 +1,138 @@
+using UnityEngine;
+using UnityEngine.Events;
+using TMPro;
+
+/// <summary>
+/// Attached to LeftWeighingZone. Detects a held HornSpoon above the left pan
+/// and gradually transfers powder from the spoon to the pan.
+/// The VirtualWeightSelector must have accepted a target before deposit is allowed.
+///
+/// Attach to: LeftWeighingZone (which already has BoxCollider isTrigger).
+/// Wire: weightSelector, warningText (optional), panPowderLevels (optional).
+/// </summary>
+[RequireComponent(typeof(Collider))]
+public class PowderDepositZone : MonoBehaviour
+{
+    [Header("References")]
+    [Tooltip("VirtualWeightSelector on timbanganNeraca or WeightSelectorCanvas.")]
+    [SerializeField] private VirtualWeightSelector weightSelector;
+
+    [Header("Pour Settings")]
+    [Tooltip("How fast powder moves from spoon to pan (grams per second).")]
+    [SerializeField] private float pourRateGramsPerSecond = 0.08f;
+
+    [Header("Powder Visual on Left Pan")]
+    [Tooltip("GameObjects representing powder level on the pan (index 0=none, last=full).")]
+    [SerializeField] private GameObject[] panPowderLevels;
+    [Tooltip("Gram value at which the last powder level visual is shown.")]
+    [SerializeField] private float maxVisualGrams = 100f;
+
+    [Header("Warning Display")]
+    [Tooltip("Optional TMP_Text to show when user tries to pour before accepting target.")]
+    [SerializeField] private TMP_Text warningText;
+    [SerializeField] private float warningDuration = 2.5f;
+
+    [Header("Events")]
+    public UnityEvent<float> onDepositChanged;
+    public UnityEvent onTargetNotAccepted;
+
+    private float depositedGrams = 0f;
+    private HornSpoon spoonInZone = null;
+    private float warningTimer = 0f;
+
+    /// <summary>Total powder grams deposited on the left pan so far.</summary>
+    public float DepositedGrams => depositedGrams;
+
+    /// <summary>Resets the deposited powder to zero (call when restarting the lesson).</summary>
+    public void ResetDeposit()
+    {
+        depositedGrams = 0f;
+        UpdatePanVisual();
+        onDepositChanged?.Invoke(depositedGrams);
+    }
+
+    private void Awake()
+    {
+        var col = GetComponent<Collider>();
+        if (col != null) col.isTrigger = true;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        var spoon = other.GetComponentInParent<HornSpoon>();
+        if (spoon == null) return;
+
+        spoonInZone = spoon;
+
+        if (weightSelector != null && !weightSelector.IsLocked)
+        {
+            ShowWarning("Pilih dan terima anak timbangan kanan dulu!");
+            onTargetNotAccepted?.Invoke();
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        var spoon = other.GetComponentInParent<HornSpoon>();
+        if (spoon != null && spoon == spoonInZone)
+            spoonInZone = null;
+    }
+
+    private void Update()
+    {
+        // Countdown warning display
+        if (warningTimer > 0f)
+        {
+            warningTimer -= Time.deltaTime;
+            if (warningTimer <= 0f && warningText != null)
+                warningText.gameObject.SetActive(false);
+        }
+
+        // Skip if no spoon or target not accepted
+        if (spoonInZone == null) return;
+        if (weightSelector != null && !weightSelector.IsLocked) return;
+        if (spoonInZone.IsEmpty) return;
+
+        // Pour powder from spoon to pan
+        float toTransferGrams = pourRateGramsPerSecond * Time.deltaTime;
+        float spoonGrams = spoonInZone.CurrentAmountMg / 1000f;
+        float actualGrams = Mathf.Min(toTransferGrams, spoonGrams);
+
+        if (actualGrams <= 0f) return;
+
+        float removedMg = spoonInZone.RemovePowder(actualGrams * 1000f);
+        float removedGrams = removedMg / 1000f;
+
+        if (removedGrams <= 0f) return;
+
+        depositedGrams += removedGrams;
+        UpdatePanVisual();
+        onDepositChanged?.Invoke(depositedGrams);
+    }
+
+    private void UpdatePanVisual()
+    {
+        if (panPowderLevels == null || panPowderLevels.Length == 0) return;
+        float ratio = maxVisualGrams > 0f ? Mathf.Clamp01(depositedGrams / maxVisualGrams) : 0f;
+        int count = panPowderLevels.Length;
+
+        // Index 0 = no powder, index count-1 = full
+        int activeIndex = depositedGrams > 0f
+            ? Mathf.Clamp(1 + Mathf.RoundToInt(ratio * (count - 2)), 1, count - 1)
+            : 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            if (panPowderLevels[i] != null)
+                panPowderLevels[i].SetActive(i == activeIndex);
+        }
+    }
+
+    private void ShowWarning(string msg)
+    {
+        if (warningText == null) return;
+        warningText.text = msg;
+        warningText.gameObject.SetActive(true);
+        warningTimer = warningDuration;
+    }
+}

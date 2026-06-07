@@ -180,7 +180,10 @@ public class VirtualWeightSelector : MonoBehaviour
         BuildScrollList();
         BuildTotalRow();
         BuildFooter();
-        HideAllWeightObjects();
+        // NOTE: HideAllWeightObjects() was removed from Start().
+        // Weight objects are hidden only on Reset (OnResetClicked) — not on initial panel activation.
+        // This prevents weight objects that are visible in the scene from disappearing when the panel
+        // is first opened via the B button.
     }
 
     // ── Auto-discovery ──────────────────────────────────────────────────────

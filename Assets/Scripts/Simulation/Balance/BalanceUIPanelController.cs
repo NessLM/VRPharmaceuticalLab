@@ -31,9 +31,11 @@ public class BalanceUIPanelController : MonoBehaviour
 
     private void Awake()
     {
-        // Guarantee both panels are hidden at scene start regardless of Editor state.
-        if (lessonCanvas != null)         lessonCanvas.SetActive(false);
-        if (weightSelectorCanvas != null) weightSelectorCanvas.SetActive(false);
+        // Panels start in whatever active state was set in the Editor.
+        // Toggle() / Show() / Hide() can be called at runtime to control visibility.
+        // NOTE: Previously this forced both panels to SetActive(false) at Awake,
+        // which hid the panels even when the user intentionally left them visible in the Editor.
+        // Bug fix: respect Editor state so BalanceLessonCanvas stays visible at scene start.
     }
 
     // ── State ─────────────────────────────────────────────────────────────────

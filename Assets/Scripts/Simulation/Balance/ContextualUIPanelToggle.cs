@@ -110,12 +110,14 @@ public class ContextualUIPanelToggle : MonoBehaviour
     /// <summary>
     /// Returns true if any tracked interactor's ray hits a Collider whose hierarchy
     /// contains a component of type T (includes trigger colliders).
+    /// Also checks Camera.main's gaze direction as a fallback for HMD / gaze mode.
     /// </summary>
     private bool IsRayHitting<T>() where T : Component
     {
+        // Controller rays (NearFarInteractor, active in controller and hand-tracking mode)
         foreach (var interactor in trackedInteractors)
         {
-            if (interactor == null) continue;
+            if (interactor == null || !interactor.isActiveAndEnabled) continue;
 
             var ray = new Ray(
                 interactor.transform.position,
@@ -128,6 +130,21 @@ public class ContextualUIPanelToggle : MonoBehaviour
                     return true;
             }
         }
+
+        // Gaze / HMD fallback — works when using the XR Device Simulator in HMD mode
+        // or any head-gaze scenario where the camera forward is the primary pointer.
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            var gazeRay = new Ray(cam.transform.position, cam.transform.forward);
+            if (Physics.Raycast(gazeRay, out RaycastHit gazeHit, raycastMaxDistance,
+                raycastMask, QueryTriggerInteraction.Collide))
+            {
+                if (gazeHit.collider.GetComponentInParent<T>() != null)
+                    return true;
+            }
+        }
+
         return false;
     }
 

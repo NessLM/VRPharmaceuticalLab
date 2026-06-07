@@ -33,10 +33,17 @@ public class LiquidReceiverZone : MonoBehaviour
         if (targetContainer == null || sourceContainer == null)
             return false;
 
+        if (sourceContainer.IsEmpty)
+            return false;
+
         if (!allowSameContainer && targetContainer == sourceContainer)
             return false;
 
-        return targetContainer.AvailableCapacityMl > 0f;
+        if (sourceContainer.transform.IsChildOf(targetContainer.transform)
+            || targetContainer.transform.IsChildOf(sourceContainer.transform))
+            return false;
+
+        return targetContainer.CanReceive(0.001f);
     }
 
     public float ReceiveFrom(LiquidContainer sourceContainer, float amountMl)

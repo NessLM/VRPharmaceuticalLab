@@ -7,4 +7,9 @@ public class SceneLoader : MonoBehaviour
     {
         SceneManager.LoadScene("VRLabSimulation");
     }
+
+    public void LoadVRLabSimulationPadat()
+    {
+        SceneManager.LoadScene("VRLabSimulation_Padat");
+    }
 }

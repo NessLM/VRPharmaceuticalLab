@@ -3,7 +3,17 @@ guid: cd699107aface9648ac7e822cfe133e1
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Metalic
+    second: {fileID: 2100000, guid: 753b53ef619bc5e47812e8b1dd7d3540, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Timbul
+    second: {fileID: 2100000, guid: 030b9541d331a6b49ba916173eb69e7d, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

@@ -5,15 +5,19 @@ public class PadatMenuPanelController : MonoBehaviour
 {
     [Header("Main Panels")]
     [SerializeField] private GameObject panelPilihJenisSediaan;
+
+    [Tooltip("Isi dengan PanelMenu_CairSemiPadat di scene VRLabSimulation, dan PanelMenu_Padat di scene VRLabSimulation_Padat.")]
     [SerializeField] private GameObject panelMenuPadat;
 
-    [Header("Start State")]
-    [SerializeField] private bool showPadatMenuOnStart = true;
+    private static string sceneYangHarusLangsungBukaMenu = "";
 
     private void Start()
     {
-        if (showPadatMenuOnStart)
+        string currentScene = SceneManager.GetActiveScene().name;
+
+        if (sceneYangHarusLangsungBukaMenu == currentScene)
         {
+            sceneYangHarusLangsungBukaMenu = "";
             ShowPanelMenuPadat();
         }
         else
@@ -42,11 +46,13 @@ public class PadatMenuPanelController : MonoBehaviour
 
     public void LoadCairSemiPadatScene()
     {
+        sceneYangHarusLangsungBukaMenu = "VRLabSimulation";
         SceneManager.LoadScene("VRLabSimulation");
     }
 
     public void LoadPadatScene()
     {
+        sceneYangHarusLangsungBukaMenu = "VRLabSimulation_Padat";
         SceneManager.LoadScene("VRLabSimulation_Padat");
     }
 }

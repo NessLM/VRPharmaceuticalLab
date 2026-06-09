@@ -5080,6 +5080,14 @@ PrefabInstance:
       propertyPath: m_LocalPosition.z
       value: 0.0176
       objectReference: {fileID: 0}
+    - target: {fileID: 2278909096610284720, guid: 01c99cee5af8df849a6db069c2673a74, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7835543494363664405, guid: 01c99cee5af8df849a6db069c2673a74, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 7704327836215651521, guid: 01c99cee5af8df849a6db069c2673a74, type: 3}

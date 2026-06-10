@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Reflection;
 using UnityEngine;
 using TMPro;
@@ -7,6 +8,7 @@ public class SyrupProcedureManager : MonoBehaviour
     private enum SyrupStep
     {
         Step_01_MeasureWater100ml,
+        Step_02_Placeholder,
         Done
     }
 
@@ -19,10 +21,17 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private float toleranceMl = 2f;
     [SerializeField] private float stableRequiredTime = 0.5f;
 
-    [Header("UI")]
+    [Header("Main UI")]
     [SerializeField] private TMP_Text instructionText;
     [SerializeField] private TMP_Text progressText;
     [SerializeField] private GameObject doneIcon;
+
+    [Header("Left Checklist UI")]
+    [SerializeField] private TMP_Text checklistStep1Text;
+    [SerializeField] private TMP_Text checklistStep2Text;
+    [SerializeField] private RectTransform strikeStep1Line;
+    [SerializeField] private float strikeLineTargetWidth = 650f;
+    [SerializeField] private float strikeAnimationDuration = 0.35f;
 
     [Header("Highlights")]
     [SerializeField] private GameObject highlightGelasUkur100ml;
@@ -30,6 +39,7 @@ public class SyrupProcedureManager : MonoBehaviour
 
     private float stableTimer;
     private bool stepDone;
+    private bool isAnimating;
 
     private void OnEnable()
     {
@@ -38,6 +48,9 @@ public class SyrupProcedureManager : MonoBehaviour
 
     private void Update()
     {
+        if (isAnimating)
+            return;
+
         if (currentStep == SyrupStep.Step_01_MeasureWater100ml)
             CheckStep01MeasureWater100ml();
     }
@@ -47,6 +60,7 @@ public class SyrupProcedureManager : MonoBehaviour
         currentStep = SyrupStep.Step_01_MeasureWater100ml;
         stepDone = false;
         stableTimer = 0f;
+        isAnimating = false;
 
         if (instructionText != null)
             instructionText.text = "Step 1: Isi Gelas Ukur dengan aquadest sampai 100 ml dari Washer.";
@@ -63,7 +77,35 @@ public class SyrupProcedureManager : MonoBehaviour
         if (highlightWasher != null)
             highlightWasher.SetActive(true);
 
+        SetupChecklist();
+
         Debug.Log("[SyrupProcedure] Step 1 started.");
+    }
+
+    private void SetupChecklist()
+    {
+        if (checklistStep1Text != null)
+        {
+            checklistStep1Text.gameObject.SetActive(true);
+            checklistStep1Text.text = "- Step 1: Isi aquadest 100 ml ke Gelas Ukur.";
+            checklistStep1Text.fontStyle = FontStyles.Normal;
+        }
+
+        if (checklistStep2Text != null)
+        {
+            checklistStep2Text.gameObject.SetActive(false);
+            checklistStep2Text.text = "- Step 2: Lanjutkan ke tahap berikutnya.";
+            checklistStep2Text.fontStyle = FontStyles.Normal;
+        }
+
+        if (strikeStep1Line != null)
+        {
+            strikeStep1Line.gameObject.SetActive(false);
+
+            Vector2 size = strikeStep1Line.sizeDelta;
+            size.x = 0f;
+            strikeStep1Line.sizeDelta = size;
+        }
     }
 
     private void CheckStep01MeasureWater100ml()
@@ -105,8 +147,10 @@ public class SyrupProcedureManager : MonoBehaviour
 
     private void CompleteStep01()
     {
+        if (stepDone)
+            return;
+
         stepDone = true;
-        currentStep = SyrupStep.Done;
 
         if (instructionText != null)
             instructionText.text = "Step 1 selesai: aquadest 100 ml sudah siap di Gelas Ukur.";
@@ -123,7 +167,60 @@ public class SyrupProcedureManager : MonoBehaviour
         if (highlightWasher != null)
             highlightWasher.SetActive(false);
 
+        StartCoroutine(AnimateStep1CompleteThenShowStep2());
+
         Debug.Log("[SyrupProcedure] Step 1 complete.");
+    }
+
+    private IEnumerator AnimateStep1CompleteThenShowStep2()
+    {
+        isAnimating = true;
+
+        if (strikeStep1Line != null)
+        {
+            strikeStep1Line.gameObject.SetActive(true);
+
+            float timer = 0f;
+
+            while (timer < strikeAnimationDuration)
+            {
+                timer += Time.deltaTime;
+
+                float t = Mathf.Clamp01(timer / strikeAnimationDuration);
+                float width = Mathf.Lerp(0f, strikeLineTargetWidth, t);
+
+                Vector2 size = strikeStep1Line.sizeDelta;
+                size.x = width;
+                strikeStep1Line.sizeDelta = size;
+
+                yield return null;
+            }
+
+            Vector2 finalSize = strikeStep1Line.sizeDelta;
+            finalSize.x = strikeLineTargetWidth;
+            strikeStep1Line.sizeDelta = finalSize;
+        }
+
+        if (checklistStep1Text != null)
+            checklistStep1Text.fontStyle = FontStyles.Strikethrough;
+
+        yield return new WaitForSeconds(0.25f);
+
+        if (checklistStep2Text != null)
+            checklistStep2Text.gameObject.SetActive(true);
+
+        currentStep = SyrupStep.Step_02_Placeholder;
+
+        if (instructionText != null)
+            instructionText.text = "Step 2: Lanjutkan ke tahap berikutnya.";
+
+        if (progressText != null)
+            progressText.text = "Menunggu aksi Step 2.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
+
+        isAnimating = false;
     }
 
     private bool TryReadCurrentMl(LiquidContainer container, out float value)

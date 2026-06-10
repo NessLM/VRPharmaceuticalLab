@@ -146,8 +146,8 @@ public class ResepPadat1StepManager : MonoBehaviour
             Rigidbody rb = item.GetComponent<Rigidbody>();
             if (rb != null)
             {
-                rb.useGravity = false;
-                rb.isKinematic = true;
+                rb.useGravity = true;
+                rb.isKinematic = false;
             }
         }
     }

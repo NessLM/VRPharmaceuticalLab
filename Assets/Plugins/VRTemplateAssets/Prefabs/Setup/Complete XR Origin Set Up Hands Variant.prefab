@@ -1388,6 +1388,8 @@ MonoBehaviour:
   m_DisableVisualsWhenBlockedInGroup: 1
   m_StartingSelectedInteractable: {fileID: 0}
   m_StartingTargetFilter: {fileID: 0}
+  m_AutoFindParentInteractableInHierarchy: 0
+  m_ParentInteractableObject: {fileID: 0}
   m_HoverEntered:
     m_PersistentCalls:
       m_Calls: []
@@ -1411,8 +1413,10 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_PhysicsTriggerInteraction: 1
+  m_UIDocumentTriggerInteraction: 1
   m_RequirePokeFilter: 1
   m_EnableUIInteraction: 1
+  m_ClickUIOnDown: 0
   m_DebugVisualizationsEnabled: 0
   m_UIHoverEntered:
     m_PersistentCalls:
@@ -1420,6 +1424,7 @@ MonoBehaviour:
   m_UIHoverExited:
     m_PersistentCalls:
       m_Calls: []
+  m_EnableMultiPick: 0
 --- !u!114 &7323735960864821509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1580,6 +1585,8 @@ MonoBehaviour:
   m_DisableVisualsWhenBlockedInGroup: 1
   m_StartingSelectedInteractable: {fileID: 0}
   m_StartingTargetFilter: {fileID: 0}
+  m_AutoFindParentInteractableInHierarchy: 0
+  m_ParentInteractableObject: {fileID: 0}
   m_HoverEntered:
     m_PersistentCalls:
       m_Calls: []
@@ -1772,11 +1779,33 @@ MonoBehaviour:
   m_UseDistanceBasedVelocityScaling: 1
   m_UseMomentum: 1
   m_MomentumDecayScale: 1.25
+  m_MomentumDecayScaleFromInput: 5.5
   m_ZVelocityRampThreshold: 0.3
   m_PullVelocityBias: 1
   m_PushVelocityBias: 1.25
   m_MinAdditionalVelocityScalar: 0.25
   m_MaxAdditionalVelocityScalar: 1.5
+  m_UseManipulationInput: 0
+  m_ManipulationInput:
+    m_InputSourceMode: 2
+    m_InputAction:
+      m_Name: Manipulation
+      m_Type: 0
+      m_ExpectedControlType: Vector2
+      m_Id: 8e3624a8-315b-4043-b30b-fe2c2af23c9c
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_InputActionReference: {fileID: 0}
+    m_ObjectReferenceObject: {fileID: 0}
+    m_ManualValue: {x: 0, y: 0}
+  m_ManipulationXAxisMode: 1
+  m_ManipulationYAxisMode: 2
+  m_CombineManipulationAxes: 0
+  m_ManipulationTranslateSpeed: 1
+  m_ManipulationRotateSpeed: 180
+  m_ManipulationRotateReferenceFrame: {fileID: 0}
   m_EnableDebugLines: 0
 --- !u!114 &6993359290442239526
 MonoBehaviour:
@@ -1822,6 +1851,7 @@ MonoBehaviour:
     m_Bits: 2147483681
   m_RaycastTriggerInteraction: 1
   m_RaycastSnapVolumeInteraction: 1
+  m_RaycastUIDocumentTriggerInteraction: 1
   m_TargetNumCurveSegments: 1
   m_HitDetectionType: 2
   m_CastDistance: 10
@@ -2006,8 +2036,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_UseOptimizedControls: 0
-  m_LeftHandMesh: {fileID: 1713058362968096892}
-  m_RightHandMesh: {fileID: 7395216812728091722}
+  m_MetaQuestLeftHandMesh: {fileID: 1713058362968096892}
+  m_MetaQuestRightHandMesh: {fileID: 7395216812728091722}
+  m_AndroidXRLeftHandMesh: {fileID: 0}
+  m_AndroidXRRightHandMesh: {fileID: 0}
   m_HandMeshMaterial: {fileID: 0}
   m_DrawMeshes: 1
   m_DebugDrawPrefab: {fileID: 6507399986997092475, guid: 254b742d65a15d14b9df756ae77de868, type: 3}
@@ -2510,6 +2542,8 @@ MonoBehaviour:
   m_DisableVisualsWhenBlockedInGroup: 1
   m_StartingSelectedInteractable: {fileID: 0}
   m_StartingTargetFilter: {fileID: 0}
+  m_AutoFindParentInteractableInHierarchy: 0
+  m_ParentInteractableObject: {fileID: 0}
   m_HoverEntered:
     m_PersistentCalls:
       m_Calls: []
@@ -2533,8 +2567,10 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_PhysicsTriggerInteraction: 1
+  m_UIDocumentTriggerInteraction: 1
   m_RequirePokeFilter: 1
   m_EnableUIInteraction: 1
+  m_ClickUIOnDown: 0
   m_DebugVisualizationsEnabled: 0
   m_UIHoverEntered:
     m_PersistentCalls:
@@ -2542,6 +2578,7 @@ MonoBehaviour:
   m_UIHoverExited:
     m_PersistentCalls:
       m_Calls: []
+  m_EnableMultiPick: 0
 --- !u!114 &5596126324976549686
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2904,6 +2941,8 @@ MonoBehaviour:
   m_DisableVisualsWhenBlockedInGroup: 1
   m_StartingSelectedInteractable: {fileID: 0}
   m_StartingTargetFilter: {fileID: 0}
+  m_AutoFindParentInteractableInHierarchy: 0
+  m_ParentInteractableObject: {fileID: 0}
   m_HoverEntered:
     m_PersistentCalls:
       m_Calls: []
@@ -3096,11 +3135,33 @@ MonoBehaviour:
   m_UseDistanceBasedVelocityScaling: 1
   m_UseMomentum: 1
   m_MomentumDecayScale: 1.25
+  m_MomentumDecayScaleFromInput: 5.5
   m_ZVelocityRampThreshold: 0.3
   m_PullVelocityBias: 1
   m_PushVelocityBias: 1.25
   m_MinAdditionalVelocityScalar: 0.25
   m_MaxAdditionalVelocityScalar: 1.5
+  m_UseManipulationInput: 0
+  m_ManipulationInput:
+    m_InputSourceMode: 2
+    m_InputAction:
+      m_Name: Manipulation
+      m_Type: 0
+      m_ExpectedControlType: Vector2
+      m_Id: d97cb69c-3d25-4032-b55c-c156d61b6309
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+    m_InputActionReference: {fileID: 0}
+    m_ObjectReferenceObject: {fileID: 0}
+    m_ManualValue: {x: 0, y: 0}
+  m_ManipulationXAxisMode: 1
+  m_ManipulationYAxisMode: 2
+  m_CombineManipulationAxes: 0
+  m_ManipulationTranslateSpeed: 1
+  m_ManipulationRotateSpeed: 180
+  m_ManipulationRotateReferenceFrame: {fileID: 0}
   m_EnableDebugLines: 0
 --- !u!114 &1008515772170842970
 MonoBehaviour:
@@ -3146,6 +3207,7 @@ MonoBehaviour:
     m_Bits: 2147483681
   m_RaycastTriggerInteraction: 1
   m_RaycastSnapVolumeInteraction: 1
+  m_RaycastUIDocumentTriggerInteraction: 1
   m_TargetNumCurveSegments: 1
   m_HitDetectionType: 2
   m_CastDistance: 10
@@ -4439,7 +4501,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.25
     m_AdjustWidth: 1
-    m_StarWidth: 0.003
+    m_StartWidth: 0.003
     m_EndWidth: 0.003
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -4479,7 +4541,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.5
     m_AdjustWidth: 1
-    m_StarWidth: 0.004
+    m_StartWidth: 0.004
     m_EndWidth: 0.004
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -4519,7 +4581,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.5
     m_AdjustWidth: 1
-    m_StarWidth: 0.003
+    m_StartWidth: 0.003
     m_EndWidth: 0.003
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -4559,7 +4621,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.5
     m_AdjustWidth: 1
-    m_StarWidth: 0.003
+    m_StartWidth: 0.003
     m_EndWidth: 0.003
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -4599,7 +4661,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.25
     m_AdjustWidth: 1
-    m_StarWidth: 0.004
+    m_StartWidth: 0.004
     m_EndWidth: 0.004
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -5900,7 +5962,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 16fba6d30ed741d4a9fdd6e79ee2f3ac, type: 3}
+  m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 16fba6d30ed741d4a9fdd6e79ee2f3ac, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 1
@@ -6808,7 +6870,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.25
     m_AdjustWidth: 1
-    m_StarWidth: 0.003
+    m_StartWidth: 0.003
     m_EndWidth: 0.003
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -6848,7 +6910,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.5
     m_AdjustWidth: 1
-    m_StarWidth: 0.004
+    m_StartWidth: 0.004
     m_EndWidth: 0.004
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -6888,7 +6950,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.5
     m_AdjustWidth: 1
-    m_StarWidth: 0.003
+    m_StartWidth: 0.003
     m_EndWidth: 0.003
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -6928,7 +6990,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.5
     m_AdjustWidth: 1
-    m_StarWidth: 0.003
+    m_StartWidth: 0.003
     m_EndWidth: 0.003
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -6968,7 +7030,7 @@ MonoBehaviour:
     m_SmoothlyCurveLine: 1
     m_LineBendRatio: 0.25
     m_AdjustWidth: 1
-    m_StarWidth: 0.004
+    m_StartWidth: 0.004
     m_EndWidth: 0.004
     m_EndWidthScaleDistanceFactor: 2
     m_AdjustGradient: 1
@@ -7462,7 +7524,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 16fba6d30ed741d4a9fdd6e79ee2f3ac, type: 3}
+  m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 16fba6d30ed741d4a9fdd6e79ee2f3ac, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 1

@@ -3,28 +3,63 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class ResepPadat1StepManager : MonoBehaviour
 {
-    [Header("Interactables")]
-    [SerializeField] private XRGrabInteractable sendokTanduk;
-    [SerializeField] private XRGrabInteractable botolCTM;
-    [SerializeField] private XRGrabInteractable botolParacetamol;
-    [SerializeField] private XRGrabInteractable mortar;
-    [SerializeField] private XRGrabInteractable penumbuk;
+    [Header("SEMUA barang yang bisa di-grab")]
+    [SerializeField] private XRGrabInteractable[] allGrabItems;
+
+    [Header("Barang Step 1")]
+    [SerializeField] private XRGrabInteractable[] step1GrabItems;
+
+    [Header("Barang Step 2")]
+    [SerializeField] private XRGrabInteractable[] step2GrabItems;
+
+    [Header("Barang Step 3")]
+    [SerializeField] private XRGrabInteractable[] step3GrabItems;
+
+    [Header("Script Khusus")]
+    [SerializeField] private MonoBehaviour stackPerkamenScript;
+    [SerializeField] private MonoBehaviour botolKapsulScript;
+    [SerializeField] private MonoBehaviour tutupBotolKapsulInteractable;
 
     [Header("Panels")]
     [SerializeField] private GameObject panelResep;
     [SerializeField] private GameObject instruksiStep1;
+    [SerializeField] private GameObject instruksiStep2;
+    [SerializeField] private GameObject instruksiStep3;
 
-    private int currentStep = 0;
+    private bool simulationStarted = false;
+
+    private void Awake()
+    {
+        Debug.Log("MANAGER RESEP PADAT 1 JALAN");
+        LockBeforeStart();
+    }
 
     private void Start()
     {
-        LockAll();
-        if (instruksiStep1 != null)
-            instruksiStep1.SetActive(false);
+        LockBeforeStart();
+    }
+
+    private void LockBeforeStart()
+    {
+        simulationStarted = false;
+
+        LockItems(allGrabItems);
+
+        SetScript(stackPerkamenScript, false);
+        SetScript(botolKapsulScript, false);
+        SetScript(tutupBotolKapsulInteractable, false);
+
+        SetPanel(instruksiStep1, false);
+        SetPanel(instruksiStep2, false);
+        SetPanel(instruksiStep3, false);
+
+        Debug.Log("Sebelum Mulai: semua grab dan script khusus dimatikan.");
     }
 
     public void StartSimulation()
     {
+        simulationStarted = true;
+
         if (panelResep != null)
             panelResep.SetActive(false);
 
@@ -33,33 +68,99 @@ public class ResepPadat1StepManager : MonoBehaviour
 
     public void SetStep(int step)
     {
-        currentStep = step;
+        if (!simulationStarted)
+            return;
 
-        LockAll();
+        LockItems(allGrabItems);
 
-        if (instruksiStep1 != null)
-            instruksiStep1.SetActive(false);
+        SetScript(stackPerkamenScript, false);
+        SetScript(botolKapsulScript, false);
+        SetScript(tutupBotolKapsulInteractable, false);
 
-        switch (currentStep)
+        SetPanel(instruksiStep1, false);
+        SetPanel(instruksiStep2, false);
+        SetPanel(instruksiStep3, false);
+
+        if (step == 1)
         {
-            case 1:
-                if (sendokTanduk != null)
-                    sendokTanduk.enabled = true;
+            UnlockItems(step1GrabItems);
 
-                if (instruksiStep1 != null)
-                    instruksiStep1.SetActive(true);
+            SetScript(stackPerkamenScript, true);
 
-                Debug.Log("Step 1 aktif: Ambil sendok tanduk.");
-                break;
+            SetPanel(instruksiStep1, true);
+
+            Debug.Log("Step 1 aktif.");
+        }
+        else if (step == 2)
+        {
+            UnlockItems(step2GrabItems);
+
+            SetPanel(instruksiStep2, true);
+
+            Debug.Log("Step 2 aktif.");
+        }
+        else if (step == 3)
+        {
+            UnlockItems(step3GrabItems);
+
+            SetScript(botolKapsulScript, true);
+            SetScript(tutupBotolKapsulInteractable, true);
+
+            SetPanel(instruksiStep3, true);
+
+            Debug.Log("Step 3 aktif.");
         }
     }
 
-    private void LockAll()
+    private void LockItems(XRGrabInteractable[] items)
     {
-        if (sendokTanduk != null) sendokTanduk.enabled = false;
-        if (botolCTM != null) botolCTM.enabled = false;
-        if (botolParacetamol != null) botolParacetamol.enabled = false;
-        if (mortar != null) mortar.enabled = false;
-        if (penumbuk != null) penumbuk.enabled = false;
+        if (items == null) return;
+
+        foreach (XRGrabInteractable item in items)
+        {
+            if (item == null) continue;
+
+            item.enabled = false;
+
+            Rigidbody rb = item.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.useGravity = false;
+                rb.isKinematic = true;
+            }
+        }
+    }
+
+    private void UnlockItems(XRGrabInteractable[] items)
+    {
+        if (items == null) return;
+
+        foreach (XRGrabInteractable item in items)
+        {
+            if (item == null) continue;
+
+            item.enabled = true;
+
+            Rigidbody rb = item.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.useGravity = false;
+                rb.isKinematic = true;
+            }
+        }
+    }
+
+    private void SetScript(MonoBehaviour script, bool active)
+    {
+        if (script == null) return;
+        script.enabled = active;
+    }
+
+    private void SetPanel(GameObject panel, bool active)
+    {
+        if (panel == null) return;
+        panel.SetActive(active);
     }
 }

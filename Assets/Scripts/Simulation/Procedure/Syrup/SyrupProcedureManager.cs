@@ -1,5 +1,8 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
+using EPOOutline;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,7 +12,8 @@ public class SyrupProcedureManager : MonoBehaviour
     private enum SyrupStep
     {
         Step_01_MeasureWater100ml,
-        Step_02_Placeholder,
+        Step_02_PlaceParchmentOnScale,
+        Step_03_Default,
         Done
     }
 
@@ -39,11 +43,29 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private RectTransform checklistPanel;
     [SerializeField] private bool forceUILayout = true;
 
-    [Header("Highlights")]
-    [SerializeField] private GameObject highlightGelasUkur100ml;
-    [SerializeField] private GameObject highlightWasher;
-    [SerializeField] private Transform washerHighlightTarget;
+    [Header("Outline Highlights")]
+    [SerializeField] private Outlinable gelasUkurOutline;
+    [SerializeField] private Outlinable washerOutline;
     [SerializeField] private bool showWasherHighlight = true;
+
+    private const string Step01Instruction = "Step 1: Isi Gelas Ukur";
+    private const string Step02Instruction = "Step 2: Letakkan Kertas Perkamen";
+    private const string Step02Progress = "Taruh kertas perkamen di sisi kiri dan kanan timbangan.";
+    private const string Step03Instruction = "Step 3: Lanjutkan tahap berikutnya";
+    private const string Step03Progress = "Tahap berikutnya belum disambungkan.";
+    private static readonly string[] ExcludedOutlineNameParts =
+    {
+        "WaterSpawnPoint",
+        "WaterHitZone",
+        "WaterStream",
+        "WaterFlow",
+        "WaterParticle",
+        "WaterVisual",
+        "Liquid",
+        "LiquidSpace",
+        "FillZone",
+        "PourPoint"
+    };
 
     private static readonly Vector2 InstructionPosition = new Vector2(0f, -42f);
     private static readonly Vector2 InstructionSize = new Vector2(1320f, 96f);
@@ -62,17 +84,31 @@ public class SyrupProcedureManager : MonoBehaviour
     private float stableTimer;
     private bool stepDone;
     private bool isAnimating;
+    private readonly Dictionary<Outlinable, bool> outlinePreviousStates = new Dictionary<Outlinable, bool>();
 
     private void OnEnable()
     {
-        BeginSyrupProcedure();
+        ResolveSceneReferences();
+        ForceDisableProcedureOutlines();
     }
 
     private void OnDisable()
     {
         StopAllCoroutines();
-        SetHighlightActive(highlightGelasUkur100ml, false, null);
-        SetHighlightActive(highlightWasher, false, null);
+        ForceDisableProcedureOutlines();
+    }
+    private void ForceDisableProcedureOutlines()
+    {
+        SetProcedureOutlineOff(gelasUkurOutline);
+        SetProcedureOutlineOff(washerOutline);
+
+        outlinePreviousStates.Clear();
+    }
+
+    private void SetProcedureOutlineOff(Outlinable outlinable)
+    {
+        if (outlinable != null)
+            outlinable.enabled = false;
     }
 
     private void Update()
@@ -87,6 +123,7 @@ public class SyrupProcedureManager : MonoBehaviour
     public void BeginSyrupProcedure()
     {
         StopAllCoroutines();
+        ClearProcedureOutlines();
         ResolveSceneReferences();
 
         currentStep = SyrupStep.Step_01_MeasureWater100ml;
@@ -100,7 +137,7 @@ public class SyrupProcedureManager : MonoBehaviour
         if (instructionText != null)
         {
             instructionText.gameObject.SetActive(true);
-            instructionText.text = "Step 1: Isi Gelas Ukur";
+            instructionText.text = Step01Instruction;
         }
 
         if (progressText != null)
@@ -113,10 +150,40 @@ public class SyrupProcedureManager : MonoBehaviour
             doneIcon.SetActive(false);
 
         SetupChecklist();
-        SetHighlightActive(highlightGelasUkur100ml, true, gelasUkurContainer != null ? gelasUkurContainer.transform : null);
-        SetHighlightActive(highlightWasher, showWasherHighlight, ResolveWasherHighlightTarget());
+        SetProcedureOutlineActive(gelasUkurOutline, true);
+        SetProcedureOutlineActive(washerOutline, showWasherHighlight);
 
         Debug.Log("[SyrupProcedure] Step 1 started.");
+    }
+
+    public void ShowDefaultStep03()
+    {
+        StopAllCoroutines();
+        ClearProcedureOutlines();
+        ResolveSceneReferences();
+
+        currentStep = SyrupStep.Step_03_Default;
+        stepDone = false;
+        stableTimer = 0f;
+        isAnimating = false;
+
+        if (forceUILayout)
+            ApplyUILayout();
+
+        if (instructionText != null)
+        {
+            instructionText.gameObject.SetActive(true);
+            instructionText.text = Step03Instruction;
+        }
+
+        if (progressText != null)
+        {
+            progressText.gameObject.SetActive(true);
+            progressText.text = Step03Progress;
+        }
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
     }
 
     private void SetupChecklist()
@@ -132,7 +199,7 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (checklistStep2Text != null)
         {
-            checklistStep2Text.text = "Step 2  Lanjutkan tahap berikutnya";
+            checklistStep2Text.text = "Step 2  Letakkan perkamen kiri dan kanan";
             checklistStep2Text.fontStyle = FontStyles.Normal;
             SetTextAlpha(checklistStep2Text, 0f);
             SetAnchoredPosition(checklistStep2Text.rectTransform, ChecklistStep2HiddenPosition);
@@ -197,8 +264,7 @@ public class SyrupProcedureManager : MonoBehaviour
         if (doneIcon != null)
             doneIcon.SetActive(true);
 
-        SetHighlightActive(highlightGelasUkur100ml, false, null);
-        SetHighlightActive(highlightWasher, false, null);
+        ClearProcedureOutlines();
 
         StartCoroutine(AnimateStep1CompleteThenShowStep2());
 
@@ -210,7 +276,7 @@ public class SyrupProcedureManager : MonoBehaviour
         isAnimating = true;
 
         if (instructionText != null)
-            instructionText.text = "Step 2: Lanjutkan tahap berikutnya";
+            instructionText.text = Step02Instruction;
 
         if (checklistStep2Text != null)
         {
@@ -275,10 +341,10 @@ public class SyrupProcedureManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.15f);
 
-        currentStep = SyrupStep.Step_02_Placeholder;
+        currentStep = SyrupStep.Step_02_PlaceParchmentOnScale;
 
         if (progressText != null)
-            progressText.text = "Menunggu aksi Step 2.";
+            progressText.text = Step02Progress;
 
         if (doneIcon != null)
             doneIcon.SetActive(false);
@@ -316,11 +382,15 @@ public class SyrupProcedureManager : MonoBehaviour
         if (checklistPanel == null && checklistStep1Text != null)
             checklistPanel = checklistStep1Text.transform.parent as RectTransform;
 
-        if (highlightGelasUkur100ml == null)
-            highlightGelasUkur100ml = FindSceneObjectByName("HL_GelasUkur100ml");
+        if (gelasUkurOutline == null && gelasUkurContainer != null)
+            gelasUkurOutline = gelasUkurContainer.GetComponent<Outlinable>();
 
-        if (highlightWasher == null)
-            highlightWasher = FindSceneObjectByName("HL_Washer");
+        if (washerOutline == null)
+        {
+            GameObject washerObject = FindSceneObjectByName("Washer_Right");
+            if (washerObject != null)
+                washerOutline = washerObject.GetComponent<Outlinable>();
+        }
     }
 
     private void ApplyUILayout()
@@ -361,10 +431,7 @@ public class SyrupProcedureManager : MonoBehaviour
 
             Image strikeImage = strikeStep1Line.GetComponent<Image>();
             if (strikeImage != null)
-            {
                 strikeImage.raycastTarget = false;
-                strikeImage.color = new Color(1f, 0.9f, 0.16f, 0.95f);
-            }
         }
     }
 
@@ -418,48 +485,71 @@ public class SyrupProcedureManager : MonoBehaviour
         return new Vector2(stepPosition.x, stepPosition.y - 1f);
     }
 
-    private void SetHighlightActive(GameObject highlightObject, bool active, Transform target)
+    private void SetProcedureOutlineActive(Outlinable outlinable, bool active)
     {
-        if (highlightObject == null)
+        if (!active || outlinable == null)
             return;
 
-        if (!active || target == null)
+        if (outlinable.OutlineTargetsCount == 0)
+            PopulateProcedureOutlineTargets(outlinable, outlinable.transform);
+
+        if (!outlinePreviousStates.ContainsKey(outlinable))
+            outlinePreviousStates.Add(outlinable, outlinable.enabled);
+
+        outlinable.enabled = true;
+    }
+
+    private void PopulateProcedureOutlineTargets(Outlinable outlinable, Transform root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+
+        foreach (Renderer childRenderer in renderers)
         {
-            highlightObject.SetActive(false);
-            return;
+            if (!IsSupportedProcedureOutlineRenderer(childRenderer))
+                continue;
+
+            if (ShouldSkipProcedureOutlineRenderer(childRenderer, root))
+                continue;
+
+            outlinable.AddRenderer(childRenderer);
         }
 
-        highlightObject.SetActive(true);
-
-        ProcedureHighlightRing ring = highlightObject.GetComponent<ProcedureHighlightRing>();
-        if (ring == null)
-            ring = highlightObject.AddComponent<ProcedureHighlightRing>();
-
-        float radiusMultiplier = target == gelasUkurContainer?.transform ? 1.75f : 1.25f;
-        float yOffset = target == gelasUkurContainer?.transform ? 0.035f : 0.04f;
-        ring.Configure(target, Color.yellow, radiusMultiplier, yOffset, 0.018f);
+        if (outlinable.OutlineTargetsCount == 0)
+            outlinable.AddAllChildRenderersToRenderingList(RenderersAddingMode.MeshRenderer);
     }
 
-    private Transform ResolveWasherHighlightTarget()
+    private bool IsSupportedProcedureOutlineRenderer(Renderer rendererToCheck)
     {
-        if (!showWasherHighlight)
-            return null;
-
-        if (washerHighlightTarget != null)
-            return washerHighlightTarget;
-
-        WasherWaterController[] washerControllers = FindObjectsByType<WasherWaterController>(FindObjectsSortMode.None);
-        if (washerControllers != null && washerControllers.Length > 0)
-            return washerControllers[0].transform;
-
-        GameObject washerObject = FindSceneObjectByName("Washer1");
-        if (washerObject != null)
-            return washerObject.transform;
-
-        washerObject = FindSceneObjectByName("Washer2");
-        return washerObject != null ? washerObject.transform : null;
+        return rendererToCheck is MeshRenderer ||
+               rendererToCheck is SkinnedMeshRenderer ||
+               rendererToCheck is SpriteRenderer;
     }
 
+    private bool ShouldSkipProcedureOutlineRenderer(Renderer rendererToCheck, Transform root)
+    {
+        Transform current = rendererToCheck.transform;
+
+        while (current != null)
+        {
+            for (int i = 0; i < ExcludedOutlineNameParts.Length; i++)
+            {
+                if (current.name.IndexOf(ExcludedOutlineNameParts[i], StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+
+            if (current == root)
+                break;
+
+            current = current.parent;
+        }
+
+        return false;
+    }
+
+    private void ClearProcedureOutlines()
+    {
+        ForceDisableProcedureOutlines();
+    }
     private void SetAnchoredPosition(RectTransform rect, Vector2 position)
     {
         if (rect != null)

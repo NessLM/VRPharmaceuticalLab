@@ -37,4 +37,4 @@ public class PerkamenSnapTrigger : MonoBehaviour
 
         Debug.Log("Kertas perkamen berhasil diletakkan di piring neraca.");
     }
-}Q
+}

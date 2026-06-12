@@ -8,6 +8,7 @@ TagManager:
   - ToolObject
   - Weight
   - Perkamen
+  - Weight_CTM
   layers:
   - Default
   - TransparentFX

@@ -9,18 +9,31 @@ public class WeightSnapTrigger : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (hasSnapped)
+        XRGrabInteractable grab = other.GetComponentInParent<XRGrabInteractable>();
+
+        if (grab == null)
             return;
 
-        if (!other.CompareTag("Weight"))
+        if (hasSnapped)
+        {
+            ReturnWrongWeight(grab);
             return;
+        }
+
+        if (!grab.CompareTag("Weight_CTM"))
+        {
+            ReturnWrongWeight(grab);
+            return;
+        }
 
         hasSnapped = true;
 
-        other.transform.position = snapPoint.position;
-        other.transform.rotation = snapPoint.rotation;
+        Transform weightObject = grab.transform;
 
-        Rigidbody rb = other.GetComponent<Rigidbody>();
+        weightObject.position = snapPoint.position;
+        weightObject.rotation = snapPoint.rotation;
+
+        Rigidbody rb = weightObject.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -29,12 +42,22 @@ public class WeightSnapTrigger : MonoBehaviour
             rb.isKinematic = true;
         }
 
-        XRGrabInteractable grab = other.GetComponent<XRGrabInteractable>();
-        if (grab != null)
-        {
-            grab.enabled = false;
-        }
+        grab.enabled = false;
 
-        Debug.Log("Anak timbangan berhasil diletakkan di piring neraca.");
+        Debug.Log("Anak timbangan CTM berhasil diletakkan.");
     }
+
+    private void ReturnWrongWeight(XRGrabInteractable grab)
+{
+    ReturnToStartPosition returner = grab.GetComponent<ReturnToStartPosition>();
+
+    if (returner != null)
+    {
+        returner.ReturnToStart();
+    }
+    else
+    {
+        Debug.LogWarning(grab.gameObject.name + " tidak punya ReturnToStartPosition.");
+    }
+}
 }

@@ -97,7 +97,16 @@ public class SyrupIntroPanelController : MonoBehaviour
             syrupStepUI.SetActive(true);
 
         if (syrupStepManager != null)
+        {
             syrupStepManager.SetActive(true);
+
+            SyrupProcedureManager procedureManager = syrupStepManager.GetComponent<SyrupProcedureManager>();
+            if (procedureManager == null)
+                procedureManager = syrupStepManager.GetComponentInChildren<SyrupProcedureManager>(true);
+
+            if (procedureManager != null)
+                procedureManager.BeginSyrupProcedure();
+        }
 
         Debug.Log("[SyrupIntro] START ACCEPTED. Syrup simulation started.");
     }

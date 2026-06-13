@@ -20,6 +20,8 @@ public class ResepPadat1StepManager : MonoBehaviour
     [SerializeField] private MonoBehaviour botolKapsulScript;
     [SerializeField] private MonoBehaviour tutupBotolKapsulInteractable;
 
+    [SerializeField] private MonoBehaviour tutupCTMInteractable;
+
     [Header("Panels")]
     [SerializeField] private GameObject panelResep;
     [SerializeField] private GameObject instruksiStep1;
@@ -48,6 +50,7 @@ public class ResepPadat1StepManager : MonoBehaviour
         SetScript(stackPerkamenScript, false);
         SetScript(botolKapsulScript, false);
         SetScript(tutupBotolKapsulInteractable, false);
+        SetScript(tutupCTMInteractable, false);
 
         SetPanel(instruksiStep1, false);
         SetPanel(instruksiStep2, false);
@@ -88,6 +91,8 @@ public class ResepPadat1StepManager : MonoBehaviour
             SetScript(stackPerkamenScript, true);
 
             SetPanel(instruksiStep1, true);
+
+            SetScript(tutupCTMInteractable, true);
 
             Debug.Log("Step 1 aktif.");
         }

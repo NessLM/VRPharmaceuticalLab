@@ -4,23 +4,33 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class WeightSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
+    [SerializeField] private BalanceScaleVisual scaleVisual;
 
     private bool hasSnapped = false;
 
     private void OnTriggerEnter(Collider other)
     {
+        XRGrabInteractable grab = other.GetComponentInParent<XRGrabInteractable>();
+
+        if (grab == null)
+            return;
+
         if (hasSnapped)
             return;
 
-        if (!other.CompareTag("Weight"))
+        if (!grab.CompareTag("Weight_CTM"))
+        {
+            ReturnWrongWeight(grab);
             return;
+        }
 
         hasSnapped = true;
 
-        other.transform.position = snapPoint.position;
-        other.transform.rotation = snapPoint.rotation;
+        Transform weightObject = grab.transform;
 
-        Rigidbody rb = other.GetComponent<Rigidbody>();
+        grab.enabled = false;
+
+        Rigidbody rb = weightObject.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -29,12 +39,23 @@ public class WeightSnapTrigger : MonoBehaviour
             rb.isKinematic = true;
         }
 
-        XRGrabInteractable grab = other.GetComponent<XRGrabInteractable>();
-        if (grab != null)
-        {
-            grab.enabled = false;
-        }
+        weightObject.SetParent(snapPoint, false);
+        weightObject.localPosition = Vector3.zero;
+        weightObject.localRotation = Quaternion.identity;
 
-        Debug.Log("Anak timbangan berhasil diletakkan di piring neraca.");
+        if (scaleVisual != null)
+            scaleVisual.SetRightDown();
+
+        Debug.Log("Anak timbangan CTM berhasil snap ke Plate_Right_Target.");
+    }
+
+    private void ReturnWrongWeight(XRGrabInteractable grab)
+    {
+        ReturnToStartPosition returner = grab.GetComponent<ReturnToStartPosition>();
+
+        if (returner != null)
+            returner.ReturnToStart();
+        else
+            Debug.LogWarning(grab.gameObject.name + " tidak punya ReturnToStartPosition.");
     }
 }

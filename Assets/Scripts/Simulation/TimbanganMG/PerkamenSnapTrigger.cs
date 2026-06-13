@@ -4,23 +4,47 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class PerkamenSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
+    [SerializeField] private bool disableGrabAfterSnap = true;
 
     private bool hasSnapped = false;
+    public bool HasSnapped => hasSnapped;
 
     private void OnTriggerEnter(Collider other)
+    {
+        TrySnap(other);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        TrySnap(other);
+    }
+
+    private void TrySnap(Collider other)
     {
         if (hasSnapped)
             return;
 
-        if (!other.CompareTag("Perkamen"))
+        XRGrabInteractable grab = other.GetComponentInParent<XRGrabInteractable>();
+        GameObject perkamenObject = grab != null ? grab.gameObject : other.gameObject;
+
+        bool isPerkamen = HasPerkamenTag(perkamenObject) ||
+                          perkamenObject.name.IndexOf("perkamen", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+        if (!isPerkamen)
+            return;
+
+        if (grab != null && grab.isSelected)
             return;
 
         hasSnapped = true;
 
-        other.transform.position = snapPoint.position;
-        other.transform.rotation = snapPoint.rotation;
+        Transform perkamenTransform = grab != null ? grab.transform : other.transform;
+        Transform target = snapPoint != null ? snapPoint : transform;
 
-        Rigidbody rb = other.GetComponent<Rigidbody>();
+        perkamenTransform.position = target.position;
+        perkamenTransform.rotation = target.rotation;
+
+        Rigidbody rb = perkamenTransform.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -29,12 +53,23 @@ public class PerkamenSnapTrigger : MonoBehaviour
             rb.isKinematic = true;
         }
 
-        XRGrabInteractable grab = other.GetComponent<XRGrabInteractable>();
-        if (grab != null)
+        if (disableGrabAfterSnap && grab != null)
         {
             grab.enabled = false;
         }
 
         Debug.Log("Kertas perkamen berhasil diletakkan di piring neraca.");
+    }
+
+    private bool HasPerkamenTag(GameObject candidate)
+    {
+        try
+        {
+            return candidate.CompareTag("Perkamen");
+        }
+        catch (UnityException)
+        {
+            return false;
+        }
     }
 }

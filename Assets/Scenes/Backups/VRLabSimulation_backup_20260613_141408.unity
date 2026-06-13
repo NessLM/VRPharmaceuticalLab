@@ -2898,9 +2898,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1b0ba1f019326854e887dcafc0b4c017, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1690383271}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1b0ba1f019326854e887dcafc0b4c017, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2100001070}
     - targetCorrespondingSourceObject: {fileID: -3413429435791583328, guid: 1b0ba1f019326854e887dcafc0b4c017, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1492082395}
@@ -14250,12 +14247,6 @@ MonoBehaviour:
   timbanganStepArrow: {fileID: 2100001022}
   leftPerkamenSnapTarget: {fileID: 2100001033}
   rightPerkamenSnapTarget: {fileID: 2100001043}
-  leftWeighingZone: {fileID: 845109363}
-  rightWeighingZone: {fileID: 1027199233}
-  powderDepositZone: {fileID: 845109364}
-  virtualWeightSelector: {fileID: 956929848}
-  leftPanTarget: {fileID: 684947995}
-  rightPanTarget: {fileID: 1183947015}
 --- !u!1 &485779206
 GameObject:
   m_ObjectHideFlags: 0
@@ -24050,9 +24041,6 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   zoneName: Kiri (Bubuk)
   massChangeThreshold: 0.001
-  requireParchmentBeforeCounting: 1
-  requiredParchmentSnapTarget: {fileID: 2100001033}
-  acceptedContent: 1
   onMassChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -24069,10 +24057,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   weightSelector: {fileID: 956929848}
-  rightZone: {fileID: 1027199233}
   pourRateGramsPerSecond: 0.08
-  allowPhysicalRightPanTarget: 1
-  minimumRightPanTargetGrams: 0.001
   panPowderLevels: []
   maxVisualGrams: 100
   warningText: {fileID: 0}
@@ -27057,7 +27042,6 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   reparentToRightPan: 1
-  hideWeightsOnReset: 0
 --- !u!114 &956929849
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -34367,9 +34351,6 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   zoneName: Kanan (Anak Timbangan)
   massChangeThreshold: 0.001
-  requireParchmentBeforeCounting: 1
-  requiredParchmentSnapTarget: {fileID: 2100001043}
-  acceptedContent: 2
   onMassChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -39456,7 +39437,6 @@ MonoBehaviour:
   spawnPoint: {fileID: 1056034049}
   spawnCooldown: 0.15
   forceGrabAfterSpawn: 1
-  maxLiveSpawned: 4
 --- !u!1 &1341551919
 GameObject:
   m_ObjectHideFlags: 0
@@ -45425,7 +45405,6 @@ MonoBehaviour:
   rightZone: {fileID: 1027199233}
   virtualWeightSelector: {fileID: 956929848}
   powderDepositZone: {fileID: 845109364}
-  useRightZoneWhenVirtualSelectorUnlocked: 1
   beamVisual: {fileID: 492987389}
   leftPanVisual: {fileID: 684947995}
   rightPanVisual: {fileID: 1183947015}
@@ -45462,9 +45441,6 @@ MonoBehaviour:
   lessonCanvas: {fileID: 1391409402}
   weightSelectorCanvas: {fileID: 2033631745}
   showBothTogether: 1
-  requireBothParchmentsBeforeOpen: 1
-  leftParchmentSnapTarget: {fileID: 2100001033}
-  rightParchmentSnapTarget: {fileID: 2100001043}
   onPanelOpened:
     m_PersistentCalls:
       m_Calls: []
@@ -52367,8 +52343,6 @@ MonoBehaviour:
   triggerSize: {x: 0.24, y: 0.14, z: 0.24}
   disableGrabAfterSnap: 1
   parentToPanAfterSnap: 1
-  requireRecentRelease: 1
-  releaseSnapWindow: 0.8
   triggerCollider: {fileID: 2100001032}
   onPerkamenSnapped:
     m_PersistentCalls:
@@ -52444,8 +52418,6 @@ MonoBehaviour:
   triggerSize: {x: 0.24, y: 0.14, z: 0.24}
   disableGrabAfterSnap: 1
   parentToPanAfterSnap: 1
-  requireRecentRelease: 1
-  releaseSnapWindow: 0.8
   triggerCollider: {fileID: 2100001042}
   onPerkamenSnapped:
     m_PersistentCalls:
@@ -52585,31 +52557,6 @@ MonoBehaviour:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.75}
   m_EffectDistance: {x: 1.25, y: -1.25}
   m_UseGraphicAlpha: 0
---- !u!114 &2100001070
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1690383265}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b74d9e35a3d04e34990bacc4013f6123, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  nameContains:
-  - Weight_
-  - anakTimbangan
-  includeAllSceneWeightObjects: 1
-  addRigidbodyWhenMissing: 1
-  addColliderWhenMissing: 1
-  addGrabInteractableWhenMissing: 1
-  addMassSourceWhenMissing: 1
-  useGravityWhenFree: 1
-  keepKinematicWhenReleased: 0
-  defaultPhysicsMassKg: 0.05
-  fallbackColliderSize: {x: 0.04, y: 0.025, z: 0.04}
-  minimumWorldGrabSize: 0.06
 --- !u!1 &2103843769 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -9010811273147716080, guid: 1b0ba1f019326854e887dcafc0b4c017, type: 3}

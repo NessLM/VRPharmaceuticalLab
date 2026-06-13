@@ -19,6 +19,8 @@ public class WeightItem : MonoBehaviour
     [Header("Physics")]
     [Tooltip("Rigidbody mass kept constant for stable VR grab feel regardless of gramValue.")]
     [SerializeField] private float physicsMassKg = 0.05f;
+    [SerializeField] private bool useGravityWhenFree = false;
+    [SerializeField] private bool keepKinematicWhenReleased = true;
 
     [Header("Events")]
     public UnityEvent onPickedUp;
@@ -39,8 +41,7 @@ public class WeightItem : MonoBehaviour
         grabInteractable = GetComponent<XRGrabInteractable>();
 
         rb.mass = physicsMassKg;
-        rb.isKinematic = true;
-        rb.useGravity = false;
+        ApplyReleasedPhysics();
     }
 
     private void Start()
@@ -68,8 +69,7 @@ public class WeightItem : MonoBehaviour
         // Zero velocity to prevent unexpected sliding when placed on pan
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
-        rb.isKinematic = true;
-        rb.useGravity = false;
+        ApplyReleasedPhysics();
         onPlaced?.Invoke();
     }
 
@@ -79,6 +79,20 @@ public class WeightItem : MonoBehaviour
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.isKinematic = true;
+    }
+
+    public void ConfigureReleasedPhysics(bool useGravity, bool keepKinematic)
+    {
+        useGravityWhenFree = useGravity;
+        keepKinematicWhenReleased = keepKinematic;
+        if (rb != null && !IsHeld)
+            ApplyReleasedPhysics();
+    }
+
+    private void ApplyReleasedPhysics()
+    {
+        rb.isKinematic = keepKinematicWhenReleased;
+        rb.useGravity = useGravityWhenFree && !keepKinematicWhenReleased;
     }
 
 #if UNITY_EDITOR

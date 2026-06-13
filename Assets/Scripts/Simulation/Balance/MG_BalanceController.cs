@@ -27,6 +27,8 @@ public class MG_BalanceController : MonoBehaviour
     [SerializeField] private VirtualWeightSelector virtualWeightSelector;
     [Tooltip("PowderDepositZone on LeftWeighingZone that tracks deposited powder grams.")]
     [SerializeField] private PowderDepositZone powderDepositZone;
+    [Tooltip("Before virtual weights are accepted, still read physical weights placed in the right pan zone.")]
+    [SerializeField] private bool useRightZoneWhenVirtualSelectorUnlocked = true;
 
     [Header("Visual References")]
     [Tooltip("The beam mesh Transform that tilts around its local Z axis.")]
@@ -89,7 +91,17 @@ public class MG_BalanceController : MonoBehaviour
     {
         get
         {
-            if (virtualWeightSelector != null) return virtualWeightSelector.LockedRightMassGrams;
+            if (virtualWeightSelector != null)
+            {
+                if (virtualWeightSelector.IsLocked)
+                    return virtualWeightSelector.LockedRightMassGrams;
+
+                if (useRightZoneWhenVirtualSelectorUnlocked && rightZone != null)
+                    return rightZone.TotalGrams;
+
+                return 0f;
+            }
+
             return rightZone != null ? rightZone.TotalGrams : 0f;
         }
     }

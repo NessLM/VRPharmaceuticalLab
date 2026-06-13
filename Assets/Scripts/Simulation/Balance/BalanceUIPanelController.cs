@@ -22,6 +22,9 @@ public class BalanceUIPanelController : MonoBehaviour
     [Header("Behaviour")]
     [Tooltip("Show both panels together on Toggle(). If false, only the weight selector is shown.")]
     [SerializeField] private bool showBothTogether = true;
+    [SerializeField] private bool requireBothParchmentsBeforeOpen;
+    [SerializeField] private SyrupPerkamenSnapTarget leftParchmentSnapTarget;
+    [SerializeField] private SyrupPerkamenSnapTarget rightParchmentSnapTarget;
 
     [Header("Events")]
     public UnityEvent onPanelOpened;
@@ -50,6 +53,12 @@ public class BalanceUIPanelController : MonoBehaviour
     /// <summary>Shows both managed panels.</summary>
     public void Show()
     {
+        if (!CanOpenPanels())
+        {
+            Debug.Log("[BalanceUI] Panel timbangan belum dibuka karena dua perkamen belum tersnap.", this);
+            return;
+        }
+
         bool changed = false;
         if (weightSelectorCanvas != null && !weightSelectorCanvas.activeSelf)
         {
@@ -99,5 +108,14 @@ public class BalanceUIPanelController : MonoBehaviour
     {
         if (weightSelectorCanvas != null) weightSelectorCanvas.SetActive(false);
         if (!IsOpen) onPanelClosed?.Invoke();
+    }
+
+    private bool CanOpenPanels()
+    {
+        if (!requireBothParchmentsBeforeOpen)
+            return true;
+
+        return leftParchmentSnapTarget != null && leftParchmentSnapTarget.HasSnapped &&
+               rightParchmentSnapTarget != null && rightParchmentSnapTarget.HasSnapped;
     }
 }

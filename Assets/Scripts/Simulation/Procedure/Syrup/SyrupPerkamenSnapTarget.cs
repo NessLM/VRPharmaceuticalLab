@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class SyrupPerkamenSnapTarget : MonoBehaviour
@@ -8,23 +9,29 @@ public class SyrupPerkamenSnapTarget : MonoBehaviour
     [SerializeField] private Vector3 triggerSize = new Vector3(0.24f, 0.14f, 0.24f);
     [SerializeField] private bool disableGrabAfterSnap = true;
     [SerializeField] private bool parentToPanAfterSnap = true;
+    [SerializeField] private bool requireRecentRelease = true;
+    [SerializeField] private float releaseSnapWindow = 0.8f;
     [SerializeField] private BoxCollider triggerCollider;
+    [SerializeField] private UnityEvent onPerkamenSnapped;
 
     private bool hasSnapped;
+    private XRGrabInteractable snappedPerkamen;
+
+    public bool HasSnapped => hasSnapped;
+    public GameObject SnappedPerkamen => snappedPerkamen != null ? snappedPerkamen.gameObject : null;
 
     public void Configure(Transform targetPan, Vector3 offset, Vector3 size)
     {
         panTransform = targetPan;
         worldOffset = offset;
         triggerSize = size;
-        hasSnapped = false;
-        gameObject.SetActive(true);
         EnsureTriggerCollider();
         UpdatePose();
     }
 
     private void Awake()
     {
+        ResolvePanTransform();
         EnsureTriggerCollider();
         UpdatePose();
     }
@@ -47,20 +54,33 @@ public class SyrupPerkamenSnapTarget : MonoBehaviour
 
     private void TrySnap(Collider other)
     {
-        if (hasSnapped || other == null || panTransform == null)
+        if (hasSnapped || other == null)
+            return;
+
+        ResolvePanTransform();
+        if (panTransform == null)
             return;
 
         XRGrabInteractable grab = other.GetComponentInParent<XRGrabInteractable>();
         if (grab == null || !IsPerkamen(grab.gameObject))
             return;
 
+        // Tunggu pemain benar-benar melepas perkamen sebelum dikunci ke piring.
         if (grab.isSelected)
             return;
+
+        if (requireRecentRelease)
+        {
+            PerkamenNoGravity noGravity = grab.GetComponent<PerkamenNoGravity>();
+            if (noGravity == null || !noGravity.HasBeenGrabbed || !noGravity.WasRecentlyReleased(releaseSnapWindow))
+                return;
+        }
 
         Transform perkamen = grab.transform;
         Rigidbody rb = perkamen.GetComponent<Rigidbody>();
 
         hasSnapped = true;
+        snappedPerkamen = grab;
 
         if (parentToPanAfterSnap)
             perkamen.SetParent(panTransform, true);
@@ -79,7 +99,14 @@ public class SyrupPerkamenSnapTarget : MonoBehaviour
         if (disableGrabAfterSnap)
             grab.enabled = false;
 
+        onPerkamenSnapped?.Invoke();
         Debug.Log($"[SyrupPerkamenSnap] {perkamen.name} snapped to {panTransform.name}.", this);
+    }
+
+    public void ClearSnapState()
+    {
+        hasSnapped = false;
+        snappedPerkamen = null;
     }
 
     private bool IsPerkamen(GameObject candidate)
@@ -87,7 +114,54 @@ public class SyrupPerkamenSnapTarget : MonoBehaviour
         if (candidate == null)
             return false;
 
+        if (HasPerkamenTag(candidate))
+            return true;
+
         return candidate.name.IndexOf("perkamen", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool HasPerkamenTag(GameObject candidate)
+    {
+        try
+        {
+            return candidate.CompareTag("Perkamen");
+        }
+        catch (UnityException)
+        {
+            return false;
+        }
+    }
+
+    private void ResolvePanTransform()
+    {
+        if (panTransform != null)
+            return;
+
+        string targetName = name.IndexOf("Right", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            name.IndexOf("Kanan", System.StringComparison.OrdinalIgnoreCase) >= 0
+            ? "Balance_WeightRight"
+            : "Balance_WeightLeft";
+
+        panTransform = FindSceneTransformByName(targetName);
+    }
+
+    private Transform FindSceneTransformByName(string objectName)
+    {
+        Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
+
+        foreach (Transform sceneTransform in transforms)
+        {
+            if (sceneTransform == null || sceneTransform.gameObject == null)
+                continue;
+
+            if (!sceneTransform.gameObject.scene.IsValid())
+                continue;
+
+            if (string.Equals(sceneTransform.name, objectName, System.StringComparison.OrdinalIgnoreCase))
+                return sceneTransform;
+        }
+
+        return null;
     }
 
     private void EnsureTriggerCollider()

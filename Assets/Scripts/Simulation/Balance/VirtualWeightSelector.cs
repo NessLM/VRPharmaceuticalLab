@@ -112,6 +112,7 @@ public class VirtualWeightSelector : MonoBehaviour
     [Tooltip("If true, weight GameObjects are re-parented to Balance_WeightRight on Accept " +
              "so they tilt with the pan. On Reset, they are restored to their original parent.")]
     [SerializeField] private bool reparentToRightPan = true;
+    [SerializeField] private bool hideWeightsOnReset = false;
 
     private struct WeightState
     {
@@ -180,10 +181,7 @@ public class VirtualWeightSelector : MonoBehaviour
         BuildScrollList();
         BuildTotalRow();
         BuildFooter();
-        // NOTE: HideAllWeightObjects() was removed from Start().
-        // Weight objects are hidden only on Reset (OnResetClicked) — not on initial panel activation.
-        // This prevents weight objects that are visible in the scene from disappearing when the panel
-        // is first opened via the B button.
+        // Weight objects stay visible; Reset restores them to their box/home pose.
     }
 
     // ── Auto-discovery ──────────────────────────────────────────────────────
@@ -588,7 +586,7 @@ public class VirtualWeightSelector : MonoBehaviour
             if (_checkmarks[i] != null) _checkmarks[i].SetActive(false);
         }
 
-        HideAllWeightObjects();
+        ResetWeightObjectsToHome();
         RefreshTotalDisplay();
         onTargetCleared?.Invoke();
     }
@@ -682,9 +680,9 @@ public class VirtualWeightSelector : MonoBehaviour
     }
 
     /// <summary>
-    /// Hide all weight objects and restore their original local transform + physics state.
+    /// Restores all weight objects to their original local transform + physics state.
     /// </summary>
-    private void HideAllWeightObjects()
+    private void ResetWeightObjectsToHome()
     {
         if (weightObjects == null) return;
 
@@ -716,7 +714,10 @@ public class VirtualWeightSelector : MonoBehaviour
                 }
             }
 
-            w.SetActive(false);
+            if (hideWeightsOnReset)
+                w.SetActive(false);
+            else if (!w.activeSelf)
+                w.SetActive(true);
         }
     }
 

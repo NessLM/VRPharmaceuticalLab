@@ -16,10 +16,13 @@ public class PowderDepositZone : MonoBehaviour
     [Header("References")]
     [Tooltip("VirtualWeightSelector on timbanganNeraca or WeightSelectorCanvas.")]
     [SerializeField] private VirtualWeightSelector weightSelector;
+    [SerializeField] private WeightingZone rightZone;
 
     [Header("Pour Settings")]
     [Tooltip("How fast powder moves from spoon to pan (grams per second).")]
     [SerializeField] private float pourRateGramsPerSecond = 0.08f;
+    [SerializeField] private bool allowPhysicalRightPanTarget = true;
+    [SerializeField] private float minimumRightPanTargetGrams = 0.001f;
 
     [Header("Powder Visual on Left Pan")]
     [Tooltip("GameObjects representing powder level on the pan (index 0=none, last=full).")]
@@ -55,6 +58,9 @@ public class PowderDepositZone : MonoBehaviour
     {
         var col = GetComponent<Collider>();
         if (col != null) col.isTrigger = true;
+
+        if (rightZone == null)
+            rightZone = FindSceneComponentByName<WeightingZone>("RightWeighingZone");
     }
 
     private void OnTriggerEnter(Collider other)
@@ -64,9 +70,9 @@ public class PowderDepositZone : MonoBehaviour
 
         spoonInZone = spoon;
 
-        if (weightSelector != null && !weightSelector.IsLocked)
+        if (!HasAcceptedTarget())
         {
-            ShowWarning("Pilih dan terima anak timbangan kanan dulu!");
+            ShowWarning("Taruh atau terima anak timbangan kanan dulu!");
             onTargetNotAccepted?.Invoke();
         }
     }
@@ -90,7 +96,7 @@ public class PowderDepositZone : MonoBehaviour
 
         // Skip if no spoon or target not accepted
         if (spoonInZone == null) return;
-        if (weightSelector != null && !weightSelector.IsLocked) return;
+        if (!HasAcceptedTarget()) return;
         if (spoonInZone.IsEmpty) return;
 
         // Pour powder from spoon to pan
@@ -134,5 +140,34 @@ public class PowderDepositZone : MonoBehaviour
         warningText.text = msg;
         warningText.gameObject.SetActive(true);
         warningTimer = warningDuration;
+    }
+
+    private bool HasAcceptedTarget()
+    {
+        if (weightSelector != null && weightSelector.IsLocked)
+            return true;
+
+        return allowPhysicalRightPanTarget &&
+               rightZone != null &&
+               rightZone.TotalGrams >= minimumRightPanTargetGrams;
+    }
+
+    private T FindSceneComponentByName<T>(string objectName) where T : Component
+    {
+        T[] components = Resources.FindObjectsOfTypeAll<T>();
+
+        foreach (T component in components)
+        {
+            if (component == null || component.gameObject == null)
+                continue;
+
+            if (!component.gameObject.scene.IsValid())
+                continue;
+
+            if (component.name == objectName)
+                return component;
+        }
+
+        return null;
     }
 }

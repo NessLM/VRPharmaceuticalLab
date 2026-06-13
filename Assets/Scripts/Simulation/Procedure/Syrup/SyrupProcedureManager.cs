@@ -13,7 +13,7 @@ public class SyrupProcedureManager : MonoBehaviour
     {
         Step_01_MeasureWater100ml,
         Step_02_PlaceParchmentOnScale,
-        Step_03_Default,
+        Step_03_WeighPowder,
         Done
     }
 
@@ -65,11 +65,16 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private WorldStepArrow timbanganStepArrow;
 
     [Header("Step 2 Perkamen Snap")]
-    [SerializeField] private bool setupPerkamenSnapTargets = true;
     [SerializeField] private SyrupPerkamenSnapTarget leftPerkamenSnapTarget;
     [SerializeField] private SyrupPerkamenSnapTarget rightPerkamenSnapTarget;
-    [SerializeField] private Vector3 perkamenSnapWorldOffset = new Vector3(0f, 0.025f, 0f);
-    [SerializeField] private Vector3 perkamenSnapTriggerSize = new Vector3(0.24f, 0.14f, 0.24f);
+
+    [Header("Step 3 Weigh Powder")]
+    [SerializeField] private WeightingZone leftWeighingZone;
+    [SerializeField] private WeightingZone rightWeighingZone;
+    [SerializeField] private PowderDepositZone powderDepositZone;
+    [SerializeField] private VirtualWeightSelector virtualWeightSelector;
+    [SerializeField] private Transform leftPanTarget;
+    [SerializeField] private Transform rightPanTarget;
 
     private const string Step01Instruction = "Step 1: Isi gelas ukur sampai 100 ml";
     private const string Step01StartProgress = "Tekan tombol air merah, lalu arahkan gelas ukur ke aliran air.";
@@ -79,8 +84,10 @@ public class SyrupProcedureManager : MonoBehaviour
     private const string Step02Progress = "Ambil dua kertas perkamen, lalu lepaskan di piring kiri dan kanan neraca sampai tersnap.";
     private const string Step02PerkamenArrowLabel = "\u2193\nAmbil kertas\nperkamen";
     private const string Step02TimbanganArrowLabel = "\u2193\nLetakkan di\npiring neraca";
-    private const string Step03Instruction = "Step 3: Lanjutkan tahap berikutnya";
-    private const string Step03Progress = "Tahap berikutnya belum disambungkan.";
+    private const string Step03Instruction = "Step 3: Timbang bubuk";
+    private const string Step03Progress = "Letakkan anak timbangan di piring kanan, lalu masukkan bubuk Difenhidramin ke piring kiri.";
+    private const string Step03RightArrowLabel = "\u2193\nAnak timbangan\npiring kanan";
+    private const string Step03LeftArrowLabel = "\u2193\nBubuk\npiring kiri";
     private const string TopBackdropName = "IMG_SyrupTopInstructionBackdrop";
     private static readonly string[] ExcludedOutlineNameParts =
     {
@@ -97,12 +104,12 @@ public class SyrupProcedureManager : MonoBehaviour
     };
 
     private static readonly Vector2 TopBackdropPosition = new Vector2(0f, -28f);
-    private static readonly Vector2 TopBackdropSize = new Vector2(1200f, 154f);
+    private static readonly Vector2 TopBackdropSize = new Vector2(1200f, 176f);
     private static readonly Vector2 InstructionPosition = new Vector2(0f, -38f);
     private static readonly Vector2 InstructionSize = new Vector2(1160f, 60f);
-    private static readonly Vector2 ProgressPosition = new Vector2(0f, -100f);
-    private static readonly Vector2 ProgressSize = new Vector2(1080f, 58f);
-    private static readonly Vector2 DoneIconPosition = new Vector2(0f, -158f);
+    private static readonly Vector2 ProgressPosition = new Vector2(0f, -108f);
+    private static readonly Vector2 ProgressSize = new Vector2(1120f, 76f);
+    private static readonly Vector2 DoneIconPosition = new Vector2(0f, -176f);
     private static readonly Vector2 DoneIconSize = new Vector2(56f, 48f);
     private static readonly Vector2 ChecklistPanelPosition = new Vector2(48f, 116f);
     private static readonly Vector2 ChecklistPanelSize = new Vector2(840f, 148f);
@@ -115,6 +122,8 @@ public class SyrupProcedureManager : MonoBehaviour
     private static readonly Vector3 Step01WasherArrowOffset = new Vector3(0f, 0.32f, 0f);
     private static readonly Vector3 Step02PerkamenArrowOffset = new Vector3(0f, 0.35f, 0f);
     private static readonly Vector3 Step02TimbanganArrowOffset = new Vector3(0f, 0.55f, 0f);
+    private static readonly Vector3 Step03RightArrowOffset = new Vector3(0f, 0.52f, 0f);
+    private static readonly Vector3 Step03LeftArrowOffset = new Vector3(0f, 0.52f, 0f);
     private static readonly Color ProcedureHighlightColor = new Color(1f, 0.92f, 0.02f, 1f);
 
     private float stableTimer;
@@ -146,7 +155,7 @@ public class SyrupProcedureManager : MonoBehaviour
 
         SetStep1ArrowsActive(false);
         SetStep2ArrowsActive(false);
-        SetPerkamenSnapTargetsActive(false);
+        SetStep3ArrowsActive(false);
 
         outlinePreviousStates.Clear();
     }
@@ -174,15 +183,28 @@ public class SyrupProcedureManager : MonoBehaviour
     private void SetStep2ArrowsActive(bool active)
     {
         bool finalActive = active && useStepArrowPointer && prepareStep2Guidance;
-        Transform timbanganArrowTarget = timbanganTarget;
-
-        if (leftPerkamenSnapTarget != null && leftPerkamenSnapTarget.isActiveAndEnabled)
-            timbanganArrowTarget = leftPerkamenSnapTarget.transform;
-        else if (rightPerkamenSnapTarget != null && rightPerkamenSnapTarget.isActiveAndEnabled)
-            timbanganArrowTarget = rightPerkamenSnapTarget.transform;
+        Transform timbanganArrowTarget = leftPerkamenSnapTarget != null
+            ? leftPerkamenSnapTarget.transform
+            : (rightPerkamenSnapTarget != null ? rightPerkamenSnapTarget.transform : timbanganTarget);
 
         SetGuideArrow(ref perkamenStepArrow, "ARW_Step2_Perkamen", perkamenStackTarget, Step02PerkamenArrowLabel, Step02PerkamenArrowOffset, finalActive);
         SetGuideArrow(ref timbanganStepArrow, "ARW_Step2_Timbangan", timbanganArrowTarget, Step02TimbanganArrowLabel, Step02TimbanganArrowOffset, finalActive);
+    }
+
+    private void SetStep3ArrowsActive(bool active, bool showRight = true, bool showLeft = true)
+    {
+        bool finalActive = active && useStepArrowPointer;
+
+        Transform rightTarget = rightPanTarget != null
+            ? rightPanTarget
+            : (rightPerkamenSnapTarget != null ? rightPerkamenSnapTarget.transform : timbanganTarget);
+
+        Transform leftTarget = leftPanTarget != null
+            ? leftPanTarget
+            : (leftPerkamenSnapTarget != null ? leftPerkamenSnapTarget.transform : timbanganTarget);
+
+        SetGuideArrow(ref timbanganStepArrow, "ARW_Step2_Timbangan", rightTarget, Step03RightArrowLabel, Step03RightArrowOffset, finalActive && showRight);
+        SetGuideArrow(ref perkamenStepArrow, "ARW_Step2_Perkamen", leftTarget, Step03LeftArrowLabel, Step03LeftArrowOffset, finalActive && showLeft);
     }
 
     private void Update()
@@ -192,6 +214,10 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (currentStep == SyrupStep.Step_01_MeasureWater100ml)
             CheckStep01MeasureWater100ml();
+        else if (currentStep == SyrupStep.Step_02_PlaceParchmentOnScale)
+            CheckStep02PlaceParchmentOnScale();
+        else if (currentStep == SyrupStep.Step_03_WeighPowder)
+            CheckStep03WeighPowder();
     }
 
     public void BeginSyrupProcedure()
@@ -207,6 +233,8 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (forceUILayout)
             ApplyUILayout();
+
+        SetChecklistVisible(true);
 
         if (instructionText != null)
         {
@@ -238,13 +266,15 @@ public class SyrupProcedureManager : MonoBehaviour
         ClearProcedureOutlines();
         ResolveSceneReferences();
 
-        currentStep = SyrupStep.Step_03_Default;
+        currentStep = SyrupStep.Step_03_WeighPowder;
         stepDone = false;
         stableTimer = 0f;
         isAnimating = false;
 
         if (forceUILayout)
             ApplyUILayout();
+
+        SetChecklistVisible(false);
 
         if (instructionText != null)
         {
@@ -260,6 +290,8 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (doneIcon != null)
             doneIcon.SetActive(false);
+
+        CheckStep03WeighPowder();
     }
 
     private void SetupChecklist()
@@ -287,6 +319,21 @@ public class SyrupProcedureManager : MonoBehaviour
             strikeStep1Line.gameObject.SetActive(false);
             SetAnchoredPosition(strikeStep1Line, GetStrikePosition(ChecklistStep1ActivePosition));
             SetSize(strikeStep1Line, 0f, 3f);
+        }
+    }
+
+    private void SetChecklistVisible(bool visible)
+    {
+        if (checklistPanel != null)
+            checklistPanel.gameObject.SetActive(visible);
+        else
+        {
+            if (checklistStep1Text != null)
+                checklistStep1Text.gameObject.SetActive(visible);
+            if (checklistStep2Text != null)
+                checklistStep2Text.gameObject.SetActive(visible);
+            if (strikeStep1Line != null)
+                strikeStep1Line.gameObject.SetActive(false);
         }
     }
 
@@ -418,6 +465,8 @@ public class SyrupProcedureManager : MonoBehaviour
         yield return new WaitForSeconds(0.15f);
 
         currentStep = SyrupStep.Step_02_PlaceParchmentOnScale;
+        stepDone = false;
+        stableTimer = 0f;
 
         if (progressText != null)
             progressText.text = Step02Progress;
@@ -437,79 +486,107 @@ public class SyrupProcedureManager : MonoBehaviour
         if (finalActive)
         {
             ResolveSceneReferences();
-            EnsurePerkamenSnapTargets();
             SetProcedureOutlineActive(perkamenStackOutline, true);
             SetProcedureOutlineActive(timbanganOutline, true);
-        }
-        else
-        {
-            SetPerkamenSnapTargetsActive(false);
         }
 
         SetStep2ArrowsActive(finalActive);
     }
 
-    private void EnsurePerkamenSnapTargets()
+    private void CheckStep02PlaceParchmentOnScale()
     {
-        if (!setupPerkamenSnapTargets)
+        if (stepDone)
+            return;
+
+        ResolvePerkamenSnapTargets();
+
+        if (leftPerkamenSnapTarget == null || rightPerkamenSnapTarget == null)
         {
-            SetPerkamenSnapTargetsActive(false);
+            if (progressText != null)
+                progressText.text = "Snap kiri/kanan perkamen belum tersambung di scene.";
             return;
         }
 
-        Transform timbanganRoot = timbanganTarget;
+        bool leftSnapped = leftPerkamenSnapTarget.HasSnapped;
+        bool rightSnapped = rightPerkamenSnapTarget.HasSnapped;
 
-        if (timbanganRoot == null)
+        if (progressText != null)
         {
-            GameObject timbanganObject = FindSceneObjectByName("timbanganNeraca");
-            if (timbanganObject != null)
-                timbanganRoot = timbanganObject.transform;
+            string leftStatus = leftSnapped ? "OK" : "belum";
+            string rightStatus = rightSnapped ? "OK" : "belum";
+            progressText.text = $"Perkamen kiri: {leftStatus} | kanan: {rightStatus}. Lepaskan kertas di kedua piring neraca sampai tersnap.";
         }
 
-        if (timbanganRoot == null)
+        if (leftSnapped && rightSnapped)
+            CompleteStep02();
+    }
+
+    private void CompleteStep02()
+    {
+        if (stepDone)
             return;
 
-        Transform leftPan = FindDeepChild(timbanganRoot, "Balance_WeightLeft");
-        Transform rightPan = FindDeepChild(timbanganRoot, "Balance_WeightRight");
+        stepDone = true;
 
-        if (leftPan != null)
-            leftPerkamenSnapTarget = EnsurePerkamenSnapTarget(leftPerkamenSnapTarget, "SYS_Snap_Perkamen_Left", leftPan);
+        if (progressText != null)
+            progressText.text = "Step 2 selesai. Perkamen kiri dan kanan sudah tersnap.";
 
-        if (rightPan != null)
-            rightPerkamenSnapTarget = EnsurePerkamenSnapTarget(rightPerkamenSnapTarget, "SYS_Snap_Perkamen_Right", rightPan);
+        if (doneIcon != null)
+            doneIcon.SetActive(true);
+
+        ClearProcedureOutlines();
+        StartCoroutine(ShowStep03AfterStep02());
+
+        Debug.Log("[SyrupProcedure] Step 2 complete.");
     }
 
-    private SyrupPerkamenSnapTarget EnsurePerkamenSnapTarget(SyrupPerkamenSnapTarget snapTarget, string objectName, Transform pan)
+    private void CheckStep03WeighPowder()
     {
-        if (snapTarget == null)
-            snapTarget = FindPerkamenSnapTarget(objectName);
+        ResolveStep3References();
 
-        if (snapTarget == null)
+        float rightMass = GetStep3RightMass();
+        float leftMass = GetStep3LeftMass();
+
+        bool rightReady = rightMass > 0.001f;
+        bool powderReady = leftMass > 0.001f;
+
+        if (progressText != null)
         {
-            Debug.LogWarning($"[SyrupProcedure] Snap target '{objectName}' belum ada di scene. Buat object dengan SyrupPerkamenSnapTarget agar Step 2 bisa diedit dari hierarchy.", this);
-            return null;
+            string rightStatus = rightReady ? $"{rightMass:0.###} g OK" : "belum";
+            string leftStatus = powderReady ? $"{leftMass:0.###} g OK" : "belum";
+            string nextAction = !rightReady
+                ? "Taruh anak timbangan di piring kanan."
+                : (!powderReady ? "Ambil bubuk dengan sendok tanduk, lalu tuang ke piring kiri." : "Keduanya sudah masuk. Sesuaikan sampai neraca seimbang.");
+            progressText.text = $"Kanan: {rightStatus} | Kiri: {leftStatus}\n{nextAction}";
         }
 
-        snapTarget.Configure(pan, perkamenSnapWorldOffset, perkamenSnapTriggerSize);
-        return snapTarget;
+        SetStep3ArrowsActive(true, !rightReady, !powderReady);
+
+        if (doneIcon != null)
+            doneIcon.SetActive(rightReady && powderReady);
     }
 
-    private SyrupPerkamenSnapTarget FindPerkamenSnapTarget(string objectName)
+    private IEnumerator ShowStep03AfterStep02()
     {
-        Transform child = FindDeepChild(transform, objectName);
-        if (child != null && child.TryGetComponent(out SyrupPerkamenSnapTarget snapTarget))
-            return snapTarget;
-
-        return FindSceneComponentByName<SyrupPerkamenSnapTarget>(objectName);
+        isAnimating = true;
+        yield return new WaitForSeconds(0.35f);
+        ShowDefaultStep03();
     }
 
-    private void SetPerkamenSnapTargetsActive(bool active)
+    private float GetStep3RightMass()
     {
-        if (leftPerkamenSnapTarget != null)
-            leftPerkamenSnapTarget.gameObject.SetActive(active);
+        if (virtualWeightSelector != null && virtualWeightSelector.IsLocked)
+            return virtualWeightSelector.LockedRightMassGrams;
 
-        if (rightPerkamenSnapTarget != null)
-            rightPerkamenSnapTarget.gameObject.SetActive(active);
+        return rightWeighingZone != null ? rightWeighingZone.TotalGrams : 0f;
+    }
+
+    private float GetStep3LeftMass()
+    {
+        if (powderDepositZone != null)
+            return powderDepositZone.DepositedGrams;
+
+        return leftWeighingZone != null ? leftWeighingZone.TotalGrams : 0f;
     }
 
     private void ResolveSceneReferences()
@@ -591,6 +668,52 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (timbanganStepArrow == null)
             timbanganStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step2_Timbangan");
+
+        ResolvePerkamenSnapTargets();
+        ResolveStep3References();
+    }
+
+    private void ResolvePerkamenSnapTargets()
+    {
+        if (leftPerkamenSnapTarget == null)
+            leftPerkamenSnapTarget = FindPerkamenSnapTarget("SYS_Snap_Perkamen_Left");
+
+        if (rightPerkamenSnapTarget == null)
+            rightPerkamenSnapTarget = FindPerkamenSnapTarget("SYS_Snap_Perkamen_Right");
+    }
+
+    private SyrupPerkamenSnapTarget FindPerkamenSnapTarget(string objectName)
+    {
+        return FindSceneComponentByName<SyrupPerkamenSnapTarget>(objectName);
+    }
+
+    private void ResolveStep3References()
+    {
+        if (leftWeighingZone == null)
+            leftWeighingZone = FindSceneComponentByName<WeightingZone>("LeftWeighingZone");
+
+        if (rightWeighingZone == null)
+            rightWeighingZone = FindSceneComponentByName<WeightingZone>("RightWeighingZone");
+
+        if (powderDepositZone == null && leftWeighingZone != null)
+            powderDepositZone = leftWeighingZone.GetComponent<PowderDepositZone>();
+
+        if (virtualWeightSelector == null)
+            virtualWeightSelector = FindSceneComponentByName<VirtualWeightSelector>("WeightSelectorPanel");
+
+        if (leftPanTarget == null)
+        {
+            GameObject leftPanObject = FindSceneObjectByName("Balance_WeightLeft");
+            if (leftPanObject != null)
+                leftPanTarget = leftPanObject.transform;
+        }
+
+        if (rightPanTarget == null)
+        {
+            GameObject rightPanObject = FindSceneObjectByName("Balance_WeightRight");
+            if (rightPanObject != null)
+                rightPanTarget = rightPanObject.transform;
+        }
     }
 
     private void SetGuideArrow(ref WorldStepArrow arrow, string objectName, Transform target, string label, Vector3 offset, bool active)
@@ -686,7 +809,7 @@ public class SyrupProcedureManager : MonoBehaviour
 
         EnsureTopBackdrop();
         ConfigureTopText(instructionText, InstructionPosition, InstructionSize, 44f, FontStyles.Bold);
-        ConfigureTopText(progressText, ProgressPosition, ProgressSize, 28f, FontStyles.Normal);
+        ConfigureTopText(progressText, ProgressPosition, ProgressSize, 24f, FontStyles.Normal);
         ConfigureRect(doneIcon != null ? doneIcon.transform as RectTransform : null, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), DoneIconPosition, DoneIconSize);
 
         if (checklistPanel != null)

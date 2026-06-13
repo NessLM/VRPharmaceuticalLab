@@ -14250,12 +14250,6 @@ MonoBehaviour:
   timbanganStepArrow: {fileID: 2100001022}
   leftPerkamenSnapTarget: {fileID: 2100001033}
   rightPerkamenSnapTarget: {fileID: 2100001043}
-  leftWeighingZone: {fileID: 845109363}
-  rightWeighingZone: {fileID: 1027199233}
-  powderDepositZone: {fileID: 845109364}
-  virtualWeightSelector: {fileID: 956929848}
-  leftPanTarget: {fileID: 684947995}
-  rightPanTarget: {fileID: 1183947015}
 --- !u!1 &485779206
 GameObject:
   m_ObjectHideFlags: 0
@@ -24069,10 +24063,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   weightSelector: {fileID: 956929848}
-  rightZone: {fileID: 1027199233}
   pourRateGramsPerSecond: 0.08
-  allowPhysicalRightPanTarget: 1
-  minimumRightPanTargetGrams: 0.001
   panPowderLevels: []
   maxVisualGrams: 100
   warningText: {fileID: 0}
@@ -27057,7 +27048,6 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   reparentToRightPan: 1
-  hideWeightsOnReset: 0
 --- !u!114 &956929849
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -52600,7 +52590,6 @@ MonoBehaviour:
   nameContains:
   - Weight_
   - anakTimbangan
-  includeAllSceneWeightObjects: 1
   addRigidbodyWhenMissing: 1
   addColliderWhenMissing: 1
   addGrabInteractableWhenMissing: 1
@@ -52609,7 +52598,6 @@ MonoBehaviour:
   keepKinematicWhenReleased: 0
   defaultPhysicsMassKg: 0.05
   fallbackColliderSize: {x: 0.04, y: 0.025, z: 0.04}
-  minimumWorldGrabSize: 0.06
 --- !u!1 &2103843769 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -9010811273147716080, guid: 1b0ba1f019326854e887dcafc0b4c017, type: 3}

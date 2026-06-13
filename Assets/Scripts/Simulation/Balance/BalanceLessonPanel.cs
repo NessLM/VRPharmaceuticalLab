@@ -127,7 +127,7 @@ public class BalanceLessonPanel : MonoBehaviour
     {
         float left       = GetLeftMass();
         float right      = GetRightMass();
-        bool targetLocked = virtualWeightSelector != null && virtualWeightSelector.IsLocked;
+        bool targetLocked = HasRightTarget(right);
         bool isBalanced   = balanceController != null
             ? balanceController.IsBalanced
             : Mathf.Abs(right - left) < 0.5f;
@@ -171,7 +171,7 @@ public class BalanceLessonPanel : MonoBehaviour
 
         float left       = GetLeftMass();
         float right      = GetRightMass();
-        bool targetLocked = virtualWeightSelector != null && virtualWeightSelector.IsLocked;
+        bool targetLocked = HasRightTarget(right);
         bool isBalanced   = balanceController != null
             ? balanceController.IsBalanced
             : Mathf.Abs(right - left) < 0.5f;
@@ -192,8 +192,16 @@ public class BalanceLessonPanel : MonoBehaviour
 
     private float GetRightMass()
     {
-        if (virtualWeightSelector != null) return virtualWeightSelector.LockedRightMassGrams;
+        if (virtualWeightSelector != null && virtualWeightSelector.IsLocked)
+            return virtualWeightSelector.LockedRightMassGrams;
+
         return rightZone != null ? rightZone.TotalGrams : 0f;
+    }
+
+    private bool HasRightTarget(float rightMass)
+    {
+        return (virtualWeightSelector != null && virtualWeightSelector.IsLocked) ||
+               rightMass > 0.001f;
     }
 
     // ──────────────────────────── State Machine ────────────────────────────

@@ -16,6 +16,13 @@ using UnityEngine.Events;
 [RequireComponent(typeof(BoxCollider))]
 public class WeightingZone : MonoBehaviour
 {
+    private enum AcceptedPanContent
+    {
+        Any = 0,
+        MaterialOnly = 1,
+        WeightsOnly = 2
+    }
+
     [Header("Zone Identity")]
     [Tooltip("Human-readable label used in debug output and UI displays.")]
     [SerializeField] private string zoneName = "Zone";
@@ -23,6 +30,9 @@ public class WeightingZone : MonoBehaviour
     [Header("Detection")]
     [Tooltip("Minimum gram change required to fire onMassChanged (reduces redundant events).")]
     [SerializeField] private float massChangeThreshold = 0.001f;
+    [SerializeField] private bool requireParchmentBeforeCounting;
+    [SerializeField] private SyrupPerkamenSnapTarget requiredParchmentSnapTarget;
+    [SerializeField] private AcceptedPanContent acceptedContent = AcceptedPanContent.Any;
 
     [Header("Events")]
     public UnityEvent<float> onMassChanged;
@@ -42,6 +52,9 @@ public class WeightingZone : MonoBehaviour
     {
         get
         {
+            if (!HasRequiredParchment())
+                return 0f;
+
             float total = 0f;
 
             foreach (WeightItem w in trackedWeights)
@@ -77,6 +90,19 @@ public class WeightingZone : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        TrackCollider(other);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        TrackCollider(other);
+    }
+
+    private void TrackCollider(Collider other)
+    {
+        if (!CanTrackCollider(other))
+            return;
+
         bool changed = false;
 
         WeightItem w = other.GetComponentInParent<WeightItem>();
@@ -129,6 +155,30 @@ public class WeightingZone : MonoBehaviour
 
     /// <summary>Manually triggers a mass update notification (useful after external state changes).</summary>
     public void ForceRefresh() => NotifyMassChange();
+
+    private bool HasRequiredParchment()
+    {
+        return !requireParchmentBeforeCounting ||
+               (requiredParchmentSnapTarget != null && requiredParchmentSnapTarget.HasSnapped);
+    }
+
+    private bool CanTrackCollider(Collider other)
+    {
+        if (other == null || !HasRequiredParchment())
+            return false;
+
+        switch (acceptedContent)
+        {
+            case AcceptedPanContent.MaterialOnly:
+                return other.GetComponentInParent<HornSpoon>() != null ||
+                       other.GetComponentInParent<PowderPayload>() != null;
+            case AcceptedPanContent.WeightsOnly:
+                return other.GetComponentInParent<WeightItem>() != null ||
+                       other.GetComponentInParent<BalanceMassSource>() != null;
+            default:
+                return true;
+        }
+    }
 
     private void OnDrawGizmosSelected()
     {

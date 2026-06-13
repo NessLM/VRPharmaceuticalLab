@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -17,9 +18,15 @@ public class StackPerkamenDispenser : MonoBehaviour
     public float spawnCooldown = 0.15f;
     public bool forceGrabAfterSpawn = true;
 
+    [Header("Safety")]
+    [Tooltip("0 berarti tidak dibatasi. Isi 2-4 untuk mencegah clone perkamen menumpuk terus di scene.")]
+    [SerializeField] private int maxLiveSpawned = 0;
+
     private XRSimpleInteractable stackInteractable;
     private XRInteractionManager interactionManager;
     private bool busy;
+    private Coroutine spawnRoutine;
+    private readonly List<XRGrabInteractable> liveSpawned = new List<XRGrabInteractable>();
 
     private void Awake()
     {
@@ -34,17 +41,30 @@ public class StackPerkamenDispenser : MonoBehaviour
 
     private void OnEnable()
     {
+        if (stackInteractable == null)
+            stackInteractable = GetComponent<XRSimpleInteractable>();
+
         stackInteractable.selectEntered.AddListener(OnStackSelected);
     }
 
     private void OnDisable()
     {
-        stackInteractable.selectEntered.RemoveListener(OnStackSelected);
+        if (stackInteractable != null)
+            stackInteractable.selectEntered.RemoveListener(OnStackSelected);
+
+        if (spawnRoutine != null)
+        {
+            StopCoroutine(spawnRoutine);
+            spawnRoutine = null;
+        }
+
+        busy = false;
     }
 
     private void OnStackSelected(SelectEnterEventArgs args)
     {
-        if (busy) return;
+        if (busy)
+            return;
 
         if (singlePerkamenPrefab == null)
         {
@@ -52,7 +72,14 @@ public class StackPerkamenDispenser : MonoBehaviour
             return;
         }
 
-        StartCoroutine(SpawnAndGrabRoutine(args.interactorObject));
+        PruneLiveSpawned();
+        if (maxLiveSpawned > 0 && liveSpawned.Count >= maxLiveSpawned)
+        {
+            Debug.Log("[StackPerkamen] Batas perkamen aktif tercapai. Pakai perkamen yang sudah muncul dulu.", this);
+            return;
+        }
+
+        spawnRoutine = StartCoroutine(SpawnAndGrabRoutine(args.interactorObject));
     }
 
     private IEnumerator SpawnAndGrabRoutine(IXRSelectInteractor interactor)
@@ -68,6 +95,7 @@ public class StackPerkamenDispenser : MonoBehaviour
         );
 
         PreparePerkamen(newPerkamen);
+        liveSpawned.Add(newPerkamen);
 
         yield return null;
 
@@ -86,12 +114,19 @@ public class StackPerkamenDispenser : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(spawnCooldown);
+        yield return new WaitForSeconds(Mathf.Max(0.01f, spawnCooldown));
         busy = false;
+        spawnRoutine = null;
     }
 
     private void PreparePerkamen(XRGrabInteractable perkamen)
     {
+        if (perkamen == null)
+            return;
+
+        perkamen.transform.SetParent(null, true);
+        TrySetTag(perkamen.gameObject, "Perkamen");
+
         Rigidbody rb = perkamen.GetComponent<Rigidbody>();
 
         if (rb == null)
@@ -111,6 +146,30 @@ public class StackPerkamenDispenser : MonoBehaviour
         if (perkamen.GetComponent<PerkamenNoGravity>() == null)
         {
             perkamen.gameObject.AddComponent<PerkamenNoGravity>();
+        }
+    }
+
+    private void PruneLiveSpawned()
+    {
+        for (int i = liveSpawned.Count - 1; i >= 0; i--)
+        {
+            if (liveSpawned[i] == null)
+                liveSpawned.RemoveAt(i);
+        }
+    }
+
+    private void TrySetTag(GameObject target, string tagName)
+    {
+        if (target == null)
+            return;
+
+        try
+        {
+            target.tag = tagName;
+        }
+        catch (UnityException)
+        {
+            Debug.LogWarning($"[StackPerkamen] Tag '{tagName}' belum ada di project. Snap tetap pakai nama object sebagai fallback.", this);
         }
     }
 }

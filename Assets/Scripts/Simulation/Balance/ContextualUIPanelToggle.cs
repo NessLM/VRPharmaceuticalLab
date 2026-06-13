@@ -43,6 +43,12 @@ public class ContextualUIPanelToggle : MonoBehaviour
 
     private void Awake()
     {
+        if (balancePanel == null)
+            balancePanel = FindFirstObjectByType<BalanceUIPanelController>(FindObjectsInactive.Include);
+
+        if (spoonPanel == null)
+            spoonPanel = FindFirstObjectByType<SpoonUIPanelController>(FindObjectsInactive.Include);
+
         // Auto-discover NearFarInteractors if none were manually assigned.
         if (trackedInteractors.Count == 0)
         {
@@ -94,11 +100,18 @@ public class ContextualUIPanelToggle : MonoBehaviour
 
     private void OnTogglePerformed(InputAction.CallbackContext ctx)
     {
+        RefreshInteractorsIfNeeded();
         bool balanceFocus = IsRayHitting<BalanceUIFocusTarget>();
         bool spoonFocus   = IsRayHitting<SpoonUIFocusTarget>()
+                         || IsRayHitting<HornSpoon>()
+                         || IsAnyInteractorSelecting<HornSpoon>()
                          || IsAnyInteractorSelecting<SpoonUIFocusTarget>();
 
-        if (balanceFocus && balancePanel != null)
+        if (spoonPanel != null && spoonPanel.IsOpen && !balanceFocus)
+            spoonPanel.Toggle();
+        else if (balancePanel != null && balancePanel.IsOpen && !spoonFocus)
+            balancePanel.Toggle();
+        else if (balanceFocus && balancePanel != null)
             balancePanel.Toggle();
         else if (spoonFocus && spoonPanel != null)
             spoonPanel.Toggle();
@@ -164,5 +177,15 @@ public class ContextualUIPanelToggle : MonoBehaviour
             }
         }
         return false;
+    }
+
+    private void RefreshInteractorsIfNeeded()
+    {
+        trackedInteractors.RemoveAll(interactor => interactor == null);
+        if (trackedInteractors.Count > 0)
+            return;
+
+        var found = FindObjectsByType<NearFarInteractor>(FindObjectsSortMode.None);
+        trackedInteractors.AddRange(found);
     }
 }

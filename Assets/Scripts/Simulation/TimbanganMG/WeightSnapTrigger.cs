@@ -4,6 +4,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class WeightSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
+    [SerializeField] private BalanceScaleVisual scaleVisual;
 
     private bool hasSnapped = false;
 
@@ -15,10 +16,7 @@ public class WeightSnapTrigger : MonoBehaviour
             return;
 
         if (hasSnapped)
-        {
-            ReturnWrongWeight(grab);
             return;
-        }
 
         if (!grab.CompareTag("Weight_CTM"))
         {
@@ -30,8 +28,7 @@ public class WeightSnapTrigger : MonoBehaviour
 
         Transform weightObject = grab.transform;
 
-        weightObject.position = snapPoint.position;
-        weightObject.rotation = snapPoint.rotation;
+        grab.enabled = false;
 
         Rigidbody rb = weightObject.GetComponent<Rigidbody>();
         if (rb != null)
@@ -42,22 +39,23 @@ public class WeightSnapTrigger : MonoBehaviour
             rb.isKinematic = true;
         }
 
-        grab.enabled = false;
+        weightObject.SetParent(snapPoint, false);
+        weightObject.localPosition = Vector3.zero;
+        weightObject.localRotation = Quaternion.identity;
 
-        Debug.Log("Anak timbangan CTM berhasil diletakkan.");
+        if (scaleVisual != null)
+            scaleVisual.SetRightDown();
+
+        Debug.Log("Anak timbangan CTM berhasil snap ke Plate_Right_Target.");
     }
 
     private void ReturnWrongWeight(XRGrabInteractable grab)
-{
-    ReturnToStartPosition returner = grab.GetComponent<ReturnToStartPosition>();
+    {
+        ReturnToStartPosition returner = grab.GetComponent<ReturnToStartPosition>();
 
-    if (returner != null)
-    {
-        returner.ReturnToStart();
+        if (returner != null)
+            returner.ReturnToStart();
+        else
+            Debug.LogWarning(grab.gameObject.name + " tidak punya ReturnToStartPosition.");
     }
-    else
-    {
-        Debug.LogWarning(grab.gameObject.name + " tidak punya ReturnToStartPosition.");
-    }
-}
 }

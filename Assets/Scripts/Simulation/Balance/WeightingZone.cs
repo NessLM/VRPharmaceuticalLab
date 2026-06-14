@@ -34,54 +34,47 @@ public class WeightingZone : MonoBehaviour
     [SerializeField] private PerkamenSnapTarget parchmentSnapTarget;
     [SerializeField] private AcceptedPanContent acceptedContent = AcceptedPanContent.Any;
 
+    [Header("Debug")]
+    [SerializeField] private float debugTotalGrams;
+    [SerializeField] private int debugItemCount;
+    [SerializeField] private List<string> debugItemNames = new List<string>();
+
     [Header("Events")]
     public UnityEvent<float> onMassChanged;
 
     private readonly HashSet<WeightItem> trackedWeights = new HashSet<WeightItem>();
+    private readonly Dictionary<WeightItem, HashSet<Collider>> trackedWeightColliders = new Dictionary<WeightItem, HashSet<Collider>>();
     private readonly HashSet<HornSpoon> trackedSpoons = new HashSet<HornSpoon>();
     private readonly HashSet<PowderPayload> trackedPayloads = new HashSet<PowderPayload>();
     private readonly HashSet<BalanceMassSource> trackedMassSources = new HashSet<BalanceMassSource>();
 
+    private bool reportedParchmentPresent;
     private float lastReportedMass = -1f;
 
     /// <summary>
     /// Current total logical mass in grams inside this zone.
     /// Deduplicates: BalanceMassSource is skipped if the same object also has WeightItem.
     /// </summary>
-    public float TotalGrams
-    {
-        get
-        {
-            if (!HasRequiredParchment())
-                return 0f;
-
-            float total = 0f;
-
-            foreach (WeightItem w in trackedWeights)
-                if (w != null) total += w.GramValue;
-
-            foreach (HornSpoon s in trackedSpoons)
-                if (s != null) total += s.CurrentAmountMg / 1000f; // mg -> g
-
-            foreach (PowderPayload p in trackedPayloads)
-                if (p != null) total += p.GramValue;
-
-            foreach (BalanceMassSource b in trackedMassSources)
-            {
-                // Skip if the same GameObject also contributes via WeightItem (prevents double-count)
-                if (b != null && b.GetComponent<WeightItem>() == null)
-                    total += b.Grams;
-            }
-
-            return total;
-        }
-    }
+    public float TotalGrams => ComputeTotalGrams(true);
 
     /// <summary>Number of distinct weight items currently tracked in this zone.</summary>
     public int TrackedWeightCount => trackedWeights.Count + trackedMassSources.Count;
 
     public string ZoneName => zoneName;
-    public bool HasParchment => parchmentSnapTarget != null && parchmentSnapTarget.HasSnapped;
+    public bool RequireParchmentFirst
+    {
+        get => requireParchmentBeforeCounting;
+        set
+        {
+            if (requireParchmentBeforeCounting == value)
+                return;
+
+            requireParchmentBeforeCounting = value;
+            RecalculateMass();
+        }
+    }
+
+    public bool HasParchment => reportedParchmentPresent || (parchmentSnapTarget != null && parchmentSnapTarget.HasSnapped);
     public GameObject ParchmentObject => parchmentSnapTarget != null ? parchmentSnapTarget.SnappedParchment : null;
 
     private void Awake()
@@ -100,6 +93,12 @@ public class WeightingZone : MonoBehaviour
     private void OnDisable()
     {
         UnsubscribeFromParchmentTarget();
+        trackedWeights.Clear();
+        trackedWeightColliders.Clear();
+        trackedSpoons.Clear();
+        trackedPayloads.Clear();
+        trackedMassSources.Clear();
+        UpdateDebugInfo(0f);
     }
 
     private void OnTriggerEnter(Collider other)
@@ -120,7 +119,7 @@ public class WeightingZone : MonoBehaviour
         bool changed = false;
 
         WeightItem w = other.GetComponentInParent<WeightItem>();
-        if (w != null && trackedWeights.Add(w)) changed = true;
+        if (w != null && TrackWeightCollider(w, other)) changed = true;
 
         HornSpoon s = other.GetComponentInParent<HornSpoon>();
         if (s != null && trackedSpoons.Add(s)) changed = true;
@@ -139,7 +138,7 @@ public class WeightingZone : MonoBehaviour
         bool changed = false;
 
         WeightItem w = other.GetComponentInParent<WeightItem>();
-        if (w != null && trackedWeights.Remove(w)) changed = true;
+        if (w != null && UntrackWeightCollider(w, other)) changed = true;
 
         HornSpoon s = other.GetComponentInParent<HornSpoon>();
         if (s != null && trackedSpoons.Remove(s)) changed = true;
@@ -156,19 +155,52 @@ public class WeightingZone : MonoBehaviour
     private void Update()
     {
         // Poll for continuously-changing values (e.g. HornSpoon amount changing while inside zone)
-        float current = TotalGrams;
+        ClearInvalidItemsInternal();
+        float current = ComputeTotalGrams(true);
         if (Mathf.Abs(current - lastReportedMass) >= massChangeThreshold)
-            NotifyMassChange();
+            NotifyMassChange(current);
     }
 
     private void NotifyMassChange()
     {
-        lastReportedMass = TotalGrams;
+        NotifyMassChange(ComputeTotalGrams(true));
+    }
+
+    private void NotifyMassChange(float grams)
+    {
+        UpdateDebugInfo(grams);
+        lastReportedMass = grams;
         onMassChanged?.Invoke(lastReportedMass);
     }
 
     /// <summary>Manually triggers a mass update notification (useful after external state changes).</summary>
     public void ForceRefresh() => NotifyMassChange();
+
+    public void SetParchmentPresent(bool present)
+    {
+        if (reportedParchmentPresent == present)
+            return;
+
+        reportedParchmentPresent = present;
+        RecalculateMass();
+    }
+
+    public void RecalculateMass()
+    {
+        bool removedInvalidItems = ClearInvalidItemsInternal();
+        float current = ComputeTotalGrams(true);
+
+        if (removedInvalidItems || Mathf.Abs(current - lastReportedMass) >= massChangeThreshold)
+            NotifyMassChange(current);
+    }
+
+    public void ClearInvalidItems()
+    {
+        if (ClearInvalidItemsInternal())
+            RecalculateMass();
+        else
+            UpdateDebugInfo(ComputeTotalGrams(false));
+    }
 
     private bool HasRequiredParchment()
     {
@@ -177,7 +209,7 @@ public class WeightingZone : MonoBehaviour
 
     private bool CanTrackCollider(Collider other)
     {
-        if (other == null || !HasRequiredParchment())
+        if (other == null)
             return false;
 
         if (IsParchmentCollider(other))
@@ -198,6 +230,10 @@ public class WeightingZone : MonoBehaviour
 
     private bool IsParchmentCollider(Collider other)
     {
+        WeightItem item = other.GetComponentInParent<WeightItem>();
+        if (item != null && item.IsParchment)
+            return true;
+
         if (other.GetComponentInParent<PerkamenNoGravity>() != null)
             return true;
 
@@ -236,7 +272,169 @@ public class WeightingZone : MonoBehaviour
 
     private void HandleParchmentStateChanged(GameObject parchment)
     {
-        ForceRefresh();
+        RecalculateMass();
+    }
+
+    private float ComputeTotalGrams(bool updateDebugInfo)
+    {
+        if (!HasRequiredParchment())
+        {
+            if (updateDebugInfo)
+                UpdateDebugInfo(0f);
+
+            return 0f;
+        }
+
+        float total = 0f;
+        List<string> countedNames = updateDebugInfo ? new List<string>() : null;
+
+        foreach (WeightItem w in trackedWeights)
+        {
+            if (!IsValidTrackedComponent(w) || !w.ShouldContributeMass)
+                continue;
+
+            total += w.Grams;
+            countedNames?.Add($"{w.name} ({w.Grams:0.###}g)");
+        }
+
+        foreach (HornSpoon s in trackedSpoons)
+        {
+            if (!IsValidTrackedComponent(s))
+                continue;
+
+            float spoonGrams = s.CurrentAmountMg / 1000f;
+            total += spoonGrams;
+            countedNames?.Add($"{s.name} ({spoonGrams:0.###}g)");
+        }
+
+        foreach (PowderPayload p in trackedPayloads)
+        {
+            if (!IsValidTrackedComponent(p))
+                continue;
+
+            total += p.GramValue;
+            countedNames?.Add($"{p.name} ({p.GramValue:0.###}g)");
+        }
+
+        foreach (BalanceMassSource b in trackedMassSources)
+        {
+            if (!IsValidTrackedComponent(b))
+                continue;
+
+            // Skip if the same GameObject also contributes via WeightItem (prevents double-count)
+            if (b.GetComponent<WeightItem>() != null)
+                continue;
+
+            total += b.Grams;
+            countedNames?.Add($"{b.name} ({b.Grams:0.###}g)");
+        }
+
+        if (updateDebugInfo)
+            UpdateDebugInfo(total, countedNames);
+
+        return total;
+    }
+
+    private bool ClearInvalidItemsInternal()
+    {
+        bool changed = false;
+        changed |= trackedWeights.RemoveWhere(item => !IsValidTrackedComponent(item)) > 0;
+        List<WeightItem> invalidWeightEntries = null;
+        foreach (KeyValuePair<WeightItem, HashSet<Collider>> entry in trackedWeightColliders)
+        {
+            if (!IsValidTrackedComponent(entry.Key))
+            {
+                if (invalidWeightEntries == null)
+                    invalidWeightEntries = new List<WeightItem>();
+
+                invalidWeightEntries.Add(entry.Key);
+                continue;
+            }
+
+            entry.Value.RemoveWhere(collider => collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy);
+            if (entry.Value.Count == 0)
+            {
+                if (invalidWeightEntries == null)
+                    invalidWeightEntries = new List<WeightItem>();
+
+                invalidWeightEntries.Add(entry.Key);
+            }
+        }
+
+        if (invalidWeightEntries != null)
+        {
+            foreach (WeightItem item in invalidWeightEntries)
+            {
+                trackedWeightColliders.Remove(item);
+                trackedWeights.Remove(item);
+            }
+
+            changed = true;
+        }
+
+        changed |= trackedSpoons.RemoveWhere(item => !IsValidTrackedComponent(item)) > 0;
+        changed |= trackedPayloads.RemoveWhere(item => !IsValidTrackedComponent(item)) > 0;
+        changed |= trackedMassSources.RemoveWhere(item => !IsValidTrackedComponent(item)) > 0;
+        return changed;
+    }
+
+    private bool TrackWeightCollider(WeightItem item, Collider sourceCollider)
+    {
+        if (item == null || sourceCollider == null)
+            return false;
+
+        HashSet<Collider> colliders;
+        if (!trackedWeightColliders.TryGetValue(item, out colliders))
+        {
+            colliders = new HashSet<Collider>();
+            trackedWeightColliders.Add(item, colliders);
+        }
+
+        bool colliderWasAdded = colliders.Add(sourceCollider);
+        bool itemWasAdded = trackedWeights.Add(item);
+        return colliderWasAdded || itemWasAdded;
+    }
+
+    private bool UntrackWeightCollider(WeightItem item, Collider sourceCollider)
+    {
+        if (item == null || sourceCollider == null)
+            return false;
+
+        HashSet<Collider> colliders;
+        if (!trackedWeightColliders.TryGetValue(item, out colliders))
+            return trackedWeights.Remove(item);
+
+        bool changed = colliders.Remove(sourceCollider);
+        if (colliders.Count > 0)
+            return changed;
+
+        trackedWeightColliders.Remove(item);
+        return trackedWeights.Remove(item) || changed;
+    }
+
+    private bool IsValidTrackedComponent(Component component)
+    {
+        return component != null &&
+               component.gameObject != null &&
+               component.gameObject.activeInHierarchy &&
+               component is Behaviour behaviour &&
+               behaviour.enabled;
+    }
+
+    private void UpdateDebugInfo(float totalGrams, List<string> itemNames = null)
+    {
+        debugTotalGrams = totalGrams;
+
+        if (itemNames == null)
+        {
+            debugItemCount = 0;
+            debugItemNames.Clear();
+            return;
+        }
+
+        debugItemCount = itemNames.Count;
+        debugItemNames.Clear();
+        debugItemNames.AddRange(itemNames);
     }
 
     private void OnDrawGizmosSelected()

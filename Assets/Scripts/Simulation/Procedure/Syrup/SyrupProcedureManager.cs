@@ -31,16 +31,8 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private TMP_Text progressText;
     [SerializeField] private GameObject doneIcon;
 
-    [Header("Left Checklist UI")]
-    [SerializeField] private TMP_Text checklistStep1Text;
-    [SerializeField] private TMP_Text checklistStep2Text;
-    [SerializeField] private RectTransform strikeStep1Line;
-    [SerializeField] private float strikeLineTargetWidth = 520f;
-    [SerializeField] private float strikeAnimationDuration = 0.45f;
-
     [Header("Layout")]
     [SerializeField] private RectTransform stepCanvasRoot;
-    [SerializeField] private RectTransform checklistPanel;
     [SerializeField] private bool forceUILayout = true;
 
     [Header("Outline Highlights")]
@@ -72,6 +64,8 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private PowderDepositZone powderDepositZone;
     [SerializeField] private Transform leftPanTarget;
     [SerializeField] private Transform rightPanTarget;
+    [SerializeField] private WorldStepArrow rightWeightStepArrow;
+    [SerializeField] private WorldStepArrow leftPowderStepArrow;
 
     private const string Step01Instruction = "Step 1: Isi gelas ukur sampai 100 ml";
     private const string Step01StartProgress = "Tekan tombol air merah, lalu arahkan gelas ukur ke aliran air.";
@@ -83,8 +77,6 @@ public class SyrupProcedureManager : MonoBehaviour
     private const string Step02TimbanganArrowLabel = "\u2193\nLetakkan di\npiring neraca";
     private const string Step03Instruction = "Step 3: Timbang bubuk";
     private const string Step03Progress = "Letakkan anak timbangan di piring kanan, lalu masukkan bubuk Difenhidramin ke piring kiri.";
-    private const string Step03RightArrowLabel = "\u2193\nAnak timbangan\npiring kanan";
-    private const string Step03LeftArrowLabel = "\u2193\nBubuk\npiring kiri";
     private const string TopBackdropName = "IMG_SyrupTopInstructionBackdrop";
     private static readonly string[] ExcludedOutlineNameParts =
     {
@@ -108,19 +100,10 @@ public class SyrupProcedureManager : MonoBehaviour
     private static readonly Vector2 ProgressSize = new Vector2(1120f, 76f);
     private static readonly Vector2 DoneIconPosition = new Vector2(0f, -176f);
     private static readonly Vector2 DoneIconSize = new Vector2(56f, 48f);
-    private static readonly Vector2 ChecklistPanelPosition = new Vector2(48f, 116f);
-    private static readonly Vector2 ChecklistPanelSize = new Vector2(840f, 148f);
-    private static readonly Vector2 ChecklistStep1ActivePosition = new Vector2(0f, 36f);
-    private static readonly Vector2 ChecklistStep1DonePosition = new Vector2(0f, 78f);
-    private static readonly Vector2 ChecklistStep2HiddenPosition = new Vector2(0f, -24f);
-    private static readonly Vector2 ChecklistStep2ActivePosition = new Vector2(0f, 36f);
-    private static readonly Vector2 ChecklistStepSize = new Vector2(800f, 42f);
     private static readonly Vector3 Step01GelasArrowOffset = new Vector3(0f, 0.72f, 0f);
     private static readonly Vector3 Step01WasherArrowOffset = new Vector3(0f, 0.32f, 0f);
     private static readonly Vector3 Step02PerkamenArrowOffset = new Vector3(0f, 0.35f, 0f);
     private static readonly Vector3 Step02TimbanganArrowOffset = new Vector3(0f, 0.55f, 0f);
-    private static readonly Vector3 Step03RightArrowOffset = new Vector3(0f, 0.52f, 0f);
-    private static readonly Vector3 Step03LeftArrowOffset = new Vector3(0f, 0.52f, 0f);
     private static readonly Color ProcedureHighlightColor = new Color(1f, 0.92f, 0.02f, 1f);
 
     private float stableTimer;
@@ -206,8 +189,8 @@ public class SyrupProcedureManager : MonoBehaviour
             ? leftPanTarget
             : (leftWeighingZone != null ? leftWeighingZone.transform : timbanganTarget);
 
-        SetGuideArrow(ref timbanganStepArrow, "ARW_Step2_Timbangan", rightTarget, Step03RightArrowLabel, Step03RightArrowOffset, finalActive && showRight);
-        SetGuideArrow(ref perkamenStepArrow, "ARW_Step2_Perkamen", leftTarget, Step03LeftArrowLabel, Step03LeftArrowOffset, finalActive && showLeft);
+        SetEditableGuideArrow(ref rightWeightStepArrow, "ARW_Step3_AnakTimbangan", rightTarget, finalActive && showRight);
+        SetEditableGuideArrow(ref leftPowderStepArrow, "ARW_Step3_Bubuk", leftTarget, finalActive && showLeft);
     }
 
     private void Update()
@@ -237,8 +220,6 @@ public class SyrupProcedureManager : MonoBehaviour
         if (forceUILayout)
             ApplyUILayout();
 
-        SetChecklistVisible(true);
-
         if (instructionText != null)
         {
             instructionText.gameObject.SetActive(true);
@@ -254,7 +235,6 @@ public class SyrupProcedureManager : MonoBehaviour
         if (doneIcon != null)
             doneIcon.SetActive(false);
 
-        SetupChecklist();
         SetProcedureOutlineActive(gelasUkurOutline, true);
         SetProcedureOutlineActive(GetActiveWaterSwitchOutline(), showWasherHighlight);
         SetStep1ArrowsActive(true);
@@ -277,8 +257,6 @@ public class SyrupProcedureManager : MonoBehaviour
         if (forceUILayout)
             ApplyUILayout();
 
-        SetChecklistVisible(false);
-
         if (instructionText != null)
         {
             instructionText.gameObject.SetActive(true);
@@ -295,49 +273,6 @@ public class SyrupProcedureManager : MonoBehaviour
             doneIcon.SetActive(false);
 
         CheckStep03WeighPowder();
-    }
-
-    private void SetupChecklist()
-    {
-        if (checklistStep1Text != null)
-        {
-            checklistStep1Text.gameObject.SetActive(true);
-            checklistStep1Text.text = $"Step 1 - Isi gelas ukur sampai {targetWaterMl:0} ml";
-            checklistStep1Text.fontStyle = FontStyles.Normal;
-            SetTextAlpha(checklistStep1Text, 1f);
-            SetAnchoredPosition(checklistStep1Text.rectTransform, ChecklistStep1ActivePosition);
-        }
-
-        if (checklistStep2Text != null)
-        {
-            checklistStep2Text.text = "Step 2 - Snap perkamen di piring kiri dan kanan neraca";
-            checklistStep2Text.fontStyle = FontStyles.Normal;
-            SetTextAlpha(checklistStep2Text, 0f);
-            SetAnchoredPosition(checklistStep2Text.rectTransform, ChecklistStep2HiddenPosition);
-            checklistStep2Text.gameObject.SetActive(false);
-        }
-
-        if (strikeStep1Line != null)
-        {
-            strikeStep1Line.gameObject.SetActive(false);
-            SetAnchoredPosition(strikeStep1Line, GetStrikePosition(ChecklistStep1ActivePosition));
-            SetSize(strikeStep1Line, 0f, 3f);
-        }
-    }
-
-    private void SetChecklistVisible(bool visible)
-    {
-        if (checklistPanel != null)
-            checklistPanel.gameObject.SetActive(visible);
-        else
-        {
-            if (checklistStep1Text != null)
-                checklistStep1Text.gameObject.SetActive(visible);
-            if (checklistStep2Text != null)
-                checklistStep2Text.gameObject.SetActive(visible);
-            if (strikeStep1Line != null)
-                strikeStep1Line.gameObject.SetActive(false);
-        }
     }
 
     private void CheckStep01MeasureWater100ml()
@@ -403,67 +338,6 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (instructionText != null)
             instructionText.text = Step02Instruction;
-
-        if (checklistStep2Text != null)
-        {
-            checklistStep2Text.gameObject.SetActive(true);
-            SetTextAlpha(checklistStep2Text, 0f);
-            SetAnchoredPosition(checklistStep2Text.rectTransform, ChecklistStep2HiddenPosition);
-        }
-
-        if (strikeStep1Line != null)
-        {
-            strikeStep1Line.gameObject.SetActive(true);
-            SetSize(strikeStep1Line, 0f, 3f);
-        }
-
-        float timer = 0f;
-        float duration = Mathf.Max(0.01f, strikeAnimationDuration);
-
-        while (timer < duration)
-        {
-            timer += Time.deltaTime;
-
-            float t = Mathf.Clamp01(timer / duration);
-            float smooth = Mathf.SmoothStep(0f, 1f, t);
-            Vector2 step1Position = Vector2.Lerp(ChecklistStep1ActivePosition, ChecklistStep1DonePosition, smooth);
-            Vector2 step2Position = Vector2.Lerp(ChecklistStep2HiddenPosition, ChecklistStep2ActivePosition, smooth);
-
-            if (checklistStep1Text != null)
-                SetAnchoredPosition(checklistStep1Text.rectTransform, step1Position);
-
-            if (checklistStep2Text != null)
-            {
-                SetAnchoredPosition(checklistStep2Text.rectTransform, step2Position);
-                SetTextAlpha(checklistStep2Text, smooth);
-            }
-
-            if (strikeStep1Line != null)
-            {
-                SetAnchoredPosition(strikeStep1Line, GetStrikePosition(step1Position));
-                SetSize(strikeStep1Line, Mathf.Lerp(0f, strikeLineTargetWidth, smooth), 3f);
-            }
-
-            yield return null;
-        }
-
-        if (checklistStep1Text != null)
-        {
-            checklistStep1Text.fontStyle = FontStyles.Strikethrough;
-            SetAnchoredPosition(checklistStep1Text.rectTransform, ChecklistStep1DonePosition);
-        }
-
-        if (checklistStep2Text != null)
-        {
-            SetTextAlpha(checklistStep2Text, 1f);
-            SetAnchoredPosition(checklistStep2Text.rectTransform, ChecklistStep2ActivePosition);
-        }
-
-        if (strikeStep1Line != null)
-        {
-            SetAnchoredPosition(strikeStep1Line, GetStrikePosition(ChecklistStep1DonePosition));
-            SetSize(strikeStep1Line, strikeLineTargetWidth, 3f);
-        }
 
         yield return new WaitForSeconds(0.15f);
 
@@ -561,8 +435,8 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (progressText != null)
         {
-            string rightStatus = rightReady ? $"{rightMass:0.###} g OK" : "belum";
-            string leftStatus = powderReady ? $"{leftMass:0.###} g OK" : "belum";
+            string rightStatus = rightReady ? $"{FormatMass(rightMass)} OK" : "belum";
+            string leftStatus = powderReady ? $"{FormatMass(leftMass)} OK" : "belum";
             string nextAction = !rightReady
                 ? "Taruh anak timbangan di piring kanan."
                 : (!powderReady ? "Ambil bubuk dengan sendok tanduk, lalu tuang ke piring kiri." : "Keduanya sudah masuk. Sesuaikan sampai neraca seimbang.");
@@ -595,6 +469,14 @@ public class SyrupProcedureManager : MonoBehaviour
         return leftWeighingZone != null ? leftWeighingZone.TotalGrams : 0f;
     }
 
+    private static string FormatMass(float grams)
+    {
+        if (grams < 1f)
+            return $"{grams * 1000f:0.###} mg";
+
+        return $"{grams:0.###} g";
+    }
+
     private void ResolveSceneReferences()
     {
         if (instructionText == null)
@@ -606,24 +488,8 @@ public class SyrupProcedureManager : MonoBehaviour
         if (doneIcon == null)
             doneIcon = FindSceneObjectByName("IMG_SyrupDoneIcon");
 
-        if (checklistStep1Text == null)
-            checklistStep1Text = FindSceneComponentByName<TMP_Text>("TXT_CheckStep1");
-
-        if (checklistStep2Text == null)
-            checklistStep2Text = FindSceneComponentByName<TMP_Text>("TXT_CheckStep2");
-
-        if (strikeStep1Line == null)
-        {
-            GameObject strikeObject = FindSceneObjectByName("IMG_StrikeStep1");
-            if (strikeObject != null)
-                strikeStep1Line = strikeObject.transform as RectTransform;
-        }
-
         if (stepCanvasRoot == null && instructionText != null && instructionText.canvas != null)
             stepCanvasRoot = instructionText.canvas.transform as RectTransform;
-
-        if (checklistPanel == null && checklistStep1Text != null)
-            checklistPanel = checklistStep1Text.transform.parent as RectTransform;
 
         if (gelasUkurOutline == null && gelasUkurContainer != null)
             gelasUkurOutline = gelasUkurContainer.GetComponent<Outlinable>();
@@ -674,6 +540,12 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (timbanganStepArrow == null)
             timbanganStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step2_Timbangan");
+
+        if (rightWeightStepArrow == null)
+            rightWeightStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step3_AnakTimbangan");
+
+        if (leftPowderStepArrow == null)
+            leftPowderStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step3_Bubuk");
 
         ResolveStep3References();
     }
@@ -730,6 +602,29 @@ public class SyrupProcedureManager : MonoBehaviour
         }
 
         arrow.Configure(target, label, offset);
+        arrow.SetVisible(true);
+    }
+
+    private void SetEditableGuideArrow(ref WorldStepArrow arrow, string objectName, Transform target, bool active)
+    {
+        if (arrow == null)
+            arrow = FindSceneComponentByName<WorldStepArrow>(objectName);
+
+        if (arrow == null)
+        {
+            if (active)
+                Debug.LogWarning($"[SyrupProcedure] Arrow '{objectName}' belum ada di scene. Buat object WorldStepArrow agar teks dan offset bisa diedit dari hierarchy.", this);
+
+            return;
+        }
+
+        if (!active || target == null)
+        {
+            arrow.SetVisible(false);
+            return;
+        }
+
+        arrow.SetTarget(target);
         arrow.SetVisible(true);
     }
 
@@ -806,31 +701,6 @@ public class SyrupProcedureManager : MonoBehaviour
         ConfigureTopText(progressText, ProgressPosition, ProgressSize, 24f, FontStyles.Normal);
         ConfigureRect(doneIcon != null ? doneIcon.transform as RectTransform : null, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), DoneIconPosition, DoneIconSize);
 
-        if (checklistPanel != null)
-        {
-            checklistPanel.localScale = Vector3.one;
-            ConfigureRect(checklistPanel, Vector2.zero, Vector2.zero, Vector2.zero, ChecklistPanelPosition, ChecklistPanelSize);
-
-            Image panelImage = checklistPanel.GetComponent<Image>();
-            if (panelImage != null)
-            {
-                panelImage.color = new Color(0.02f, 0.025f, 0.03f, 0.62f);
-                panelImage.raycastTarget = false;
-            }
-        }
-
-        ConfigureChecklistText(checklistStep1Text);
-        ConfigureChecklistText(checklistStep2Text);
-
-        if (strikeStep1Line != null)
-        {
-            strikeStep1Line.localScale = Vector3.one;
-            ConfigureRect(strikeStep1Line, Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f), GetStrikePosition(ChecklistStep1ActivePosition), new Vector2(0f, 3f));
-
-            Image strikeImage = strikeStep1Line.GetComponent<Image>();
-            if (strikeImage != null)
-                strikeImage.raycastTarget = false;
-        }
     }
 
     private void EnsureTopBackdrop()
@@ -889,26 +759,6 @@ public class SyrupProcedureManager : MonoBehaviour
         ConfigureRect(text.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), position, size);
     }
 
-    private void ConfigureChecklistText(TMP_Text text)
-    {
-        if (text == null)
-            return;
-
-        text.raycastTarget = false;
-        text.fontSize = 24f;
-        text.enableAutoSizing = true;
-        text.fontSizeMin = 18f;
-        text.fontSizeMax = 26f;
-        text.fontStyle = FontStyles.Normal;
-        text.alignment = TextAlignmentOptions.Left;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
-        text.color = Color.white;
-        text.rectTransform.localScale = Vector3.one;
-        ApplyReadableTextEffects(text, false);
-
-        ConfigureRect(text.rectTransform, Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f), ChecklistStep1ActivePosition, ChecklistStepSize);
-    }
-
     private void ApplyReadableTextEffects(TMP_Text text, bool strong)
     {
         if (text == null)
@@ -937,11 +787,6 @@ public class SyrupProcedureManager : MonoBehaviour
         rect.anchoredPosition = position;
         rect.sizeDelta = size;
         rect.localScale = Vector3.one;
-    }
-
-    private Vector2 GetStrikePosition(Vector2 stepPosition)
-    {
-        return new Vector2(stepPosition.x, stepPosition.y - 1f);
     }
 
     private void SetProcedureOutlineActive(Outlinable outlinable, bool active)
@@ -1030,32 +875,6 @@ public class SyrupProcedureManager : MonoBehaviour
     private void ClearProcedureOutlines()
     {
         ForceDisableProcedureOutlines();
-    }
-    private void SetAnchoredPosition(RectTransform rect, Vector2 position)
-    {
-        if (rect != null)
-            rect.anchoredPosition = position;
-    }
-
-    private void SetSize(RectTransform rect, float width, float height)
-    {
-        if (rect == null)
-            return;
-
-        Vector2 size = rect.sizeDelta;
-        size.x = width;
-        size.y = height;
-        rect.sizeDelta = size;
-    }
-
-    private void SetTextAlpha(TMP_Text text, float alpha)
-    {
-        if (text == null)
-            return;
-
-        Color color = text.color;
-        color.a = Mathf.Clamp01(alpha);
-        text.color = color;
     }
 
     private T FindSceneComponentByName<T>(string objectName) where T : Component

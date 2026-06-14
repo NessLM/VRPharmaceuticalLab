@@ -329,7 +329,7 @@ public class PerkamenSnapTarget : MonoBehaviour
         Transform target = snapTransform != null ? snapTransform : transform;
 
         if (useRendererTopSurface && TryGetRendererBounds(target, out Bounds bounds))
-            return new Vector3(bounds.center.x + snapOffset.x, bounds.min.y + snapOffset.y, bounds.center.z + snapOffset.z);
+            return new Vector3(bounds.center.x + snapOffset.x, bounds.max.y + snapOffset.y, bounds.center.z + snapOffset.z);
 
         return target.position + snapOffset;
     }

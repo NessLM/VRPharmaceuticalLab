@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -31,7 +31,7 @@ public class WeightingZone : MonoBehaviour
     [Tooltip("Minimum gram change required to fire onMassChanged (reduces redundant events).")]
     [SerializeField] private float massChangeThreshold = 0.001f;
     [SerializeField] private bool requireParchmentBeforeCounting;
-    [SerializeField] private SyrupPerkamenSnapTarget requiredParchmentSnapTarget;
+    [SerializeField] private PerkamenSnapTarget parchmentSnapTarget;
     [SerializeField] private AcceptedPanContent acceptedContent = AcceptedPanContent.Any;
 
     [Header("Events")]
@@ -61,7 +61,7 @@ public class WeightingZone : MonoBehaviour
                 if (w != null) total += w.GramValue;
 
             foreach (HornSpoon s in trackedSpoons)
-                if (s != null) total += s.CurrentAmountMg / 1000f; // mg → g
+                if (s != null) total += s.CurrentAmountMg / 1000f; // mg -> g
 
             foreach (PowderPayload p in trackedPayloads)
                 if (p != null) total += p.GramValue;
@@ -81,11 +81,25 @@ public class WeightingZone : MonoBehaviour
     public int TrackedWeightCount => trackedWeights.Count + trackedMassSources.Count;
 
     public string ZoneName => zoneName;
+    public bool HasParchment => parchmentSnapTarget != null && parchmentSnapTarget.HasSnapped;
+    public GameObject ParchmentObject => parchmentSnapTarget != null ? parchmentSnapTarget.SnappedParchment : null;
 
     private void Awake()
     {
         // Ensure the collider is always a trigger
         GetComponent<BoxCollider>().isTrigger = true;
+        ResolveParchmentSnapTarget();
+    }
+
+    private void OnEnable()
+    {
+        ResolveParchmentSnapTarget();
+        SubscribeToParchmentTarget();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromParchmentTarget();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -158,13 +172,15 @@ public class WeightingZone : MonoBehaviour
 
     private bool HasRequiredParchment()
     {
-        return !requireParchmentBeforeCounting ||
-               (requiredParchmentSnapTarget != null && requiredParchmentSnapTarget.HasSnapped);
+        return !requireParchmentBeforeCounting || HasParchment;
     }
 
     private bool CanTrackCollider(Collider other)
     {
         if (other == null || !HasRequiredParchment())
+            return false;
+
+        if (IsParchmentCollider(other))
             return false;
 
         switch (acceptedContent)
@@ -178,6 +194,49 @@ public class WeightingZone : MonoBehaviour
             default:
                 return true;
         }
+    }
+
+    private bool IsParchmentCollider(Collider other)
+    {
+        if (other.GetComponentInParent<PerkamenNoGravity>() != null)
+            return true;
+
+        Transform root = other.transform;
+        while (root.parent != null)
+            root = root.parent;
+
+        return root.name.IndexOf("perkamen", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private void ResolveParchmentSnapTarget()
+    {
+        if (parchmentSnapTarget == null)
+            parchmentSnapTarget = GetComponent<PerkamenSnapTarget>();
+    }
+
+    private void SubscribeToParchmentTarget()
+    {
+        if (parchmentSnapTarget == null)
+            return;
+
+        parchmentSnapTarget.onParchmentObjectSnapped.RemoveListener(HandleParchmentStateChanged);
+        parchmentSnapTarget.onParchmentRemoved.RemoveListener(HandleParchmentStateChanged);
+        parchmentSnapTarget.onParchmentObjectSnapped.AddListener(HandleParchmentStateChanged);
+        parchmentSnapTarget.onParchmentRemoved.AddListener(HandleParchmentStateChanged);
+    }
+
+    private void UnsubscribeFromParchmentTarget()
+    {
+        if (parchmentSnapTarget == null)
+            return;
+
+        parchmentSnapTarget.onParchmentObjectSnapped.RemoveListener(HandleParchmentStateChanged);
+        parchmentSnapTarget.onParchmentRemoved.RemoveListener(HandleParchmentStateChanged);
+    }
+
+    private void HandleParchmentStateChanged(GameObject parchment)
+    {
+        ForceRefresh();
     }
 
     private void OnDrawGizmosSelected()

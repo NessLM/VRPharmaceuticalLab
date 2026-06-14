@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -64,15 +64,12 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private WorldStepArrow perkamenStepArrow;
     [SerializeField] private WorldStepArrow timbanganStepArrow;
 
-    [Header("Step 2 Perkamen Snap")]
-    [SerializeField] private SyrupPerkamenSnapTarget leftPerkamenSnapTarget;
-    [SerializeField] private SyrupPerkamenSnapTarget rightPerkamenSnapTarget;
-
-    [Header("Step 3 Weigh Powder")]
+    [Header("Balance Zones")]
     [SerializeField] private WeightingZone leftWeighingZone;
     [SerializeField] private WeightingZone rightWeighingZone;
+
+    [Header("Step 3 Weigh Powder")]
     [SerializeField] private PowderDepositZone powderDepositZone;
-    [SerializeField] private VirtualWeightSelector virtualWeightSelector;
     [SerializeField] private Transform leftPanTarget;
     [SerializeField] private Transform rightPanTarget;
 
@@ -131,6 +128,12 @@ public class SyrupProcedureManager : MonoBehaviour
     private bool isAnimating;
     private readonly Dictionary<Outlinable, bool> outlinePreviousStates = new Dictionary<Outlinable, bool>();
 
+    public bool IsParchmentOnLeft => leftWeighingZone != null && leftWeighingZone.HasParchment;
+    public bool IsParchmentOnRight => rightWeighingZone != null && rightWeighingZone.HasParchment;
+    public float LeftMass => GetStep3LeftMass();
+    public float RightMass => GetStep3RightMass();
+    public float DifferenceMass => RightMass - LeftMass;
+
     private void OnEnable()
     {
         ResolveSceneReferences();
@@ -183,9 +186,9 @@ public class SyrupProcedureManager : MonoBehaviour
     private void SetStep2ArrowsActive(bool active)
     {
         bool finalActive = active && useStepArrowPointer && prepareStep2Guidance;
-        Transform timbanganArrowTarget = leftPerkamenSnapTarget != null
-            ? leftPerkamenSnapTarget.transform
-            : (rightPerkamenSnapTarget != null ? rightPerkamenSnapTarget.transform : timbanganTarget);
+        Transform timbanganArrowTarget = leftWeighingZone != null
+            ? leftWeighingZone.transform
+            : (rightWeighingZone != null ? rightWeighingZone.transform : timbanganTarget);
 
         SetGuideArrow(ref perkamenStepArrow, "ARW_Step2_Perkamen", perkamenStackTarget, Step02PerkamenArrowLabel, Step02PerkamenArrowOffset, finalActive);
         SetGuideArrow(ref timbanganStepArrow, "ARW_Step2_Timbangan", timbanganArrowTarget, Step02TimbanganArrowLabel, Step02TimbanganArrowOffset, finalActive);
@@ -197,11 +200,11 @@ public class SyrupProcedureManager : MonoBehaviour
 
         Transform rightTarget = rightPanTarget != null
             ? rightPanTarget
-            : (rightPerkamenSnapTarget != null ? rightPerkamenSnapTarget.transform : timbanganTarget);
+            : (rightWeighingZone != null ? rightWeighingZone.transform : timbanganTarget);
 
         Transform leftTarget = leftPanTarget != null
             ? leftPanTarget
-            : (leftPerkamenSnapTarget != null ? leftPerkamenSnapTarget.transform : timbanganTarget);
+            : (leftWeighingZone != null ? leftWeighingZone.transform : timbanganTarget);
 
         SetGuideArrow(ref timbanganStepArrow, "ARW_Step2_Timbangan", rightTarget, Step03RightArrowLabel, Step03RightArrowOffset, finalActive && showRight);
         SetGuideArrow(ref perkamenStepArrow, "ARW_Step2_Perkamen", leftTarget, Step03LeftArrowLabel, Step03LeftArrowOffset, finalActive && showLeft);
@@ -498,26 +501,32 @@ public class SyrupProcedureManager : MonoBehaviour
         if (stepDone)
             return;
 
-        ResolvePerkamenSnapTargets();
+        ResolveStep3References();
 
-        if (leftPerkamenSnapTarget == null || rightPerkamenSnapTarget == null)
+        if (leftWeighingZone == null || rightWeighingZone == null)
         {
             if (progressText != null)
-                progressText.text = "Snap kiri/kanan perkamen belum tersambung di scene.";
+                progressText.text = "Zona timbang kiri/kanan belum tersambung di scene.";
             return;
         }
 
-        bool leftSnapped = leftPerkamenSnapTarget.HasSnapped;
-        bool rightSnapped = rightPerkamenSnapTarget.HasSnapped;
+        bool leftSnapped = leftWeighingZone.HasParchment;
+        bool rightSnapped = rightWeighingZone.HasParchment;
+        bool usingTwoDifferentParchments = leftWeighingZone.ParchmentObject != null &&
+                                           rightWeighingZone.ParchmentObject != null &&
+                                           leftWeighingZone.ParchmentObject != rightWeighingZone.ParchmentObject;
 
         if (progressText != null)
         {
             string leftStatus = leftSnapped ? "OK" : "belum";
             string rightStatus = rightSnapped ? "OK" : "belum";
-            progressText.text = $"Perkamen kiri: {leftStatus} | kanan: {rightStatus}. Lepaskan kertas di kedua piring neraca sampai tersnap.";
+            string extra = leftSnapped && rightSnapped && !usingTwoDifferentParchments
+                ? " Gunakan dua lembar perkamen yang berbeda."
+                : string.Empty;
+            progressText.text = $"Perkamen kiri: {leftStatus} | kanan: {rightStatus}. Lepaskan kertas di kedua piring neraca sampai tersnap.{extra}";
         }
 
-        if (leftSnapped && rightSnapped)
+        if (leftSnapped && rightSnapped && usingTwoDifferentParchments)
             CompleteStep02();
     }
 
@@ -575,9 +584,6 @@ public class SyrupProcedureManager : MonoBehaviour
 
     private float GetStep3RightMass()
     {
-        if (virtualWeightSelector != null && virtualWeightSelector.IsLocked)
-            return virtualWeightSelector.LockedRightMassGrams;
-
         return rightWeighingZone != null ? rightWeighingZone.TotalGrams : 0f;
     }
 
@@ -669,37 +675,25 @@ public class SyrupProcedureManager : MonoBehaviour
         if (timbanganStepArrow == null)
             timbanganStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step2_Timbangan");
 
-        ResolvePerkamenSnapTargets();
         ResolveStep3References();
-    }
-
-    private void ResolvePerkamenSnapTargets()
-    {
-        if (leftPerkamenSnapTarget == null)
-            leftPerkamenSnapTarget = FindPerkamenSnapTarget("SYS_Snap_Perkamen_Left");
-
-        if (rightPerkamenSnapTarget == null)
-            rightPerkamenSnapTarget = FindPerkamenSnapTarget("SYS_Snap_Perkamen_Right");
-    }
-
-    private SyrupPerkamenSnapTarget FindPerkamenSnapTarget(string objectName)
-    {
-        return FindSceneComponentByName<SyrupPerkamenSnapTarget>(objectName);
     }
 
     private void ResolveStep3References()
     {
         if (leftWeighingZone == null)
+            leftWeighingZone = FindSceneComponentByName<WeightingZone>("Collider_Piring_Kiri");
+
+        if (leftWeighingZone == null)
             leftWeighingZone = FindSceneComponentByName<WeightingZone>("LeftWeighingZone");
+
+        if (rightWeighingZone == null)
+            rightWeighingZone = FindSceneComponentByName<WeightingZone>("Collider_Piring_Kanan");
 
         if (rightWeighingZone == null)
             rightWeighingZone = FindSceneComponentByName<WeightingZone>("RightWeighingZone");
 
         if (powderDepositZone == null && leftWeighingZone != null)
             powderDepositZone = leftWeighingZone.GetComponent<PowderDepositZone>();
-
-        if (virtualWeightSelector == null)
-            virtualWeightSelector = FindSceneComponentByName<VirtualWeightSelector>("WeightSelectorPanel");
 
         if (leftPanTarget == null)
         {

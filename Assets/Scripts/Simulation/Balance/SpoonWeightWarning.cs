@@ -1,13 +1,13 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 
 /// <summary>
 /// Displays a warning inside SpoonInfoCanvas when the player opens the spoon panel
-/// but has not yet accepted (Terima) a weight selection on the balance scale.
+/// but has not yet placed a physical weight on the right pan.
 ///
 /// Attach to: sendokTanduk (or any persistent GameObject).
 /// Wire: warningText (the WarningText TMP child inside SpoonInfoPanel),
-///       checklist (VirtualWeightChecklist on WeightSelectorPanel).
+///       rightZone (Collider_Piring_Kanan).
 /// </summary>
 public class SpoonWeightWarning : MonoBehaviour
 {
@@ -15,14 +15,13 @@ public class SpoonWeightWarning : MonoBehaviour
     [Tooltip("TMP_Text inside SpoonInfoPanel that shows the warning message.")]
     [SerializeField] private TMP_Text warningText;
 
-    [Tooltip("VirtualWeightChecklist on WeightSelectorPanel. " +
-             "Used to query whether weights have been accepted.")]
-    [SerializeField] private VirtualWeightChecklist checklist;
+    [Tooltip("Right weighing zone used to query whether a physical weight is already on the pan.")]
+    [SerializeField] private WeightingZone rightZone;
 
     private const string WarningMessage =
-        "<color=#FFB347>⚠ Terima anak timbangan dulu\nsebelum menakar bubuk ke cawan kiri!</color>";
+        "<color=#FFB347>âš  Terima anak timbangan dulu\nsebelum menakar bubuk ke cawan kiri!</color>";
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    // â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void OnEnable()
     {
@@ -34,7 +33,7 @@ public class SpoonWeightWarning : MonoBehaviour
         if (warningText != null) warningText.gameObject.SetActive(false);
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /// <summary>
     /// Shows the warning if weights have not been accepted yet, hides it otherwise.
@@ -44,7 +43,7 @@ public class SpoonWeightWarning : MonoBehaviour
     {
         if (warningText == null) return;
 
-        bool weightsAccepted = checklist != null && checklist.IsLocked;
+        bool weightsAccepted = rightZone != null && rightZone.TotalGrams > 0.001f;
         warningText.gameObject.SetActive(!weightsAccepted);
 
         if (!weightsAccepted)

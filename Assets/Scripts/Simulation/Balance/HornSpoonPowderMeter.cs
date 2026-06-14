@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 
 /// <summary>
@@ -7,16 +7,16 @@ using TMPro;
 /// and a level indicator. Also toggles 5 powder level visual GameObjects.
 ///
 /// Attach to: sendokTanduk or a child Canvas of sendokTanduk.
-/// Wire: hornSpoon, weightSelector, depositZone, and the TMP_Text fields.
+/// Wire: hornSpoon, rightZone, depositZone, and the TMP_Text fields.
 /// </summary>
 public class HornSpoonPowderMeter : MonoBehaviour
 {
-    // ── Labels for each fill level ──
+    // â”€â”€ Labels for each fill level â”€â”€
     private static readonly string[] LevelLabels = { "Kosong", "Sedikit", "Sedang", "Banyak", "Penuh" };
 
     [Header("References")]
     [SerializeField] private HornSpoon hornSpoon;
-    [SerializeField] private VirtualWeightSelector weightSelector;
+    [SerializeField] private WeightingZone rightZone;
     [SerializeField] private PowderDepositZone depositZone;
 
     [Header("UI Texts")]
@@ -34,7 +34,7 @@ public class HornSpoonPowderMeter : MonoBehaviour
         if (hornSpoon == null) return;
 
         float spoonGrams = hornSpoon.CurrentAmountMg / 1000f;
-        float lockedTarget = weightSelector != null ? weightSelector.LockedRightMassGrams : 0f;
+        float lockedTarget = rightZone != null ? rightZone.TotalGrams : 0f;
         float deposited = depositZone != null ? depositZone.DepositedGrams : 0f;
         float remaining = Mathf.Max(0f, lockedTarget - deposited);
 
@@ -54,9 +54,9 @@ public class HornSpoonPowderMeter : MonoBehaviour
     {
         if (remainingTargetText == null) return;
 
-        if (weightSelector == null || !weightSelector.IsLocked)
+        if (rightZone == null || rightZone.TotalGrams <= 0.001f)
         {
-            remainingTargetText.text = "Sisa: (pilih target dulu)";
+            remainingTargetText.text = "Sisa: (taruh anak timbangan dulu)";
             remainingTargetText.color = new Color(0.8f, 0.8f, 0.8f);
             return;
         }

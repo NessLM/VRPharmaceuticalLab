@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
@@ -8,27 +8,23 @@ using UnityEngine.Events;
 ///
 /// Convention:
 ///   DifferenceGrams = RightMassGrams - LeftMassGrams
-///   Positive difference → right is heavier → beam tilts right-down, right pan descends.
+///   Positive difference means right is heavier, so the beam tilts right-down and right pan descends.
 ///   Adjust maxBeamAngleDegrees to a negative value if the visual is mirrored in-world.
 ///
-/// Attach to: MG_BalanceScale root GameObject.
+/// Attach to: timbanganNeraca root GameObject.
 /// Wire beamVisual, leftPanVisual, rightPanVisual, leftZone, rightZone in the Inspector.
 /// </summary>
 public class MG_BalanceController : MonoBehaviour
 {
-    [Header("Zones (Legacy — used as fallback if Virtual system is not wired)")]
+    [Header("Physical Zones")]
     [Tooltip("Trigger zone positioned above the LEFT pan.")]
     [SerializeField] private WeightingZone leftZone;
     [Tooltip("Trigger zone positioned above the RIGHT pan.")]
     [SerializeField] private WeightingZone rightZone;
 
-    [Header("Virtual Balance System (takes priority over Zones when wired)")]
-    [Tooltip("VirtualWeightSelector that provides the locked right-pan target mass.")]
-    [SerializeField] private VirtualWeightSelector virtualWeightSelector;
-    [Tooltip("PowderDepositZone on LeftWeighingZone that tracks deposited powder grams.")]
+    [Header("Powder Tracking")]
+    [Tooltip("PowderDepositZone on Collider_Piring_Kiri that tracks deposited powder grams.")]
     [SerializeField] private PowderDepositZone powderDepositZone;
-    [Tooltip("Before virtual weights are accepted, still read physical weights placed in the right pan zone.")]
-    [SerializeField] private bool useRightZoneWhenVirtualSelectorUnlocked = true;
 
     [Header("Visual References")]
     [Tooltip("The beam mesh Transform that tilts around its local Z axis.")]
@@ -85,23 +81,12 @@ public class MG_BalanceController : MonoBehaviour
 
     /// <summary>
     /// Current total grams on the right pan.
-    /// Uses VirtualWeightSelector locked target if wired, otherwise falls back to rightZone.
+    /// Uses physical weights placed inside the right pan zone.
     /// </summary>
     public float RightMassGrams
     {
         get
         {
-            if (virtualWeightSelector != null)
-            {
-                if (virtualWeightSelector.IsLocked)
-                    return virtualWeightSelector.LockedRightMassGrams;
-
-                if (useRightZoneWhenVirtualSelectorUnlocked && rightZone != null)
-                    return rightZone.TotalGrams;
-
-                return 0f;
-            }
-
             return rightZone != null ? rightZone.TotalGrams : 0f;
         }
     }
@@ -111,6 +96,9 @@ public class MG_BalanceController : MonoBehaviour
 
     /// <summary>True when |DifferenceGrams| is within balanceToleranceGrams.</summary>
     public bool IsBalanced => Mathf.Abs(DifferenceGrams) <= balanceToleranceGrams;
+
+    public bool IsParchmentOnLeft => leftZone != null && leftZone.HasParchment;
+    public bool IsParchmentOnRight => rightZone != null && rightZone.HasParchment;
 
     // --- Lifecycle ---
 
@@ -165,14 +153,14 @@ public class MG_BalanceController : MonoBehaviour
         if (leftPanVisual != null)
         {
             Vector3 pos = leftPanBaseLocalPos;
-            pos.y += animatedPanOffset; // right heavier → left pan rises
+            pos.y += animatedPanOffset; // right heavier -> left pan rises
             leftPanVisual.localPosition = pos;
         }
 
         if (rightPanVisual != null)
         {
             Vector3 pos = rightPanBaseLocalPos;
-            pos.y -= animatedPanOffset; // right heavier → right pan falls
+            pos.y -= animatedPanOffset; // right heavier -> right pan falls
             rightPanVisual.localPosition = pos;
         }
     }

@@ -4,47 +4,29 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class PerkamenSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
-    [SerializeField] private bool disableGrabAfterSnap = true;
 
     private bool hasSnapped = false;
-    public bool HasSnapped => hasSnapped;
 
     private void OnTriggerEnter(Collider other)
-    {
-        TrySnap(other);
-    }
-
-    private void OnTriggerStay(Collider other)
-    {
-        TrySnap(other);
-    }
-
-    private void TrySnap(Collider other)
     {
         if (hasSnapped)
             return;
 
         XRGrabInteractable grab = other.GetComponentInParent<XRGrabInteractable>();
-        GameObject perkamenObject = grab != null ? grab.gameObject : other.gameObject;
 
-        bool isPerkamen = HasPerkamenTag(perkamenObject) ||
-                          perkamenObject.name.IndexOf("perkamen", System.StringComparison.OrdinalIgnoreCase) >= 0;
-
-        if (!isPerkamen)
+        if (grab == null)
             return;
 
-        if (grab != null && grab.isSelected)
+        if (!grab.CompareTag("Perkamen"))
             return;
 
         hasSnapped = true;
 
-        Transform perkamenTransform = grab != null ? grab.transform : other.transform;
-        Transform target = snapPoint != null ? snapPoint : transform;
+        Transform perkamen = grab.transform;
 
-        perkamenTransform.position = target.position;
-        perkamenTransform.rotation = target.rotation;
+        grab.enabled = false;
 
-        Rigidbody rb = perkamenTransform.GetComponent<Rigidbody>();
+        Rigidbody rb = perkamen.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -53,23 +35,10 @@ public class PerkamenSnapTrigger : MonoBehaviour
             rb.isKinematic = true;
         }
 
-        if (disableGrabAfterSnap && grab != null)
-        {
-            grab.enabled = false;
-        }
+        perkamen.SetParent(snapPoint, false);
+        perkamen.localPosition = Vector3.zero;
+        perkamen.localRotation = Quaternion.identity;
 
-        Debug.Log("Kertas perkamen berhasil diletakkan di piring neraca.");
-    }
-
-    private bool HasPerkamenTag(GameObject candidate)
-    {
-        try
-        {
-            return candidate.CompareTag("Perkamen");
-        }
-        catch (UnityException)
-        {
-            return false;
-        }
+        Debug.Log("Kertas perkamen berhasil snap ke piring kiri.");
     }
 }

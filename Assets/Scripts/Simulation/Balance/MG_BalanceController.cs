@@ -214,12 +214,30 @@ public class MG_BalanceController : MonoBehaviour
         if (beamVisual == null)
             return;
 
-        Quaternion baseRotation = forceBeamNeutralEuler
-            ? Quaternion.Euler(beamNeutralEuler)
-            : beamBaseLocalRotation;
+        Vector3 euler = beamNeutralEuler;
 
-        Quaternion delta = Quaternion.AngleAxis(angle, GetBeamAxis());
-        beamVisual.localRotation = baseRotation * delta;
+        switch (beamRotationAxis)
+        {
+            case BalanceBeamRotationAxis.LocalX:
+                euler.x = beamNeutralEuler.x + angle;
+                euler.y = beamNeutralEuler.y;
+                euler.z = beamNeutralEuler.z;
+                break;
+
+            case BalanceBeamRotationAxis.LocalY:
+                euler.x = beamNeutralEuler.x;
+                euler.y = beamNeutralEuler.y + angle;
+                euler.z = beamNeutralEuler.z;
+                break;
+
+            case BalanceBeamRotationAxis.LocalZ:
+                euler.x = beamNeutralEuler.x;
+                euler.y = beamNeutralEuler.y;
+                euler.z = beamNeutralEuler.z + angle;
+                break;
+        }
+
+        beamVisual.localEulerAngles = euler;
     }
 
     private Vector3 GetBeamAxis()

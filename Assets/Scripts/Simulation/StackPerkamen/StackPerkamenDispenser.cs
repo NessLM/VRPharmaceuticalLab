@@ -124,8 +124,13 @@ public class StackPerkamenDispenser : MonoBehaviour
         if (perkamen == null)
             return;
 
+        perkamen.gameObject.SetActive(true);
+        perkamen.enabled = true;
         perkamen.transform.SetParent(null, true);
         TrySetTag(perkamen.gameObject, "Perkamen");
+
+        if (interactionManager != null && perkamen.interactionManager == null)
+            perkamen.interactionManager = interactionManager;
 
         Rigidbody rb = perkamen.GetComponent<Rigidbody>();
 
@@ -142,10 +147,29 @@ public class StackPerkamenDispenser : MonoBehaviour
         rb.angularDamping = 8f;
 
         perkamen.throwOnDetach = false;
+        RefreshInteractableColliders(perkamen);
 
         if (perkamen.GetComponent<PerkamenNoGravity>() == null)
         {
             perkamen.gameObject.AddComponent<PerkamenNoGravity>();
+        }
+    }
+
+    private void RefreshInteractableColliders(XRGrabInteractable perkamen)
+    {
+        if (perkamen == null)
+            return;
+
+        perkamen.colliders.Clear();
+
+        Collider[] colliders = perkamen.GetComponentsInChildren<Collider>(true);
+        foreach (Collider collider in colliders)
+        {
+            if (collider == null)
+                continue;
+
+            collider.enabled = true;
+            perkamen.colliders.Add(collider);
         }
     }
 

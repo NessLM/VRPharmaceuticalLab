@@ -65,6 +65,7 @@ public class WorldStepArrow : MonoBehaviour
     public void SetTarget(Transform newTarget)
     {
         target = newTarget;
+        SnapToTarget();
     }
 
     public void SetLabel(string newLabelText)
@@ -87,7 +88,7 @@ public class WorldStepArrow : MonoBehaviour
         SetLabel(newLabelText);
 
         if (target != null)
-            transform.position = target.position + worldOffset;
+            SnapToTarget();
     }
 
     public void SetVisible(bool visible)
@@ -111,7 +112,14 @@ public class WorldStepArrow : MonoBehaviour
         if (textMesh != null)
             textMesh.gameObject.SetActive(visible);
 
+        SnapToTarget();
         ApplyTextSettings();
+    }
+
+    private void SnapToTarget()
+    {
+        if (target != null)
+            transform.position = target.position + worldOffset;
     }
 
     private void EnsureTextMesh()

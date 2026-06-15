@@ -1,21 +1,19 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 using TMPro;
 
 /// <summary>
-/// Attached to LeftWeighingZone. Detects a held HornSpoon above the left pan
+/// Attached to Collider_Piring_Kiri. Detects a held HornSpoon above the left pan
 /// and gradually transfers powder from the spoon to the pan.
-/// The VirtualWeightSelector must have accepted a target before deposit is allowed.
+/// A physical target weight must be present on the right pan before deposit is allowed.
 ///
-/// Attach to: LeftWeighingZone (which already has BoxCollider isTrigger).
-/// Wire: weightSelector, warningText (optional), panPowderLevels (optional).
+/// Attach to: Collider_Piring_Kiri (which already has BoxCollider isTrigger).
+/// Wire: rightZone, warningText (optional), panPowderLevels (optional).
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class PowderDepositZone : MonoBehaviour
 {
     [Header("References")]
-    [Tooltip("VirtualWeightSelector on timbanganNeraca or WeightSelectorCanvas.")]
-    [SerializeField] private VirtualWeightSelector weightSelector;
     [SerializeField] private WeightingZone rightZone;
 
     [Header("Pour Settings")]
@@ -58,6 +56,9 @@ public class PowderDepositZone : MonoBehaviour
     {
         var col = GetComponent<Collider>();
         if (col != null) col.isTrigger = true;
+
+        if (rightZone == null)
+            rightZone = FindSceneComponentByName<WeightingZone>("Collider_Piring_Kanan");
 
         if (rightZone == null)
             rightZone = FindSceneComponentByName<WeightingZone>("RightWeighingZone");
@@ -144,9 +145,6 @@ public class PowderDepositZone : MonoBehaviour
 
     private bool HasAcceptedTarget()
     {
-        if (weightSelector != null && weightSelector.IsLocked)
-            return true;
-
         return allowPhysicalRightPanTarget &&
                rightZone != null &&
                rightZone.TotalGrams >= minimumRightPanTargetGrams;

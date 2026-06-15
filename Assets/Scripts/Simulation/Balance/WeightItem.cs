@@ -3,35 +3,52 @@ using UnityEngine.Events;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Text.RegularExpressions;
 
 /// <summary>
-/// Represents a grabbable standard weight for the MG analytical balance.
-/// Exposes a logical gram value used by WeightingZone for balance calculation.
-/// Rigidbody.mass is kept constant for stable VR handling and does NOT equal gramValue.
-/// Attach to: WeightItem prefab root alongside XRGrabInteractable and a Collider.
+/// Weight item for analytical balance.
+/// - Gram Value is set manually in Inspector.
+/// - Rigidbody.mass is only VR physics feel.
+/// - Optional tray lock keeps small weights quiet before first grab.
+/// - GrabCollider is only a trigger helper for easy grabbing, not physical collision.
 /// </summary>
+[DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody), typeof(XRGrabInteractable))]
 public class WeightItem : MonoBehaviour
 {
     [Header("Weight Data")]
-    [Tooltip("Logical mass in grams used for balance calculation.")]
+    [Tooltip("Logical mass in grams. Example: 0.005 = 5 mg, 0.1 = 100 mg, 1 = 1 gram.")]
     [SerializeField] private float gramValue = 1f;
+
     [SerializeField] private bool isParchment = false;
     [SerializeField] private bool countParchmentMass = false;
 
     [Header("Physics")]
-    [Tooltip("Rigidbody mass kept constant for stable VR grab feel regardless of gramValue.")]
+    [Tooltip("Only for VR physics feel. This is NOT the balance gram value.")]
     [SerializeField] private float physicsMassKg = 0.05f;
+
     [SerializeField] private bool useGravityWhenFree = true;
     [SerializeField] private bool keepKinematicWhenReleased = false;
 
-    [Header("Grab Setup")]
-    [SerializeField] private bool autoConfigureGrabColliders = true;
-    [SerializeField] private bool createGrabColliderWhenNeeded = true;
-    [Tooltip("Smallest world-space side length for the invisible helper grab collider.")]
+    [Header("Tray Storage")]
+    [Tooltip("Keeps the weight frozen in the tray until grabbed once.")]
+    [SerializeField] private bool startsLockedInTray = true;
+
+    [Tooltip("After the first release, object returns to normal gravity physics.")]
+    [SerializeField] private bool useGravityAfterFirstRelease = true;
+
+    [Header("Grab Helper Collider")]
+    [Tooltip("Creates or configures child object named GrabCollider.")]
+    [SerializeField] private bool useGrabHelperCollider = true;
+
+    [Tooltip("The helper collider must be trigger so it does not push the scale pan.")]
+    [SerializeField] private bool forceGrabHelperAsTrigger = true;
+
+    [Tooltip("Disable big GrabCollider while selected. Main collider remains active.")]
+    [SerializeField] private bool disableGrabHelperWhileHeld = true;
+
+    [Tooltip("Smallest world-space side length for easy XR grabbing.")]
     [SerializeField] private float minimumGrabColliderWorldSize = 0.04f;
+
     [SerializeField] private Vector3 fallbackGrabColliderSize = new Vector3(0.05f, 0.05f, 0.05f);
 
     [Header("Events")]
@@ -40,9 +57,11 @@ public class WeightItem : MonoBehaviour
 
     private Rigidbody rb;
     private XRGrabInteractable grabInteractable;
+    private BoxCollider grabHelperCollider;
+    private bool hasBeenPickedUp;
 
-    /// <summary>Logical mass in grams for balance calculation.</summary>
     public float GramValue => gramValue;
+
     public float Grams
     {
         get => gramValue;
@@ -51,79 +70,93 @@ public class WeightItem : MonoBehaviour
 
     public bool IsParchment => isParchment;
     public bool ShouldContributeMass => !isParchment || countParchmentMass;
-
-    /// <summary>True while this weight is held by an XR controller.</summary>
     public bool IsHeld => grabInteractable != null && grabInteractable.isSelected;
+    public bool HasBeenPickedUp => hasBeenPickedUp;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         grabInteractable = GetComponent<XRGrabInteractable>();
 
-        EnsureGrabColliderSetup();
+        ConfigureRigidbody();
+        ConfigureGrabHelperCollider();
 
-        if (rb != null)
-        {
-            rb.mass = physicsMassKg;
+        if (startsLockedInTray && !hasBeenPickedUp)
+            LockInTray();
+        else
             ApplyReleasedPhysics();
-        }
     }
 
-    private void Start()
+    private void OnEnable()
+    {
+        if (grabInteractable == null)
+            grabInteractable = GetComponent<XRGrabInteractable>();
+
+        if (grabInteractable != null)
+        {
+            grabInteractable.selectEntered.AddListener(OnGrabbed);
+            grabInteractable.selectExited.AddListener(OnReleased);
+        }
+
+        if (useGrabHelperCollider)
+            ConfigureGrabHelperCollider();
+
+        if (startsLockedInTray && !hasBeenPickedUp)
+            LockInTray();
+    }
+
+    private void OnDisable()
     {
         if (grabInteractable == null)
             return;
 
-        grabInteractable.selectEntered.AddListener(OnGrabbed);
-        grabInteractable.selectExited.AddListener(OnReleased);
-    }
-
-    private void OnDestroy()
-    {
-        if (grabInteractable == null) return;
         grabInteractable.selectEntered.RemoveListener(OnGrabbed);
         grabInteractable.selectExited.RemoveListener(OnReleased);
     }
 
-    private void OnGrabbed(SelectEnterEventArgs args)
+    private void ConfigureRigidbody()
     {
         if (rb == null)
             return;
 
-        rb.isKinematic = false;
-        rb.useGravity = false; // XRI tracks movement; gravity causes unwanted drops
+        rb.mass = physicsMassKg;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+    }
+
+    private void OnGrabbed(SelectEnterEventArgs args)
+    {
+        hasBeenPickedUp = true;
+
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            rb.useGravity = false;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        SetGrabHelperEnabled(!disableGrabHelperWhileHeld);
+
         onPickedUp?.Invoke();
     }
 
     private void OnReleased(SelectExitEventArgs args)
     {
-        if (rb == null)
-            return;
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
 
-        // Zero velocity to prevent unexpected sliding when placed on pan
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-        ApplyReleasedPhysics();
-        onPlaced?.Invoke();
-    }
+            keepKinematicWhenReleased = false;
+            useGravityWhenFree = useGravityAfterFirstRelease;
 
-    /// <summary>Forces the weight to settle at its current position (kinematic, zero velocity).</summary>
-    public void Settle()
-    {
-        if (rb == null)
-            return;
-
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-        rb.isKinematic = true;
-    }
-
-    public void ConfigureReleasedPhysics(bool useGravity, bool keepKinematic)
-    {
-        useGravityWhenFree = useGravity;
-        keepKinematicWhenReleased = keepKinematic;
-        if (rb != null && !IsHeld)
             ApplyReleasedPhysics();
+        }
+
+        SetGrabHelperEnabled(true);
+
+        onPlaced?.Invoke();
     }
 
     private void ApplyReleasedPhysics()
@@ -135,119 +168,99 @@ public class WeightItem : MonoBehaviour
         rb.useGravity = useGravityWhenFree && !keepKinematicWhenReleased;
     }
 
-    [ContextMenu("InferGramsFromName")]
-    public void InferGramsFromName()
+    [ContextMenu("Lock In Tray")]
+    public void LockInTray()
     {
-        if (TryInferGramsFromName(name, out float inferredGrams))
-            Grams = inferredGrams;
-    }
+        if (rb == null)
+            rb = GetComponent<Rigidbody>();
 
-    private void EnsureGrabColliderSetup()
-    {
-        if (!autoConfigureGrabColliders || grabInteractable == null)
+        if (rb == null)
             return;
 
-        List<Collider> usableColliders = CollectUsableGrabColliders();
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.useGravity = false;
+        rb.isKinematic = true;
 
-        if (createGrabColliderWhenNeeded && NeedsHelperGrabCollider(usableColliders))
-        {
-            BoxCollider helper = GetOrCreateHelperGrabCollider();
-            if (helper != null && !usableColliders.Contains(helper))
-                usableColliders.Add(helper);
-        }
+        SetGrabHelperEnabled(true);
+    }
 
-        if (usableColliders.Count == 0)
-        {
-            Debug.LogWarning($"[WeightItem] {name} has no usable non-trigger collider for XR grab.", this);
+    [ContextMenu("Unlock Physics")]
+    public void UnlockPhysics()
+    {
+        hasBeenPickedUp = true;
+        keepKinematicWhenReleased = false;
+        useGravityWhenFree = useGravityAfterFirstRelease;
+        ApplyReleasedPhysics();
+        SetGrabHelperEnabled(true);
+    }
+
+    public void Settle()
+    {
+        if (rb == null)
             return;
-        }
 
-        if (HasValidColliderSetup(usableColliders))
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.isKinematic = true;
+        rb.useGravity = false;
+    }
+
+    public void ConfigureReleasedPhysics(bool useGravity, bool keepKinematic)
+    {
+        useGravityWhenFree = useGravity;
+        keepKinematicWhenReleased = keepKinematic;
+
+        if (rb != null && !IsHeld)
+            ApplyReleasedPhysics();
+    }
+
+    private void ConfigureGrabHelperCollider()
+    {
+        if (!useGrabHelperCollider || grabInteractable == null)
             return;
 
-        grabInteractable.colliders.Clear();
-        foreach (Collider grabCollider in usableColliders)
-            grabInteractable.colliders.Add(grabCollider);
+        grabHelperCollider = GetOrCreateGrabHelperCollider();
+
+        if (grabHelperCollider == null)
+            return;
+
+        if (forceGrabHelperAsTrigger)
+            grabHelperCollider.isTrigger = true;
+
+        grabHelperCollider.enabled = true;
+
+        AddUsableCollidersToXRGrab();
     }
 
-    private List<Collider> CollectUsableGrabColliders()
-    {
-        Collider[] colliders = GetComponentsInChildren<Collider>(true);
-        List<Collider> usableColliders = new List<Collider>();
-
-        foreach (Collider candidate in colliders)
-        {
-            if (candidate == null || !candidate.enabled)
-                continue;
-
-            usableColliders.Add(candidate);
-        }
-
-        return usableColliders;
-    }
-
-    private bool HasValidColliderSetup(List<Collider> usableColliders)
-    {
-        if (grabInteractable.colliders == null || grabInteractable.colliders.Count == 0)
-            return false;
-
-        foreach (Collider configuredCollider in grabInteractable.colliders)
-        {
-            if (configuredCollider == null || !usableColliders.Contains(configuredCollider))
-                return false;
-        }
-
-        return true;
-    }
-
-    private bool NeedsHelperGrabCollider(List<Collider> usableColliders)
-    {
-        if (usableColliders == null || usableColliders.Count == 0)
-            return true;
-
-        float minSize = Mathf.Max(0.005f, minimumGrabColliderWorldSize);
-
-        foreach (Collider candidate in usableColliders)
-        {
-            if (candidate == null)
-                continue;
-
-            Vector3 size = candidate.bounds.size;
-            if (size.x >= minSize && size.y >= minSize && size.z >= minSize)
-                return false;
-        }
-
-        return true;
-    }
-
-    private BoxCollider GetOrCreateHelperGrabCollider()
+    private BoxCollider GetOrCreateGrabHelperCollider()
     {
         Transform helperTransform = transform.Find("GrabCollider");
 
         if (helperTransform == null)
         {
             GameObject helper = new GameObject("GrabCollider");
-            helper.layer = gameObject.layer;
             helper.transform.SetParent(transform, false);
+            helper.layer = gameObject.layer;
             helperTransform = helper.transform;
         }
 
         BoxCollider box = helperTransform.GetComponent<BoxCollider>();
+
         if (box == null)
             box = helperTransform.gameObject.AddComponent<BoxCollider>();
 
-        box.isTrigger = true;
-        box.enabled = true;
-        ResizeHelperGrabCollider(helperTransform, box);
-        return box;
-    }
-
-    private void ResizeHelperGrabCollider(Transform helperTransform, BoxCollider box)
-    {
         helperTransform.localPosition = Vector3.zero;
         helperTransform.localRotation = Quaternion.identity;
         helperTransform.localScale = Vector3.one;
 
+        ResizeGrabHelperCollider(helperTransform, box);
+
+        return box;
+    }
+
+    private void ResizeGrabHelperCollider(Transform helperTransform, BoxCollider box)
+    {
         if (TryGetRendererBounds(out Bounds rendererBounds))
         {
             Vector3 minWorldSize = Vector3.one * Mathf.Max(0.005f, minimumGrabColliderWorldSize);
@@ -255,30 +268,66 @@ public class WeightItem : MonoBehaviour
             Vector3 scale = transform.lossyScale;
 
             box.center = helperTransform.InverseTransformPoint(rendererBounds.center);
+
             box.size = new Vector3(
                 SafeDivide(worldSize.x, Mathf.Abs(scale.x)),
                 SafeDivide(worldSize.y, Mathf.Abs(scale.y)),
-                SafeDivide(worldSize.z, Mathf.Abs(scale.z)));
+                SafeDivide(worldSize.z, Mathf.Abs(scale.z))
+            );
         }
         else
         {
             box.center = Vector3.zero;
             box.size = fallbackGrabColliderSize;
         }
+
+        box.isTrigger = true;
+    }
+
+    private void AddUsableCollidersToXRGrab()
+    {
+        if (grabInteractable == null)
+            return;
+
+        Collider[] colliders = GetComponentsInChildren<Collider>(true);
+
+        grabInteractable.colliders.Clear();
+
+        foreach (Collider col in colliders)
+        {
+            if (col == null || !col.enabled)
+                continue;
+
+            grabInteractable.colliders.Add(col);
+        }
+    }
+
+    private void SetGrabHelperEnabled(bool enabled)
+    {
+        if (grabHelperCollider == null)
+        {
+            Transform helper = transform.Find("GrabCollider");
+            if (helper != null)
+                grabHelperCollider = helper.GetComponent<BoxCollider>();
+        }
+
+        if (grabHelperCollider != null)
+        {
+            grabHelperCollider.isTrigger = true;
+            grabHelperCollider.enabled = enabled;
+        }
     }
 
     private bool TryGetRendererBounds(out Bounds bounds)
     {
         bounds = new Bounds(transform.position, Vector3.zero);
+
         Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
         bool hasBounds = false;
 
         foreach (Renderer itemRenderer in renderers)
         {
-            if (itemRenderer == null ||
-                itemRenderer.transform.name.Contains("GrabCollider") ||
-                itemRenderer.transform.name.Contains("AttachPoint") ||
-                itemRenderer.transform.name.Contains("PhysicsCollider"))
+            if (itemRenderer == null || IsIgnoredHelperObject(itemRenderer.transform))
                 continue;
 
             if (!hasBounds)
@@ -295,47 +344,52 @@ public class WeightItem : MonoBehaviour
         return hasBounds;
     }
 
+    private bool IsIgnoredHelperObject(Transform candidate)
+    {
+        Transform current = candidate;
+
+        while (current != null && current != transform.parent)
+        {
+            string objectName = current.name;
+
+            if (objectName.Contains("GrabCollider") ||
+                objectName.Contains("AttachPoint") ||
+                objectName.Contains("PhysicsCollider"))
+                return true;
+
+            if (current == transform)
+                break;
+
+            current = current.parent;
+        }
+
+        return false;
+    }
+
     private float SafeDivide(float value, float divisor)
     {
         return divisor > 0.0001f ? value / divisor : value;
     }
 
-    private bool TryInferGramsFromName(string objectName, out float inferredGrams)
-    {
-        inferredGrams = 0f;
-
-        if (string.IsNullOrWhiteSpace(objectName))
-            return false;
-
-        Match match = Regex.Match(objectName, @"(\d+(?:[\.,]\d+)?)");
-        if (!match.Success)
-            return false;
-
-        string number = match.Groups[1].Value.Replace(',', '.');
-        if (!float.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed))
-            return false;
-
-        bool milligrams =
-            objectName.IndexOf("anakTimbangan", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-            objectName.IndexOf("mg", System.StringComparison.OrdinalIgnoreCase) >= 0;
-
-        inferredGrams = milligrams ? parsed / 1000f : parsed;
-        return inferredGrams > 0f;
-    }
-
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (gramValue <= 0f && !isParchment && TryInferGramsFromName(name, out float inferredGrams))
-            gramValue = inferredGrams;
-
         gramValue = Mathf.Max(0f, gramValue);
         physicsMassKg = Mathf.Max(0.001f, physicsMassKg);
         minimumGrabColliderWorldSize = Mathf.Max(0.005f, minimumGrabColliderWorldSize);
         fallbackGrabColliderSize = Vector3.Max(fallbackGrabColliderSize, Vector3.one * 0.005f);
 
         if (!isParchment && gramValue <= 0f)
-            Debug.LogWarning($"[WeightItem] {name} has Grams <= 0 and will not add useful mass.", this);
+            Debug.LogWarning($"[WeightItem] {name} has Gram Value <= 0.", this);
+
+        BoxCollider existingGrabCollider = null;
+
+        Transform helper = transform.Find("GrabCollider");
+        if (helper != null)
+            existingGrabCollider = helper.GetComponent<BoxCollider>();
+
+        if (existingGrabCollider != null && forceGrabHelperAsTrigger)
+            existingGrabCollider.isTrigger = true;
     }
 #endif
 }

@@ -6,11 +6,13 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 /// <summary>
 /// Attaches released WeightItem objects to a moving pan anchor so payloads follow pan motion.
 /// Objects detach immediately when grabbed again.
+/// Does NOT depend on SmallWeightStorageState.
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class BalancePanPayloadAnchor : MonoBehaviour
 {
     [SerializeField] private Transform payloadAnchor;
+    [SerializeField] private bool attachReleasedWeights = true;
     [SerializeField] private bool requirePickedUpBeforeAttach = true;
     [SerializeField] private bool preserveWorldPoseOnAttach = true;
     [SerializeField] private bool makeKinematicWhileAttached = true;
@@ -21,6 +23,7 @@ public class BalancePanPayloadAnchor : MonoBehaviour
     private void Awake()
     {
         Collider zoneCollider = GetComponent<Collider>();
+
         if (zoneCollider != null)
             zoneCollider.isTrigger = true;
 
@@ -52,18 +55,19 @@ public class BalancePanPayloadAnchor : MonoBehaviour
 
     private void TryAttach(Collider other)
     {
-        if (other == null || payloadAnchor == null)
+        if (!attachReleasedWeights || other == null || payloadAnchor == null)
             return;
 
         WeightItem item = other.GetComponentInParent<WeightItem>();
+
         if (item == null || item.IsParchment)
             return;
 
-        SmallWeightStorageState storageState = item.GetComponent<SmallWeightStorageState>();
-        if (requirePickedUpBeforeAttach && storageState != null && !storageState.HasBeenPickedUp)
+        if (requirePickedUpBeforeAttach && !item.HasBeenPickedUp)
             return;
 
         XRGrabInteractable grab = item.GetComponent<XRGrabInteractable>();
+
         if (grab == null || grab.isSelected || attached.Contains(grab))
             return;
 
@@ -76,20 +80,24 @@ public class BalancePanPayloadAnchor : MonoBehaviour
             return;
 
         Transform itemTransform = grab.transform;
+
         if (!originalParents.ContainsKey(grab))
             originalParents.Add(grab, itemTransform.parent);
 
         Rigidbody rb = grab.GetComponent<Rigidbody>();
+
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.useGravity = false;
+
             if (makeKinematicWhileAttached)
                 rb.isKinematic = true;
         }
 
         itemTransform.SetParent(payloadAnchor, preserveWorldPoseOnAttach);
+
         attached.Add(grab);
 
         grab.selectEntered.RemoveListener(OnAttachedObjectSelected);
@@ -102,6 +110,7 @@ public class BalancePanPayloadAnchor : MonoBehaviour
             return;
 
         XRGrabInteractable grab = args.interactableObject as XRGrabInteractable;
+
         if (grab != null)
             DetachForGrab(grab);
     }
@@ -114,14 +123,14 @@ public class BalancePanPayloadAnchor : MonoBehaviour
         grab.selectEntered.RemoveListener(OnAttachedObjectSelected);
         attached.Remove(grab);
 
-        Transform oldParent;
-        if (originalParents.TryGetValue(grab, out oldParent))
+        if (originalParents.TryGetValue(grab, out Transform oldParent))
         {
             grab.transform.SetParent(oldParent, true);
             originalParents.Remove(grab);
         }
 
         Rigidbody rb = grab.GetComponent<Rigidbody>();
+
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;

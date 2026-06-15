@@ -127,6 +127,7 @@ public class StackPerkamenDispenser : MonoBehaviour
         perkamen.gameObject.SetActive(true);
         perkamen.enabled = true;
         perkamen.transform.SetParent(null, true);
+
         TrySetTag(perkamen.gameObject, "Perkamen");
 
         if (interactionManager != null && perkamen.interactionManager == null)
@@ -135,24 +136,28 @@ public class StackPerkamenDispenser : MonoBehaviour
         Rigidbody rb = perkamen.GetComponent<Rigidbody>();
 
         if (rb == null)
-        {
             rb = perkamen.gameObject.AddComponent<Rigidbody>();
-        }
 
-        rb.useGravity = false;
         rb.isKinematic = false;
+        rb.useGravity = true;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
-        rb.linearDamping = 8f;
-        rb.angularDamping = 8f;
+        rb.linearDamping = 1f;
+        rb.angularDamping = 1f;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
         perkamen.throwOnDetach = false;
+        perkamen.forceGravityOnDetach = false;
+
         RefreshInteractableColliders(perkamen);
 
-        if (perkamen.GetComponent<PerkamenNoGravity>() == null)
-        {
-            perkamen.gameObject.AddComponent<PerkamenNoGravity>();
-        }
+        PerkamenNoGravity physicsState = perkamen.GetComponent<PerkamenNoGravity>();
+
+        if (physicsState == null)
+            physicsState = perkamen.gameObject.AddComponent<PerkamenNoGravity>();
+
+        physicsState.ApplyFreePhysics();
     }
 
     private void RefreshInteractableColliders(XRGrabInteractable perkamen)

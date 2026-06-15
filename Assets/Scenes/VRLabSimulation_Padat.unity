@@ -10812,6 +10812,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   snapPoint: {fileID: 1505638756}
+  disableGrabAfterSnap: 1
 --- !u!1 &747215507
 GameObject:
   m_ObjectHideFlags: 0
@@ -22945,6 +22946,24 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 2
+--- !u!114 &1480999735
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1480999730}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac15b751750c41045bde2ebf7a62a4b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useGravityWhenFree: 1
+  freeLinearDamping: 1
+  freeAngularDamping: 1
+  disableGravityWhileHeld: 1
+  snappedLinearDamping: 8
+  snappedAngularDamping: 8
 --- !u!1 &1485169301
 GameObject:
   m_ObjectHideFlags: 0
@@ -30870,6 +30889,7 @@ MonoBehaviour:
   spawnPoint: {fileID: 400938977}
   spawnCooldown: 0.15
   forceGrabAfterSpawn: 1
+  maxLiveSpawned: 0
 --- !u!65 &2061011699
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -33332,6 +33352,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a68095ef7f9eb2f4f83e83b1e8163393, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1480999732}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a68095ef7f9eb2f4f83e83b1e8163393, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1480999735}
   m_SourcePrefab: {fileID: 100100000, guid: a68095ef7f9eb2f4f83e83b1e8163393, type: 3}
 --- !u!1001 &6008329360556510490
 PrefabInstance:

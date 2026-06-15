@@ -4,34 +4,34 @@ using UnityEngine.Serialization;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-/// <summary>
-/// Reusable parchment snap target for any balance pan or similar trigger zone.
-/// Attach it to the same GameObject as the trigger Collider that represents the pan zone.
-/// </summary>
 [RequireComponent(typeof(Collider))]
 public class PerkamenSnapTarget : MonoBehaviour
 {
     [Header("Snap Target")]
     [FormerlySerializedAs("panTransform")]
     [SerializeField] private Transform snapTransform;
+
     [FormerlySerializedAs("worldOffset")]
     [SerializeField] private Vector3 snapOffset = new Vector3(0f, 0.025f, 0f);
+
     [SerializeField] private bool useRendererTopSurface = true;
     [SerializeField] private bool alignZoneToSnapPoint = true;
 
     [Header("Zone Collider")]
     [FormerlySerializedAs("triggerCollider")]
     [SerializeField] private Collider triggerCollider;
+
     [FormerlySerializedAs("triggerSize")]
     [SerializeField] private Vector3 zoneSize = new Vector3(0.24f, 0.14f, 0.24f);
+
     [SerializeField] private bool overrideBoxColliderSize;
 
     [Header("Snap Behaviour")]
     [SerializeField] private bool parentToPanAfterSnap = true;
-    [SerializeField] private bool keepGrabbableAfterSnap = true;
-    [FormerlySerializedAs("disableGrabAfterSnap")]
     [SerializeField] private bool disableGrabAfterSnap = true;
     [SerializeField] private bool lockRigidbodyWhileSnapped = true;
+    [SerializeField] private bool disableCollidersAfterSnap = true;
+
     [SerializeField] private bool requireRecentRelease = true;
     [SerializeField] private float releaseSnapWindow = 0.8f;
     [SerializeField] private bool allowReplaceSnappedParchment;
@@ -39,6 +39,7 @@ public class PerkamenSnapTarget : MonoBehaviour
     [Header("Events")]
     [FormerlySerializedAs("onPerkamenSnapped")]
     [SerializeField] private UnityEvent onParchmentSnapped = new UnityEvent();
+
     public UnityEvent<GameObject> onParchmentObjectSnapped = new UnityEvent<GameObject>();
     public UnityEvent<GameObject> onParchmentRemoved = new UnityEvent<GameObject>();
 
@@ -47,10 +48,11 @@ public class PerkamenSnapTarget : MonoBehaviour
     private Rigidbody snappedRigidbody;
     private Transform originalParent;
 
+    private Collider[] snappedColliders;
+    private bool[] snappedColliderStates;
+
     public bool HasSnapped => hasSnapped && snappedParchment != null && IsParchment(snappedParchment.gameObject);
     public GameObject SnappedParchment => snappedParchment != null ? snappedParchment.gameObject : null;
-
-    // Backward-compatible Indonesian name used by older callers/Inspector labels.
     public GameObject SnappedPerkamen => SnappedParchment;
 
     public void Configure(Transform targetPan, Vector3 offset, Vector3 size)
@@ -104,6 +106,7 @@ public class PerkamenSnapTarget : MonoBehaviour
             return;
 
         XRGrabInteractable grab = other.GetComponentInParent<XRGrabInteractable>();
+
         if (grab == null || !IsParchment(grab.gameObject))
             return;
 
@@ -116,6 +119,7 @@ public class PerkamenSnapTarget : MonoBehaviour
         if (requireRecentRelease)
         {
             PerkamenNoGravity noGravity = grab.GetComponent<PerkamenNoGravity>();
+
             if (noGravity == null || !noGravity.HasBeenGrabbed || !noGravity.WasRecentlyReleased(releaseSnapWindow))
                 return;
         }
@@ -157,11 +161,19 @@ public class PerkamenSnapTarget : MonoBehaviour
                 rb.isKinematic = true;
         }
 
+        PerkamenNoGravity physicsState = grab.GetComponent<PerkamenNoGravity>();
+
+        if (physicsState != null)
+            physicsState.ApplySnappedPhysics();
+
+        if (disableCollidersAfterSnap)
+            SetParchmentCollidersEnabled(grab, false);
+
         if (disableGrabAfterSnap)
         {
             grab.enabled = false;
         }
-        else if (keepGrabbableAfterSnap)
+        else
         {
             grab.enabled = true;
             SubscribeToSnappedParchment();
@@ -192,6 +204,10 @@ public class PerkamenSnapTarget : MonoBehaviour
         if (oldGrab == null)
             return;
 
+        RestoreParchmentColliders();
+
+        PerkamenNoGravity physicsState = oldGrab.GetComponent<PerkamenNoGravity>();
+
         if (prepareForGrab)
         {
             if (parentToPanAfterSnap && oldParent != null)
@@ -199,7 +215,11 @@ public class PerkamenSnapTarget : MonoBehaviour
 
             oldGrab.enabled = true;
 
-            if (oldRb != null)
+            if (physicsState != null)
+            {
+                physicsState.ApplyHeldPhysics();
+            }
+            else if (oldRb != null)
             {
                 oldRb.linearVelocity = Vector3.zero;
                 oldRb.angularVelocity = Vector3.zero;
@@ -207,8 +227,49 @@ public class PerkamenSnapTarget : MonoBehaviour
                 oldRb.isKinematic = false;
             }
         }
+        else
+        {
+            if (physicsState != null)
+                physicsState.ApplyFreePhysics();
+        }
 
         onParchmentRemoved?.Invoke(oldGrab.gameObject);
+    }
+    private void SetParchmentCollidersEnabled(XRGrabInteractable grab, bool enabled)
+    {
+        if (grab == null)
+            return;
+
+        snappedColliders = grab.GetComponentsInChildren<Collider>(true);
+        snappedColliderStates = new bool[snappedColliders.Length];
+
+        for (int i = 0; i < snappedColliders.Length; i++)
+        {
+            Collider col = snappedColliders[i];
+
+            if (col == null)
+                continue;
+
+            snappedColliderStates[i] = col.enabled;
+            col.enabled = enabled;
+        }
+    }
+
+    private void RestoreParchmentColliders()
+    {
+        if (snappedColliders == null || snappedColliderStates == null)
+            return;
+
+        int count = Mathf.Min(snappedColliders.Length, snappedColliderStates.Length);
+
+        for (int i = 0; i < count; i++)
+        {
+            if (snappedColliders[i] != null)
+                snappedColliders[i].enabled = snappedColliderStates[i];
+        }
+
+        snappedColliders = null;
+        snappedColliderStates = null;
     }
 
     private void OnSnappedParchmentSelected(SelectEnterEventArgs args)
@@ -301,6 +362,7 @@ public class PerkamenSnapTarget : MonoBehaviour
         foreach (string targetName in targetNames)
         {
             snapTransform = FindSceneTransformByName(targetName);
+
             if (snapTransform != null)
                 return;
         }
@@ -309,6 +371,7 @@ public class PerkamenSnapTarget : MonoBehaviour
     private Transform FindSceneTransformByName(string objectName)
     {
         Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
+
         foreach (Transform sceneTransform in transforms)
         {
             if (sceneTransform == null || sceneTransform.gameObject == null)
@@ -329,7 +392,13 @@ public class PerkamenSnapTarget : MonoBehaviour
         Transform target = snapTransform != null ? snapTransform : transform;
 
         if (useRendererTopSurface && TryGetRendererBounds(target, out Bounds bounds))
-            return new Vector3(bounds.center.x + snapOffset.x, bounds.max.y + snapOffset.y, bounds.center.z + snapOffset.z);
+        {
+            return new Vector3(
+                bounds.center.x + snapOffset.x,
+                bounds.max.y + snapOffset.y,
+                bounds.center.z + snapOffset.z
+            );
+        }
 
         return target.position + snapOffset;
     }
@@ -405,6 +474,7 @@ public class PerkamenSnapTarget : MonoBehaviour
             return Quaternion.identity;
 
         Vector3 forward = Vector3.ProjectOnPlane(target.forward, Vector3.up);
+
         if (forward.sqrMagnitude < 0.001f)
             forward = Vector3.forward;
 

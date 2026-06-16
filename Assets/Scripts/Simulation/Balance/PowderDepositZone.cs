@@ -1,153 +1,256 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.Events;
 using TMPro;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-/// <summary>
-/// Attached to Collider_Piring_Kiri. Detects a held HornSpoon above the left pan
-/// and gradually transfers powder from the spoon to the pan.
-/// A physical target weight must be present on the right pan before deposit is allowed.
-///
-/// Attach to: Collider_Piring_Kiri (which already has BoxCollider isTrigger).
-/// Wire: rightZone, warningText (optional), panPowderLevels (optional).
-/// </summary>
 [RequireComponent(typeof(Collider))]
 public class PowderDepositZone : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private WeightingZone rightZone;
 
-    [Header("Pour Settings")]
-    [Tooltip("How fast powder moves from spoon to pan (grams per second).")]
-    [SerializeField] private float pourRateGramsPerSecond = 0.08f;
+    [Header("Deposit Settings")]
+    [SerializeField] private float depositStepMg = 50f;
+    [SerializeField] private float maxDepositMg = 500f;
+
+    [Header("Validation")]
+    [SerializeField] private bool requireSpoonHeld = true;
+    [SerializeField] private bool requireTipNearZone = true;
+    [SerializeField] private float tipToleranceMeters = 0.08f;
+
     [SerializeField] private bool allowPhysicalRightPanTarget = true;
     [SerializeField] private float minimumRightPanTargetGrams = 0.001f;
 
     [Header("Powder Visual on Left Pan")]
-    [Tooltip("GameObjects representing powder level on the pan (index 0=none, last=full).")]
-    [SerializeField] private GameObject[] panPowderLevels;
-    [Tooltip("Gram value at which the last powder level visual is shown.")]
-    [SerializeField] private float maxVisualGrams = 100f;
+    [SerializeField] private PowderVisualLevelSwitcher depositVisual;
 
     [Header("Warning Display")]
-    [Tooltip("Optional TMP_Text to show when user tries to pour before accepting target.")]
     [SerializeField] private TMP_Text warningText;
     [SerializeField] private float warningDuration = 2.5f;
+
+    [Header("Debug")]
+    [SerializeField] private float depositedMg;
+    [SerializeField] private bool debugLogs;
 
     [Header("Events")]
     public UnityEvent<float> onDepositChanged;
     public UnityEvent onTargetNotAccepted;
 
-    private float depositedGrams = 0f;
-    private HornSpoon spoonInZone = null;
-    private float warningTimer = 0f;
+    private float warningTimer;
 
-    /// <summary>Total powder grams deposited on the left pan so far.</summary>
-    public float DepositedGrams => depositedGrams;
+    private readonly Dictionary<HornSpoon, int> spoonContactCounts = new Dictionary<HornSpoon, int>();
+    private readonly HashSet<HornSpoon> depositedDuringCurrentContact = new HashSet<HornSpoon>();
 
-    /// <summary>Resets the deposited powder to zero (call when restarting the lesson).</summary>
-    public void ResetDeposit()
-    {
-        depositedGrams = 0f;
-        UpdatePanVisual();
-        onDepositChanged?.Invoke(depositedGrams);
-    }
+    public float DepositedMg => depositedMg;
+    public float DepositedGrams => depositedMg / 1000f;
+    public bool HasPowder => depositedMg > 0.001f;
 
     private void Awake()
     {
-        var col = GetComponent<Collider>();
-        if (col != null) col.isTrigger = true;
+        Collider col = GetComponent<Collider>();
+        if (col != null)
+            col.isTrigger = true;
 
         if (rightZone == null)
             rightZone = FindSceneComponentByName<WeightingZone>("Collider_Piring_Kanan");
 
         if (rightZone == null)
             rightZone = FindSceneComponentByName<WeightingZone>("RightWeighingZone");
-    }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        var spoon = other.GetComponentInParent<HornSpoon>();
-        if (spoon == null) return;
-
-        spoonInZone = spoon;
-
-        if (!HasAcceptedTarget())
-        {
-            ShowWarning("Taruh atau terima anak timbangan kanan dulu!");
-            onTargetNotAccepted?.Invoke();
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        var spoon = other.GetComponentInParent<HornSpoon>();
-        if (spoon != null && spoon == spoonInZone)
-            spoonInZone = null;
+        UpdateVisualAndNotify();
     }
 
     private void Update()
     {
-        // Countdown warning display
-        if (warningTimer > 0f)
-        {
-            warningTimer -= Time.deltaTime;
-            if (warningTimer <= 0f && warningText != null)
-                warningText.gameObject.SetActive(false);
-        }
-
-        // Skip if no spoon or target not accepted
-        if (spoonInZone == null) return;
-        if (!HasAcceptedTarget()) return;
-        if (spoonInZone.IsEmpty) return;
-
-        // Pour powder from spoon to pan
-        float toTransferGrams = pourRateGramsPerSecond * Time.deltaTime;
-        float spoonGrams = spoonInZone.CurrentAmountMg / 1000f;
-        float actualGrams = Mathf.Min(toTransferGrams, spoonGrams);
-
-        if (actualGrams <= 0f) return;
-
-        float removedMg = spoonInZone.RemovePowder(actualGrams * 1000f);
-        float removedGrams = removedMg / 1000f;
-
-        if (removedGrams <= 0f) return;
-
-        depositedGrams += removedGrams;
-        UpdatePanVisual();
-        onDepositChanged?.Invoke(depositedGrams);
+        UpdateWarningTimer();
     }
 
-    private void UpdatePanVisual()
+    private void OnTriggerEnter(Collider other)
     {
-        if (panPowderLevels == null || panPowderLevels.Length == 0) return;
-        float ratio = maxVisualGrams > 0f ? Mathf.Clamp01(depositedGrams / maxVisualGrams) : 0f;
-        int count = panPowderLevels.Length;
+        HornSpoon spoon = other.GetComponentInParent<HornSpoon>();
+        if (spoon == null)
+            return;
 
-        // Index 0 = no powder, index count-1 = full
-        int activeIndex = depositedGrams > 0f
-            ? Mathf.Clamp(1 + Mathf.RoundToInt(ratio * (count - 2)), 1, count - 1)
-            : 0;
+        if (!spoonContactCounts.ContainsKey(spoon))
+            spoonContactCounts.Add(spoon, 0);
 
-        for (int i = 0; i < count; i++)
+        spoonContactCounts[spoon]++;
+
+        if (!HasAcceptedTarget())
         {
-            if (panPowderLevels[i] != null)
-                panPowderLevels[i].SetActive(i == activeIndex);
+            ShowWarning("Taruh anak timbangan kanan dulu!");
+            onTargetNotAccepted?.Invoke();
+            return;
+        }
+
+        TryDepositFromSpoon(spoon);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        HornSpoon spoon = other.GetComponentInParent<HornSpoon>();
+        if (spoon == null)
+            return;
+
+        if (!HasAcceptedTarget())
+            return;
+
+        TryDepositFromSpoon(spoon);
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        HornSpoon spoon = other.GetComponentInParent<HornSpoon>();
+        if (spoon == null)
+            return;
+
+        if (!spoonContactCounts.ContainsKey(spoon))
+            return;
+
+        spoonContactCounts[spoon]--;
+
+        if (spoonContactCounts[spoon] <= 0)
+        {
+            spoonContactCounts.Remove(spoon);
+            depositedDuringCurrentContact.Remove(spoon);
         }
     }
 
-    private void ShowWarning(string msg)
+    public bool TryDepositFromSpoon(HornSpoon spoon)
     {
-        if (warningText == null) return;
-        warningText.text = msg;
-        warningText.gameObject.SetActive(true);
-        warningTimer = warningDuration;
+        if (spoon == null)
+            return false;
+
+        if (depositedDuringCurrentContact.Contains(spoon))
+            return false;
+
+        if (!HasAcceptedTarget())
+            return false;
+
+        if (requireSpoonHeld && !IsSpoonHeld(spoon))
+            return false;
+
+        if (requireTipNearZone && !IsSpoonTipNearZone(spoon))
+            return false;
+
+        if (spoon.IsEmpty)
+            return false;
+
+        if (depositedMg >= maxDepositMg)
+            return false;
+
+        float remainingCapacity = Mathf.Max(0f, maxDepositMg - depositedMg);
+        float amountToTakeMg = Mathf.Min(depositStepMg, remainingCapacity);
+
+        float removedMg = spoon.RemovePowder(amountToTakeMg);
+
+        if (removedMg <= 0.001f)
+            return false;
+
+        depositedMg = Mathf.Clamp(depositedMg + removedMg, 0f, maxDepositMg);
+        depositedDuringCurrentContact.Add(spoon);
+
+        UpdateVisualAndNotify();
+
+        if (debugLogs)
+            Debug.Log($"[PowderDepositZone] Deposit +{removedMg:0.###} mg. Total = {depositedMg:0.###} mg", this);
+
+        return true;
+    }
+
+    public void ResetDeposit()
+    {
+        depositedMg = 0f;
+        spoonContactCounts.Clear();
+        depositedDuringCurrentContact.Clear();
+
+        UpdateVisualAndNotify();
+
+        if (debugLogs)
+            Debug.Log("[PowderDepositZone] Reset deposit.", this);
+    }
+
+    public void SetDepositMg(float amountMg)
+    {
+        depositedMg = Mathf.Clamp(amountMg, 0f, maxDepositMg);
+        UpdateVisualAndNotify();
+    }
+
+    public bool IsAtTargetMg(float targetMg, float toleranceMg)
+    {
+        return Mathf.Abs(depositedMg - targetMg) <= Mathf.Max(0f, toleranceMg);
+    }
+
+    public void ConfigureForRecipe(float stepMg, float maxMg, float visualMaxMg)
+    {
+        depositStepMg = Mathf.Max(1f, stepMg);
+        maxDepositMg = Mathf.Max(depositStepMg, maxMg);
+
+        if (depositVisual != null)
+            depositVisual.SetMaxVisualMg(visualMaxMg);
+
+        depositedMg = Mathf.Clamp(depositedMg, 0f, maxDepositMg);
+        UpdateVisualAndNotify();
+    }
+
+    private void UpdateVisualAndNotify()
+    {
+        if (depositVisual != null)
+            depositVisual.SetAmountMg(depositedMg);
+
+        onDepositChanged?.Invoke(DepositedGrams);
     }
 
     private bool HasAcceptedTarget()
     {
-        return allowPhysicalRightPanTarget &&
-               rightZone != null &&
-               rightZone.TotalGrams >= minimumRightPanTargetGrams;
+        if (!allowPhysicalRightPanTarget)
+            return true;
+
+        return rightZone != null && rightZone.TotalGrams >= minimumRightPanTargetGrams;
+    }
+
+    private bool IsSpoonHeld(HornSpoon spoon)
+    {
+        XRGrabInteractable grab = spoon.GetComponent<XRGrabInteractable>();
+        return grab != null && grab.isSelected;
+    }
+
+    private bool IsSpoonTipNearZone(HornSpoon spoon)
+    {
+        if (spoon == null || spoon.TipTransform == null)
+            return true;
+
+        Collider zoneCollider = GetComponent<Collider>();
+        if (zoneCollider == null)
+            return true;
+
+        Vector3 tipPosition = spoon.TipTransform.position;
+        Vector3 closestPoint = zoneCollider.ClosestPoint(tipPosition);
+        float distance = Vector3.Distance(tipPosition, closestPoint);
+
+        return distance <= tipToleranceMeters;
+    }
+
+    private void ShowWarning(string message)
+    {
+        if (warningText == null)
+            return;
+
+        warningText.text = message;
+        warningText.gameObject.SetActive(true);
+        warningTimer = warningDuration;
+    }
+
+    private void UpdateWarningTimer()
+    {
+        if (warningTimer <= 0f)
+            return;
+
+        warningTimer -= Time.deltaTime;
+
+        if (warningTimer <= 0f && warningText != null)
+            warningText.gameObject.SetActive(false);
     }
 
     private T FindSceneComponentByName<T>(string objectName) where T : Component
@@ -168,4 +271,16 @@ public class PowderDepositZone : MonoBehaviour
 
         return null;
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        depositStepMg = Mathf.Max(1f, depositStepMg);
+        maxDepositMg = Mathf.Max(depositStepMg, maxDepositMg);
+        tipToleranceMeters = Mathf.Max(0.001f, tipToleranceMeters);
+        minimumRightPanTargetGrams = Mathf.Max(0f, minimumRightPanTargetGrams);
+        warningDuration = Mathf.Max(0.1f, warningDuration);
+        depositedMg = Mathf.Clamp(depositedMg, 0f, maxDepositMg);
+    }
+#endif
 }

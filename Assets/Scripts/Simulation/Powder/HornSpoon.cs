@@ -262,6 +262,17 @@ public class HornSpoon : MonoBehaviour
         return material;
     }
 
+    public void ClearPowder()
+    {
+        if (currentAmountMg <= 0f)
+            return;
+
+        currentAmountMg = 0f;
+        UpdateVisual();
+        onAmountChanged?.Invoke(currentAmountMg);
+        onSpoonEmpty?.Invoke();
+    }
+
     private void OnDrawGizmosSelected()
     {
         if (tipTransform == null) return;

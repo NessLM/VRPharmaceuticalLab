@@ -20,6 +20,15 @@ public class SyrupProcedureManager : MonoBehaviour
     [Header("Current Step")]
     [SerializeField] private SyrupStep currentStep;
 
+    [Header("Recipe")]
+    [SerializeField] private SyrupRecipeDefinition activeRecipe;
+
+    private float Step3TargetPowderMg => activeRecipe != null ? activeRecipe.targetPowderMg : 250f;
+    private float Step3ToleranceMg => activeRecipe != null ? activeRecipe.toleranceMg : 10f;
+    private float Step3ScoopStepMg => activeRecipe != null ? activeRecipe.scoopStepMg : 50f;
+    private string Step3PowderName => activeRecipe != null ? activeRecipe.powderName : "Difenhidramin";
+    private float Step3PowderVisualMaxMg => activeRecipe != null ? activeRecipe.powderVisualMaxMg : Step3TargetPowderMg;
+
     [Header("Step 01 - Measure Water 100 ml")]
     [SerializeField] private LiquidContainer gelasUkurContainer;
     [SerializeField] private float targetWaterMl = 100f;
@@ -248,6 +257,7 @@ public class SyrupProcedureManager : MonoBehaviour
         StopAllCoroutines();
         ClearProcedureOutlines();
         ResolveSceneReferences();
+        ApplyStep3RecipeSettings();
 
         currentStep = SyrupStep.Step_03_WeighPowder;
         stepDone = false;
@@ -273,6 +283,18 @@ public class SyrupProcedureManager : MonoBehaviour
             doneIcon.SetActive(false);
 
         CheckStep03WeighPowder();
+    }
+
+    private void ApplyStep3RecipeSettings()
+    {
+        if (powderDepositZone == null)
+            return;
+
+        powderDepositZone.ConfigureForRecipe(
+            Step3ScoopStepMg,
+            Step3TargetPowderMg * 2f,
+            Step3PowderVisualMaxMg
+        );
     }
 
     private void CheckStep01MeasureWater100ml()
@@ -427,26 +449,97 @@ public class SyrupProcedureManager : MonoBehaviour
     {
         ResolveStep3References();
 
-        float rightMass = GetStep3RightMass();
-        float leftMass = GetStep3LeftMass();
+        float rightMassG = GetStep3RightMass();
+        float leftMassG = GetStep3LeftMass();
 
-        bool rightReady = rightMass > 0.001f;
-        bool powderReady = leftMass > 0.001f;
+        float rightMg = rightMassG * 1000f;
+        float leftMg = leftMassG * 1000f;
+
+        float targetMg = Step3TargetPowderMg;
+        float toleranceMg = Step3ToleranceMg;
+
+        bool rightReady = Mathf.Abs(rightMg - targetMg) <= toleranceMg;
+        bool powderReady = Mathf.Abs(leftMg - targetMg) <= toleranceMg;
+        bool balanced = Mathf.Abs(rightMg - leftMg) <= toleranceMg;
 
         if (progressText != null)
         {
-            string rightStatus = rightReady ? $"{FormatMass(rightMass)} OK" : "belum";
-            string leftStatus = powderReady ? $"{FormatMass(leftMass)} OK" : "belum";
-            string nextAction = !rightReady
-                ? "Taruh anak timbangan di piring kanan."
-                : (!powderReady ? "Ambil bubuk dengan sendok tanduk, lalu tuang ke piring kiri." : "Keduanya sudah masuk. Sesuaikan sampai neraca seimbang.");
+            string rightStatus = rightReady
+                ? $"{rightMg:0} mg OK"
+                : rightMg <= 0.1f
+                    ? "belum"
+                    : $"{rightMg:0} / {targetMg:0} mg";
+
+            string leftStatus = powderReady
+                ? $"{leftMg:0} mg OK"
+                : leftMg <= 0.1f
+                    ? "belum"
+                    : $"{leftMg:0} / {targetMg:0} mg";
+
+            string nextAction;
+
+            if (!rightReady)
+            {
+                if (rightMg > targetMg + toleranceMg)
+                    nextAction = "Anak timbangan terlalu banyak. Tekan Reset, lalu ulangi.";
+                else
+                    nextAction = $"Taruh anak timbangan total {targetMg:0} mg di piring kanan.";
+            }
+            else if (!powderReady)
+            {
+                if (leftMg > targetMg + toleranceMg)
+                    nextAction = "Bubuk terlalu banyak. Tekan Reset, lalu ulangi penimbangan.";
+                else
+                    nextAction = $"Ambil bubuk {Step3PowderName} dengan sendok tanduk, lalu tuang ke piring kiri per {Step3ScoopStepMg:0} mg.";
+            }
+            else if (!balanced)
+            {
+                nextAction = "Keduanya sudah masuk. Sesuaikan sampai neraca seimbang.";
+            }
+            else
+            {
+                nextAction = $"Step 3 selesai. {Step3PowderName} sudah mencapai {targetMg:0} mg.";
+            }
+
             progressText.text = $"Kanan: {rightStatus} | Kiri: {leftStatus}\n{nextAction}";
         }
 
         SetStep3ArrowsActive(true, !rightReady, !powderReady);
 
         if (doneIcon != null)
-            doneIcon.SetActive(rightReady && powderReady);
+            doneIcon.SetActive(rightReady && powderReady && balanced);
+
+        if (rightReady && powderReady && balanced)
+        {
+            stableTimer += Time.deltaTime;
+
+            if (stableTimer >= stableRequiredTime)
+                CompleteStep03();
+        }
+        else
+        {
+            stableTimer = 0f;
+        }
+    }
+
+    private void CompleteStep03()
+    {
+        if (stepDone)
+            return;
+
+        stepDone = true;
+        currentStep = SyrupStep.Done;
+
+        if (progressText != null)
+            progressText.text = $"Step 3 selesai. Bubuk {Step3PowderName} {Step3TargetPowderMg:0} mg sudah ditimbang.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(true);
+
+        SetStep3ArrowsActive(false);
+        ClearProcedureOutlines();
+
+        Debug.Log("[SyrupProcedure] Step 3 complete.");
     }
 
     private IEnumerator ShowStep03AfterStep02()

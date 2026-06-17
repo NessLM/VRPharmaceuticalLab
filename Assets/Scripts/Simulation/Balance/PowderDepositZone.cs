@@ -13,6 +13,7 @@ public class PowderDepositZone : MonoBehaviour
     [Header("Deposit Settings")]
     [SerializeField] private float depositStepMg = 50f;
     [SerializeField] private float maxDepositMg = 500f;
+    [SerializeField] private bool acceptDeposits = true;
 
     [Header("Validation")]
     [SerializeField] private bool requireSpoonHeld = true;
@@ -46,6 +47,19 @@ public class PowderDepositZone : MonoBehaviour
     public float DepositedGrams => depositedMg / 1000f;
     public bool HasPowder => depositedMg > 0.001f;
 
+    public bool AcceptDeposits => acceptDeposits;
+
+    public void SetAcceptingDeposits(bool value)
+    {
+        acceptDeposits = value;
+
+        if (!acceptDeposits)
+        {
+            spoonContactCounts.Clear();
+            depositedDuringCurrentContact.Clear();
+        }
+    }
+
     private void Awake()
     {
         Collider col = GetComponent<Collider>();
@@ -72,6 +86,9 @@ public class PowderDepositZone : MonoBehaviour
         if (spoon == null)
             return;
 
+        if (!acceptDeposits)
+            return;
+
         if (!spoonContactCounts.ContainsKey(spoon))
             spoonContactCounts.Add(spoon, 0);
 
@@ -91,6 +108,9 @@ public class PowderDepositZone : MonoBehaviour
     {
         HornSpoon spoon = other.GetComponentInParent<HornSpoon>();
         if (spoon == null)
+            return;
+
+        if (!acceptDeposits)
             return;
 
         if (!HasAcceptedTarget())
@@ -120,6 +140,9 @@ public class PowderDepositZone : MonoBehaviour
     public bool TryDepositFromSpoon(HornSpoon spoon)
     {
         if (spoon == null)
+            return false;
+
+        if (!acceptDeposits)
             return false;
 
         if (depositedDuringCurrentContact.Contains(spoon))
@@ -173,10 +196,13 @@ public class PowderDepositZone : MonoBehaviour
 
     public void SetDepositMg(float amountMg)
     {
-        depositedMg = Mathf.Clamp(amountMg, 0f, maxDepositMg);
-        UpdateVisualAndNotify();
-    }
+        depositedMg = Mathf.Max(0f, amountMg);
 
+        if (depositVisual != null)
+            depositVisual.SetAmountMg(depositedMg);
+
+        onDepositChanged?.Invoke(DepositedGrams);
+    }
     public bool IsAtTargetMg(float targetMg, float toleranceMg)
     {
         return Mathf.Abs(depositedMg - targetMg) <= Mathf.Max(0f, toleranceMg);

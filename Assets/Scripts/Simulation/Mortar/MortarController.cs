@@ -59,14 +59,24 @@ public class MortarController : MonoBehaviour
     }
 
     /// <summary>Adds powder to the mortar. Returns actual amount accepted in mg.</summary>
+    /// <summary>Adds powder to the mortar. Returns actual amount accepted in mg.</summary>
     public float AddPowder(float amountMg)
     {
-        float available = maxCapacityMg - currentAmountMg;
-        float added = Mathf.Min(amountMg, available);
+        float safeAmount = Mathf.Max(0f, amountMg);
+        float available = Mathf.Max(0f, maxCapacityMg - currentAmountMg);
+        float added = Mathf.Min(safeAmount, available);
+
         currentAmountMg += added;
+
         UpdateVisual();
         onAmountChanged?.Invoke(currentAmountMg);
+
         return added;
+    }
+
+    public float AddPowderMg(float amountMg)
+    {
+        return AddPowder(amountMg);
     }
 
     /// <summary>Adds grinding progress. Called by StamperController each frame it detects movement.</summary>

@@ -14,6 +14,7 @@ public class SyrupProcedureManager : MonoBehaviour
         Step_01_MeasureWater100ml,
         Step_02_PlaceParchmentOnScale,
         Step_03_WeighPowder,
+        Step_04_MovePowderToMortar,
         Done
     }
 
@@ -76,6 +77,13 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private WorldStepArrow rightWeightStepArrow;
     [SerializeField] private WorldStepArrow leftPowderStepArrow;
 
+    [Header("Step 4 - Move Powder To Mortar")]
+    [SerializeField] private MortarController mortarController;
+    [SerializeField] private Transform mortarTarget;
+    [SerializeField] private Outlinable mortarOutline;
+    [SerializeField] private WorldStepArrow mortarStepArrow;
+    [SerializeField] private float step4StableRequiredTime = 0.5f;
+
     private const string Step01Instruction = "Step 1: Isi gelas ukur sampai 100 ml";
     private const string Step01StartProgress = "Tekan tombol air merah, lalu arahkan gelas ukur ke aliran air.";
     private const string Step01GelasArrowLabel = "\u2193\nGelas ukur\nIsi sampai 100 ml";
@@ -86,6 +94,9 @@ public class SyrupProcedureManager : MonoBehaviour
     private const string Step02TimbanganArrowLabel = "\u2193\nLetakkan di\npiring neraca";
     private const string Step03Instruction = "Step 3: Timbang bubuk";
     private const string Step03Progress = "Letakkan anak timbangan di piring kanan, lalu masukkan bubuk Difenhidramin ke piring kiri.";
+    private const string Step04Instruction = "Step 4: Masukkan bubuk ke mortar";
+    private const string Step04Progress = "Ambil bubuk Difenhidramin yang sudah ditimbang dari piring kiri, lalu masukkan semuanya ke dalam mortar.";
+    private const string Step04MortarArrowLabel = "\u2193\nMortar\nMasukkan bubuk";
     private const string TopBackdropName = "IMG_SyrupTopInstructionBackdrop";
     private static readonly string[] ExcludedOutlineNameParts =
     {
@@ -144,6 +155,7 @@ public class SyrupProcedureManager : MonoBehaviour
         SetProcedureOutlineOff(waterSwitchOutline);
         SetProcedureOutlineOff(perkamenStackOutline);
         SetProcedureOutlineOff(timbanganOutline);
+        SetProcedureOutlineOff(mortarOutline);
 
         foreach (KeyValuePair<Outlinable, bool> entry in outlinePreviousStates)
             SetProcedureOutlineOff(entry.Key);
@@ -151,6 +163,7 @@ public class SyrupProcedureManager : MonoBehaviour
         SetStep1ArrowsActive(false);
         SetStep2ArrowsActive(false);
         SetStep3ArrowsActive(false);
+        SetStep4ArrowsActive(false);
 
         outlinePreviousStates.Clear();
     }
@@ -202,6 +215,22 @@ public class SyrupProcedureManager : MonoBehaviour
         SetEditableGuideArrow(ref leftPowderStepArrow, "ARW_Step3_Bubuk", leftTarget, finalActive && showLeft);
     }
 
+    private void SetStep4ArrowsActive(bool active)
+    {
+        bool finalActive = active && useStepArrowPointer;
+
+        Transform sourceTarget = leftPanTarget != null
+            ? leftPanTarget
+            : (leftWeighingZone != null ? leftWeighingZone.transform : timbanganTarget);
+
+        Transform targetMortar = mortarTarget != null
+            ? mortarTarget
+            : (mortarController != null ? mortarController.transform : null);
+
+        SetEditableGuideArrow(ref leftPowderStepArrow, "ARW_Step3_Bubuk", sourceTarget, finalActive);
+        SetGuideArrow(ref mortarStepArrow, "ARW_Step4_Mortar", targetMortar, Step04MortarArrowLabel, new Vector3(0f, 0.45f, 0f), finalActive);
+    }
+
     private void Update()
     {
         if (isAnimating)
@@ -213,8 +242,9 @@ public class SyrupProcedureManager : MonoBehaviour
             CheckStep02PlaceParchmentOnScale();
         else if (currentStep == SyrupStep.Step_03_WeighPowder)
             CheckStep03WeighPowder();
+        else if (currentStep == SyrupStep.Step_04_MovePowderToMortar)
+            CheckStep04MovePowderToMortar();
     }
-
     public void BeginSyrupProcedure()
     {
         StopAllCoroutines();
@@ -258,6 +288,9 @@ public class SyrupProcedureManager : MonoBehaviour
         ClearProcedureOutlines();
         ResolveSceneReferences();
         ApplyStep3RecipeSettings();
+
+        if (powderDepositZone != null)
+            powderDepositZone.SetAcceptingDeposits(true);
 
         currentStep = SyrupStep.Step_03_WeighPowder;
         stepDone = false;
@@ -528,7 +561,6 @@ public class SyrupProcedureManager : MonoBehaviour
             return;
 
         stepDone = true;
-        currentStep = SyrupStep.Done;
 
         if (progressText != null)
             progressText.text = $"Step 3 selesai. Bubuk {Step3PowderName} {Step3TargetPowderMg:0} mg sudah ditimbang.";
@@ -539,7 +571,135 @@ public class SyrupProcedureManager : MonoBehaviour
         SetStep3ArrowsActive(false);
         ClearProcedureOutlines();
 
+        StartCoroutine(ShowStep04AfterStep03());
+
         Debug.Log("[SyrupProcedure] Step 3 complete.");
+    }
+
+    private IEnumerator ShowStep04AfterStep03()
+    {
+        isAnimating = true;
+
+        yield return new WaitForSeconds(0.5f);
+
+        ShowDefaultStep04();
+
+        isAnimating = false;
+    }
+
+    public void ShowDefaultStep04()
+    {
+        ClearProcedureOutlines();
+        ResolveSceneReferences();
+        ResolveStep4References();
+
+        if (powderDepositZone != null)
+            powderDepositZone.SetAcceptingDeposits(false);
+
+        currentStep = SyrupStep.Step_04_MovePowderToMortar;
+        stepDone = false;
+        stableTimer = 0f;
+
+        if (forceUILayout)
+            ApplyUILayout();
+
+        if (instructionText != null)
+        {
+            instructionText.gameObject.SetActive(true);
+            instructionText.text = Step04Instruction;
+        }
+
+        if (progressText != null)
+        {
+            progressText.gameObject.SetActive(true);
+            progressText.text = Step04Progress;
+        }
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
+
+        SetProcedureOutlineActive(mortarOutline, true);
+        SetStep4ArrowsActive(true);
+
+        Debug.Log("[SyrupProcedure] Step 4 started.");
+    }
+
+    private void CheckStep04MovePowderToMortar()
+    {
+        if (stepDone)
+            return;
+
+        ResolveStep4References();
+
+        if (mortarController == null)
+        {
+            if (progressText != null)
+                progressText.text = "Mortar belum tersambung ke Step 4.";
+            return;
+        }
+
+        float mortarMg = GetMortarPowderMg();
+        float targetMg = Step3TargetPowderMg;
+        float toleranceMg = Step3ToleranceMg;
+
+        bool powderMoved = Mathf.Abs(mortarMg - targetMg) <= toleranceMg;
+
+        if (progressText != null)
+        {
+            if (mortarMg <= 0.1f)
+            {
+                progressText.text = $"Mortar: belum ada bubuk.\nAmbil bubuk {Step3PowderName} dari piring kiri, lalu tuang ke mortar.";
+            }
+            else if (mortarMg < targetMg - toleranceMg)
+            {
+                progressText.text = $"Mortar: {mortarMg:0} / {targetMg:0} mg.\nMasukkan semua bubuk yang sudah ditimbang ke mortar.";
+            }
+            else if (mortarMg > targetMg + toleranceMg)
+            {
+                progressText.text = $"Mortar: {mortarMg:0} mg. Terlalu banyak.\nTekan Reset, lalu ulangi bagian penimbangan.";
+            }
+            else
+            {
+                progressText.text = $"Step 4 selesai. Bubuk {Step3PowderName} {targetMg:0} mg sudah masuk ke mortar.";
+            }
+        }
+
+        SetStep4ArrowsActive(!powderMoved);
+
+        if (doneIcon != null)
+            doneIcon.SetActive(powderMoved);
+
+        if (powderMoved)
+        {
+            stableTimer += Time.deltaTime;
+
+            if (stableTimer >= step4StableRequiredTime)
+                CompleteStep04();
+        }
+        else
+        {
+            stableTimer = 0f;
+        }
+    }
+
+    private void CompleteStep04()
+    {
+        if (stepDone)
+            return;
+
+        stepDone = true;
+        currentStep = SyrupStep.Done;
+
+        if (progressText != null)
+            progressText.text = $"Step 4 selesai. Bubuk {Step3PowderName} sudah dipindahkan ke mortar.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(true);
+
+        SetStep4ArrowsActive(false);
+        ClearProcedureOutlines();
+
+        Debug.Log("[SyrupProcedure] Step 4 complete.");
     }
 
     private IEnumerator ShowStep03AfterStep02()
@@ -560,6 +720,54 @@ public class SyrupProcedureManager : MonoBehaviour
             return powderDepositZone.DepositedGrams;
 
         return leftWeighingZone != null ? leftWeighingZone.TotalGrams : 0f;
+    }
+
+    private float GetMortarPowderMg()
+    {
+        if (mortarController == null)
+            return 0f;
+
+        if (TryReadCurrentMg(mortarController, out float currentMg))
+            return currentMg;
+
+        return 0f;
+    }
+
+    private bool TryReadCurrentMg(object target, out float value)
+    {
+        value = 0f;
+
+        if (target == null)
+            return false;
+
+        BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        string[] names =
+        {
+        "CurrentAmountMg",
+        "currentAmountMg",
+        "CurrentMg",
+        "currentMg",
+        "AmountMg",
+        "amountMg",
+        "powderMg",
+        "currentPowderMg"
+    };
+
+        System.Type type = target.GetType();
+
+        foreach (string name in names)
+        {
+            FieldInfo field = type.GetField(name, flags);
+            if (field != null)
+                return ConvertToFloat(field.GetValue(target), out value);
+
+            PropertyInfo property = type.GetProperty(name, flags);
+            if (property != null && property.CanRead)
+                return ConvertToFloat(property.GetValue(target), out value);
+        }
+
+        return false;
     }
 
     private static string FormatMass(float grams)
@@ -641,6 +849,7 @@ public class SyrupProcedureManager : MonoBehaviour
             leftPowderStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step3_Bubuk");
 
         ResolveStep3References();
+        ResolveStep4References();
     }
 
     private void ResolveStep3References()
@@ -673,6 +882,24 @@ public class SyrupProcedureManager : MonoBehaviour
             if (rightPanObject != null)
                 rightPanTarget = rightPanObject.transform;
         }
+    }
+
+    private void ResolveStep4References()
+    {
+        if (mortarController == null)
+            mortarController = FindSceneComponentByName<MortarController>("Mortar");
+
+        if (mortarController == null)
+            mortarController = FindSceneComponentByName<MortarController>("mortar");
+
+        if (mortarTarget == null && mortarController != null)
+            mortarTarget = mortarController.transform;
+
+        if (mortarOutline == null && mortarController != null)
+            mortarOutline = mortarController.GetComponent<Outlinable>();
+
+        if (mortarStepArrow == null)
+            mortarStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step4_Mortar");
     }
 
     private void SetGuideArrow(ref WorldStepArrow arrow, string objectName, Transform target, string label, Vector3 offset, bool active)

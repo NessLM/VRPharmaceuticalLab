@@ -13,8 +13,11 @@ MonoBehaviour:
   m_Name: SyrupRecipe
   m_EditorClassIdentifier: 
   recipeName: Sirup Difenhidramin
-  powderName: Difenhidramin
+  powderName: Difenhidramin HCl
   targetPowderMg: 250
   toleranceMg: 10
   scoopStepMg: 50
+  targetWaterMl: 100
+  waterPortionMl: 50
+  waterToleranceMl: 2
   powderVisualMaxMg: 250

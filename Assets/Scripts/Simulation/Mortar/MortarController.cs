@@ -38,11 +38,20 @@ public class MortarController : MonoBehaviour
 
     public float MaxCapacityMg => maxCapacityMg;
     public float CurrentAmountMg => currentAmountMg;
+    [Header("Transfer Guard")]
+    [SerializeField] private bool requireExplicitPowderTransfer = true;
+    [SerializeField] private bool acceptingPowderTransfer;
     public float FillRatio => maxCapacityMg > 0f ? currentAmountMg / maxCapacityMg : 0f;
     public float GrindingProgressRatio => grindingProgressRequired > 0f ? currentGrindingProgress / grindingProgressRequired : 0f;
     public bool IsHomogeneous => isHomogeneous;
     public bool IsEmpty => currentAmountMg <= 0f;
     public bool IsFull => currentAmountMg >= maxCapacityMg;
+    public bool IsAcceptingPowderTransfer => acceptingPowderTransfer;
+
+    public void SetAcceptingPowderTransfer(bool value)
+    {
+        acceptingPowderTransfer = value;
+    }
 
     private void Start()
     {
@@ -59,14 +68,27 @@ public class MortarController : MonoBehaviour
     }
 
     /// <summary>Adds powder to the mortar. Returns actual amount accepted in mg.</summary>
+    /// <summary>Adds powder to the mortar. Returns actual amount accepted in mg.</summary>
     public float AddPowder(float amountMg)
     {
-        float available = maxCapacityMg - currentAmountMg;
-        float added = Mathf.Min(amountMg, available);
+        if (requireExplicitPowderTransfer && !acceptingPowderTransfer)
+            return 0f;
+
+        float safeAmount = Mathf.Max(0f, amountMg);
+        float available = Mathf.Max(0f, maxCapacityMg - currentAmountMg);
+        float added = Mathf.Min(safeAmount, available);
+
         currentAmountMg += added;
+
         UpdateVisual();
         onAmountChanged?.Invoke(currentAmountMg);
+
         return added;
+    }
+
+    public float AddPowderMg(float amountMg)
+    {
+        return AddPowder(amountMg);
     }
 
     /// <summary>Adds grinding progress. Called by StamperController each frame it detects movement.</summary>

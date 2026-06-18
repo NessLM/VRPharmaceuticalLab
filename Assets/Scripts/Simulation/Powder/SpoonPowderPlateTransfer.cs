@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -7,10 +8,18 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 [DisallowMultipleComponent]
 public class SpoonPowderPlateTransfer : MonoBehaviour
 {
+    private enum TransferMode
+    {
+        None,
+        ScoopFromPlate,
+        PourToMortar
+    }
+
     [Header("References")]
     [SerializeField] private HornSpoon hornSpoon;
     [SerializeField] private XRGrabInteractable grabInteractable;
     [SerializeField] private Transform spoonTip;
+    [SerializeField] private SpoonActionPrompt actionPrompt;
 
     [Header("Powder Source - Piring Kiri")]
     [SerializeField] private PowderDepositZone powderDepositZone;
@@ -21,11 +30,27 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
     [SerializeField] private Transform mortarTargetPoint;
 
     [Header("Transfer Settings")]
+    [SerializeField] private bool transferEnabled = false;
     [SerializeField] private float transferStepMg = 50f;
-    [SerializeField] private float sourceDetectRadius = 0.18f;
-    [SerializeField] private float mortarDetectRadius = 0.18f;
+    [SerializeField] private float sourceDetectRadius = 0.22f;
+    [SerializeField] private float mortarDetectRadius = 0.25f;
     [SerializeField] private bool requireHeld = true;
     [SerializeField] private bool onlyTakeWhenSpoonEmpty = true;
+    [SerializeField] private float cooldownAfterTransfer = 0.25f;
+
+    [Header("Prompt Text")]
+    [SerializeField] private string scoopPromptText = "Scoop\n<size=65%>Ambil bubuk</size>";
+    [SerializeField] private string pourPromptText = "Trigger\n<size=65%>Tuang ke Mortar</size>";
+    [SerializeField] private string carryPromptText = "Bawa ke Mortar";
+
+    [Header("Tilt Animation")]
+    [SerializeField] private bool useTiltAnimation = true;
+    [SerializeField] private Transform animatedRoot;
+    [SerializeField] private Vector3 scoopTiltEuler = new Vector3(-25f, 0f, 0f);
+    [SerializeField] private Vector3 pourTiltEuler = new Vector3(35f, 0f, 0f);
+    [SerializeField] private float tiltInDuration = 0.12f;
+    [SerializeField] private float holdTiltDuration = 0.08f;
+    [SerializeField] private float tiltOutDuration = 0.16f;
 
     [Header("Optional FX")]
     [SerializeField] private ParticleSystem scoopFx;
@@ -33,8 +58,13 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
 
     [Header("Debug")]
     [SerializeField] private bool debugLogs = true;
+    [SerializeField] private bool showDistanceLogs;
 
     private readonly BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+    private bool isBusy;
+    private float nextAllowedTransferTime;
+    private Quaternion baseLocalRotation;
 
     private void Awake()
     {
@@ -46,6 +76,14 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
 
         if (spoonTip == null && hornSpoon != null)
             spoonTip = hornSpoon.TipTransform;
+
+        if (actionPrompt == null)
+            actionPrompt = GetComponent<SpoonActionPrompt>();
+
+        if (animatedRoot == null)
+            animatedRoot = transform;
+
+        baseLocalRotation = animatedRoot.localRotation;
     }
 
     private void OnEnable()
@@ -58,10 +96,44 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
     {
         if (grabInteractable != null)
             grabInteractable.activated.RemoveListener(OnActivated);
+
+        if (actionPrompt != null)
+            actionPrompt.ClearExternalPrompt();
+    }
+
+    private void Update()
+    {
+        UpdateStep4Prompt();
+    }
+
+    public void SetTransferEnabled(bool value)
+    {
+        transferEnabled = value;
+
+        if (!transferEnabled && actionPrompt != null)
+            actionPrompt.ClearExternalPrompt();
     }
 
     private void OnActivated(ActivateEventArgs args)
     {
+        if (!transferEnabled)
+        {
+            Log("Rejected: Step 4 transfer belum aktif.");
+            return;
+        }
+
+        if (isBusy)
+        {
+            Log("Rejected: masih animasi transfer.");
+            return;
+        }
+
+        if (Time.time < nextAllowedTransferTime)
+        {
+            Log("Rejected: cooldown.");
+            return;
+        }
+
         if (requireHeld && (grabInteractable == null || !grabInteractable.isSelected))
         {
             Log("Rejected: sendok belum di-grab.");
@@ -80,38 +152,152 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
             return;
         }
 
-        bool nearMortar = IsNear(mortarTargetPoint, mortarDetectRadius);
-        bool nearSource = IsNear(powderSourcePoint, sourceDetectRadius);
+        TransferMode mode = GetCurrentTransferMode();
 
+        if (mode == TransferMode.ScoopFromPlate)
+        {
+            StartCoroutine(TransferRoutine(mode));
+            return;
+        }
+
+        if (mode == TransferMode.PourToMortar)
+        {
+            StartCoroutine(TransferRoutine(mode));
+            return;
+        }
+
+        Log($"No valid target. Source distance = {GetDistance(powderSourcePoint):0.000}, Mortar distance = {GetDistance(mortarTargetPoint):0.000}, SpoonMg = {GetSpoonAmountMg():0.###}");
+    }
+
+    private IEnumerator TransferRoutine(TransferMode mode)
+    {
+        isBusy = true;
+
+        bool success = false;
+
+        Quaternion startRotation = animatedRoot != null ? animatedRoot.localRotation : Quaternion.identity;
+        Quaternion targetRotation = startRotation;
+
+        if (useTiltAnimation && animatedRoot != null)
+        {
+            Vector3 tiltEuler = mode == TransferMode.ScoopFromPlate ? scoopTiltEuler : pourTiltEuler;
+            targetRotation = startRotation * Quaternion.Euler(tiltEuler);
+
+            yield return AnimateLocalRotation(startRotation, targetRotation, tiltInDuration);
+        }
+
+        if (mode == TransferMode.ScoopFromPlate)
+            success = TryTakeFromPlate();
+
+        if (mode == TransferMode.PourToMortar)
+            success = TryPourToMortar();
+
+        if (success)
+        {
+            if (mode == TransferMode.ScoopFromPlate)
+                PlayFxAt(scoopFx, powderSourcePoint);
+
+            if (mode == TransferMode.PourToMortar)
+                PlayFxAt(pourFx, mortarTargetPoint);
+        }
+
+        if (holdTiltDuration > 0f)
+            yield return new WaitForSeconds(holdTiltDuration);
+
+        if (useTiltAnimation && animatedRoot != null)
+            yield return AnimateLocalRotation(animatedRoot.localRotation, startRotation, tiltOutDuration);
+
+        nextAllowedTransferTime = Time.time + cooldownAfterTransfer;
+        isBusy = false;
+    }
+
+    private IEnumerator AnimateLocalRotation(Quaternion from, Quaternion to, float duration)
+    {
+        float t = 0f;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Clamp01(t / Mathf.Max(0.001f, duration));
+            animatedRoot.localRotation = Quaternion.Slerp(from, to, a);
+            yield return null;
+        }
+
+        animatedRoot.localRotation = to;
+    }
+
+    private TransferMode GetCurrentTransferMode()
+    {
+        bool nearSource = IsNear(powderSourcePoint, sourceDetectRadius);
+        bool nearMortar = IsNear(mortarTargetPoint, mortarDetectRadius);
+        float spoonMg = GetSpoonAmountMg();
+
+        if (nearMortar && spoonMg > 0.1f)
+            return TransferMode.PourToMortar;
+
+        if (nearSource && spoonMg <= 0.1f && powderDepositZone != null && powderDepositZone.HasPowder)
+            return TransferMode.ScoopFromPlate;
+
+        return TransferMode.None;
+    }
+
+    private void UpdateStep4Prompt()
+    {
+        if (actionPrompt == null)
+            return;
+
+        if (!transferEnabled)
+        {
+            actionPrompt.ClearExternalPrompt();
+            return;
+        }
+
+        if (grabInteractable == null || !grabInteractable.isSelected)
+        {
+            actionPrompt.ClearExternalPrompt();
+            return;
+        }
+
+        bool nearSource = IsNear(powderSourcePoint, sourceDetectRadius);
+        bool nearMortar = IsNear(mortarTargetPoint, mortarDetectRadius);
         float spoonMg = GetSpoonAmountMg();
 
         if (nearMortar && spoonMg > 0.1f)
         {
-            TryPourToMortar();
+            actionPrompt.SetExternalPrompt(pourPromptText);
             return;
         }
 
-        if (nearSource)
+        if (nearSource && spoonMg <= 0.1f && powderDepositZone != null && powderDepositZone.HasPowder)
         {
-            TryTakeFromPlate();
+            actionPrompt.SetExternalPrompt(scoopPromptText);
             return;
         }
 
-        Log($"No valid target. Distance source = {GetDistance(powderSourcePoint):0.000}, distance mortar = {GetDistance(mortarTargetPoint):0.000}");
+        if (spoonMg > 0.1f)
+        {
+            actionPrompt.SetExternalPrompt(carryPromptText);
+            return;
+        }
+
+        actionPrompt.ClearExternalPrompt();
+
+        if (showDistanceLogs)
+            Log($"Prompt none. Source distance = {GetDistance(powderSourcePoint):0.000}, Mortar distance = {GetDistance(mortarTargetPoint):0.000}");
     }
 
-    private void TryTakeFromPlate()
+    private bool TryTakeFromPlate()
     {
         if (powderDepositZone == null)
         {
             Log("Rejected: PowderDepositZone belum diisi.");
-            return;
+            return false;
         }
 
         if (onlyTakeWhenSpoonEmpty && !hornSpoon.IsEmpty)
         {
             Log("Rejected: sendok masih ada bubuk. Tuang dulu ke mortar.");
-            return;
+            return false;
         }
 
         float availableMg = powderDepositZone.DepositedMg;
@@ -119,7 +305,7 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
         if (availableMg <= 0.1f)
         {
             Log("Rejected: bubuk di piring kiri sudah habis.");
-            return;
+            return false;
         }
 
         float takeRequestMg = Mathf.Min(transferStepMg, availableMg);
@@ -128,25 +314,24 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
         if (addedToSpoonMg <= 0.1f)
         {
             Log("Rejected: gagal memasukkan bubuk ke sendok.");
-            return;
+            return false;
         }
 
         float remainingPlateMg = Mathf.Max(0f, availableMg - addedToSpoonMg);
         powderDepositZone.SetDepositMg(remainingPlateMg);
 
-        PlayFx(scoopFx);
-
         Log($"TAKE OK: sendok ambil {addedToSpoonMg:0.###} mg dari piring kiri. Sisa piring = {remainingPlateMg:0.###} mg.");
+        return true;
     }
 
-    private void TryPourToMortar()
+    private bool TryPourToMortar()
     {
         Component receiver = ResolveMortarReceiver();
 
         if (receiver == null)
         {
             Log("Rejected: MortarReceiver belum diisi atau tidak ada MortarController.");
-            return;
+            return false;
         }
 
         float spoonMg = GetSpoonAmountMg();
@@ -154,24 +339,48 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
         if (spoonMg <= 0.1f)
         {
             Log("Rejected: sendok kosong.");
-            return;
+            return false;
         }
+
+        MortarController mortar = receiver as MortarController;
+
+        if (mortar == null)
+            mortar = receiver.GetComponent<MortarController>();
+
+        if (mortar == null)
+            mortar = receiver.GetComponentInParent<MortarController>();
+
+        if (mortar == null)
+            mortar = receiver.GetComponentInChildren<MortarController>();
 
         float removedFromSpoonMg = RemovePowderFromSpoon(spoonMg);
 
         if (removedFromSpoonMg <= 0.1f)
         {
             Log("Rejected: gagal mengurangi bubuk dari sendok.");
-            return;
+            return false;
         }
 
-        float acceptedByMortarMg = AddPowderToMortar(receiver, removedFromSpoonMg);
+        float acceptedByMortarMg = 0f;
+
+        if (mortar != null)
+            mortar.SetAcceptingPowderTransfer(true);
+
+        try
+        {
+            acceptedByMortarMg = AddPowderToMortar(receiver, removedFromSpoonMg);
+        }
+        finally
+        {
+            if (mortar != null)
+                mortar.SetAcceptingPowderTransfer(false);
+        }
 
         if (acceptedByMortarMg <= 0.1f)
         {
             AddPowderToSpoon(removedFromSpoonMg);
             Log("Rejected: mortar tidak menerima bubuk. Bubuk dikembalikan ke sendok.");
-            return;
+            return false;
         }
 
         float leftoverMg = removedFromSpoonMg - acceptedByMortarMg;
@@ -179,9 +388,8 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
         if (leftoverMg > 0.1f)
             AddPowderToSpoon(leftoverMg);
 
-        PlayFx(pourFx);
-
         Log($"POUR OK: mortar menerima {acceptedByMortarMg:0.###} mg. Sisa balik ke sendok = {leftoverMg:0.###} mg.");
+        return true;
     }
 
     private bool IsNear(Transform target, float radius)
@@ -515,10 +723,16 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
         return false;
     }
 
-    private void PlayFx(ParticleSystem fx)
+    private void PlayFxAt(ParticleSystem fx, Transform target)
     {
         if (fx == null)
             return;
+
+        if (target != null)
+        {
+            fx.transform.position = target.position;
+            fx.transform.rotation = target.rotation;
+        }
 
         fx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         fx.Play(true);
@@ -536,6 +750,10 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
         transferStepMg = Mathf.Max(1f, transferStepMg);
         sourceDetectRadius = Mathf.Max(0.01f, sourceDetectRadius);
         mortarDetectRadius = Mathf.Max(0.01f, mortarDetectRadius);
+        cooldownAfterTransfer = Mathf.Max(0f, cooldownAfterTransfer);
+        tiltInDuration = Mathf.Max(0.01f, tiltInDuration);
+        holdTiltDuration = Mathf.Max(0f, holdTiltDuration);
+        tiltOutDuration = Mathf.Max(0.01f, tiltOutDuration);
     }
 #endif
 }

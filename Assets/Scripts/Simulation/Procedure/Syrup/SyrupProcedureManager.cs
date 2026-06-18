@@ -83,6 +83,7 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private Outlinable mortarOutline;
     [SerializeField] private WorldStepArrow mortarStepArrow;
     [SerializeField] private float step4StableRequiredTime = 0.5f;
+    [SerializeField] private SpoonPowderPlateTransfer spoonPowderPlateTransfer;
 
     private const string Step01Instruction = "Step 1: Isi gelas ukur sampai 100 ml";
     private const string Step01StartProgress = "Tekan tombol air merah, lalu arahkan gelas ukur ke aliran air.";
@@ -291,6 +292,9 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (powderDepositZone != null)
             powderDepositZone.SetAcceptingDeposits(true);
+
+        if (spoonPowderPlateTransfer != null)
+            spoonPowderPlateTransfer.SetTransferEnabled(false);
 
         currentStep = SyrupStep.Step_03_WeighPowder;
         stepDone = false;
@@ -596,6 +600,9 @@ public class SyrupProcedureManager : MonoBehaviour
         if (powderDepositZone != null)
             powderDepositZone.SetAcceptingDeposits(false);
 
+        if (spoonPowderPlateTransfer != null)
+            spoonPowderPlateTransfer.SetTransferEnabled(true);
+
         currentStep = SyrupStep.Step_04_MovePowderToMortar;
         stepDone = false;
         stableTimer = 0f;
@@ -695,6 +702,9 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (doneIcon != null)
             doneIcon.SetActive(true);
+
+        if (spoonPowderPlateTransfer != null)
+            spoonPowderPlateTransfer.SetTransferEnabled(false);
 
         SetStep4ArrowsActive(false);
         ClearProcedureOutlines();
@@ -900,6 +910,9 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (mortarStepArrow == null)
             mortarStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step4_Mortar");
+
+        if (spoonPowderPlateTransfer == null)
+            spoonPowderPlateTransfer = FindSceneComponentByName<SpoonPowderPlateTransfer>("sendokTanduk");
     }
 
     private void SetGuideArrow(ref WorldStepArrow arrow, string objectName, Transform target, string label, Vector3 offset, bool active)

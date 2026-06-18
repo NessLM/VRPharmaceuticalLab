@@ -25,6 +25,10 @@ public class SpoonActionPrompt : MonoBehaviour
     [SerializeField] private string scoopText = "Trigger\n<size=65%>Ambil 50 mg</size>";
     [SerializeField] private string fullText = "Penuh\n<size=65%>Tuang ke piring</size>";
 
+    [Header("External Prompt")]
+    [SerializeField] private bool externalPromptActive;
+    [SerializeField] private string externalPromptText;
+
     [Header("Text Style")]
     [SerializeField] private float fontSize = 0.16f;
     [SerializeField] private Color textColor = Color.white;
@@ -85,6 +89,13 @@ public class SpoonActionPrompt : MonoBehaviour
             return;
         }
 
+        if (externalPromptActive)
+        {
+            promptText.text = externalPromptText;
+            promptRoot.gameObject.SetActive(true);
+            return;
+        }
+
         if (hornSpoon != null && hornSpoon.IsFull)
         {
             promptText.text = fullText;
@@ -126,6 +137,20 @@ public class SpoonActionPrompt : MonoBehaviour
             TextMeshPro textMesh = textObject.AddComponent<TextMeshPro>();
             promptText = textMesh;
         }
+    }
+
+    public void SetExternalPrompt(string text)
+    {
+        externalPromptText = text;
+        externalPromptActive = !string.IsNullOrWhiteSpace(text);
+        RefreshPrompt();
+    }
+
+    public void ClearExternalPrompt()
+    {
+        externalPromptText = string.Empty;
+        externalPromptActive = false;
+        RefreshPrompt();
     }
 
     private void ConfigureText()

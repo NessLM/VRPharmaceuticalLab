@@ -39,6 +39,18 @@ public class PerkamenSnapTrigger : MonoBehaviour
         perkamen.localPosition = Vector3.zero;
         perkamen.localRotation = Quaternion.identity;
 
+        PowderDropTrigger dropTrigger = perkamen.GetComponentInChildren<PowderDropTrigger>(true);
+
+        if (dropTrigger != null)
+        {
+            dropTrigger.gameObject.SetActive(true);
+            Debug.Log("CTM_DropTrigger aktif setelah perkamen snap.");
+        }
+        else
+        {
+            Debug.LogWarning("PowderDropTrigger tidak ditemukan di child singleperkamen.");
+        }
+
         Debug.Log("Kertas perkamen berhasil snap ke piring kiri.");
     }
 }

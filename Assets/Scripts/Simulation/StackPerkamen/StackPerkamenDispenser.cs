@@ -15,8 +15,7 @@ public class StackPerkamenDispenser : MonoBehaviour
     public Transform spawnPoint;
 
     [Header("Setting")]
-    public float spawnCooldown = 0.15f;
-    public bool forceGrabAfterSpawn = true;
+    public float spawnCooldown = 0.35f;
 
     [Header("Safety")]
     [Tooltip("0 berarti tidak dibatasi. Isi 2-4 untuk mencegah clone perkamen menumpuk terus di scene.")]
@@ -34,9 +33,7 @@ public class StackPerkamenDispenser : MonoBehaviour
         interactionManager = stackInteractable.interactionManager;
 
         if (interactionManager == null)
-        {
             interactionManager = FindFirstObjectByType<XRInteractionManager>();
-        }
     }
 
     private void OnEnable()
@@ -68,21 +65,22 @@ public class StackPerkamenDispenser : MonoBehaviour
 
         if (singlePerkamenPrefab == null)
         {
-            Debug.LogWarning("Single Perkamen Prefab belum diisi di StackPerkamenDispenser.");
+            Debug.LogWarning("Single Perkamen Prefab belum diisi.");
             return;
         }
 
         PruneLiveSpawned();
+
         if (maxLiveSpawned > 0 && liveSpawned.Count >= maxLiveSpawned)
         {
-            Debug.Log("[StackPerkamen] Batas perkamen aktif tercapai. Pakai perkamen yang sudah muncul dulu.", this);
+            Debug.Log("[StackPerkamen] Batas perkamen aktif tercapai.", this);
             return;
         }
 
-        spawnRoutine = StartCoroutine(SpawnAndGrabRoutine(args.interactorObject));
+        spawnRoutine = StartCoroutine(SpawnRoutine());
     }
 
-    private IEnumerator SpawnAndGrabRoutine(IXRSelectInteractor interactor)
+    private IEnumerator SpawnRoutine()
     {
         busy = true;
 
@@ -97,24 +95,8 @@ public class StackPerkamenDispenser : MonoBehaviour
         PreparePerkamen(newPerkamen);
         liveSpawned.Add(newPerkamen);
 
-        yield return null;
-
-        if (forceGrabAfterSpawn && interactionManager != null && interactor != null)
-        {
-            if (stackInteractable.isSelected)
-            {
-                interactionManager.SelectExit(interactor, stackInteractable);
-            }
-
-            yield return null;
-
-            if (newPerkamen != null && newPerkamen.isActiveAndEnabled)
-            {
-                interactionManager.SelectEnter(interactor, newPerkamen);
-            }
-        }
-
         yield return new WaitForSeconds(Mathf.Max(0.01f, spawnCooldown));
+
         busy = false;
         spawnRoutine = null;
     }
@@ -134,7 +116,6 @@ public class StackPerkamenDispenser : MonoBehaviour
             perkamen.interactionManager = interactionManager;
 
         Rigidbody rb = perkamen.GetComponent<Rigidbody>();
-
         if (rb == null)
             rb = perkamen.gameObject.AddComponent<Rigidbody>();
 
@@ -152,12 +133,11 @@ public class StackPerkamenDispenser : MonoBehaviour
 
         RefreshInteractableColliders(perkamen);
 
-        PerkamenNoGravity physicsState = perkamen.GetComponent<PerkamenNoGravity>();
+        Transform dropTrigger = perkamen.transform.Find("CTM_DropTrigger");
+        if (dropTrigger != null)
+            dropTrigger.gameObject.SetActive(false);
 
-        if (physicsState == null)
-            physicsState = perkamen.gameObject.AddComponent<PerkamenNoGravity>();
-
-        physicsState.ApplyFreePhysics();
+        Debug.Log("Single perkamen muncul dan siap digrab manual.");
     }
 
     private void RefreshInteractableColliders(XRGrabInteractable perkamen)
@@ -167,15 +147,24 @@ public class StackPerkamenDispenser : MonoBehaviour
 
         perkamen.colliders.Clear();
 
-        Collider[] colliders = perkamen.GetComponentsInChildren<Collider>(true);
+        Collider[] colliders = perkamen.GetComponentsInChildren<Collider>(false);
+
         foreach (Collider collider in colliders)
         {
             if (collider == null)
                 continue;
 
+            if (collider.isTrigger)
+                continue;
+
+            if (!collider.gameObject.activeInHierarchy)
+                continue;
+
             collider.enabled = true;
             perkamen.colliders.Add(collider);
         }
+
+        Debug.Log("Collider grab perkamen aktif: " + perkamen.colliders.Count);
     }
 
     private void PruneLiveSpawned()
@@ -198,7 +187,7 @@ public class StackPerkamenDispenser : MonoBehaviour
         }
         catch (UnityException)
         {
-            Debug.LogWarning($"[StackPerkamen] Tag '{tagName}' belum ada di project. Snap tetap pakai nama object sebagai fallback.", this);
+            Debug.LogWarning($"[StackPerkamen] Tag '{tagName}' belum ada di project.", this);
         }
     }
 }

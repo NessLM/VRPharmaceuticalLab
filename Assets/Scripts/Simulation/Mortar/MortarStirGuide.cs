@@ -5,26 +5,41 @@ public class MortarStirGuide : MonoBehaviour
 {
     [Header("Target")]
     [SerializeField] private Transform target;
-    [SerializeField] private Vector3 worldOffset = new Vector3(0f, 0.12f, 0f);
+    [SerializeField] private Vector3 worldOffset = new Vector3(0f, 0.075f, 0f);
 
     [Header("Circle")]
-    [SerializeField] private float radius = 0.16f;
+    [SerializeField] private float radius = 0.07f;
     [SerializeField] private int segments = 48;
-    [SerializeField] private float lineWidth = 0.012f;
-    [SerializeField] private Color lineColor = new Color(0.55f, 1f, 1f, 0.85f);
+    [SerializeField] private float lineWidth = 0.004f;
+    [SerializeField] private Color lineColor = new Color(0.55f, 1f, 1f, 0.9f);
 
     [Header("Moving Indicator")]
     [SerializeField] private Transform movingIndicator;
-    [SerializeField] private float spinSpeedDegrees = 120f;
-    [SerializeField] private Vector3 indicatorScale = new Vector3(0.035f, 0.008f, 0.02f);
+    [SerializeField] private float spinSpeedDegrees = 150f;
+    [SerializeField] private Vector3 indicatorScale = new Vector3(0.018f, 0.004f, 0.011f);
 
     [Header("Runtime")]
     [SerializeField] private bool visible;
+    [SerializeField] private bool detachFromScaledParentOnPlay = true;
 
     private LineRenderer lineRenderer;
+    private Material runtimeMaterial;
     private float angle;
 
     private void Awake()
+    {
+        if (Application.isPlaying && detachFromScaledParentOnPlay && transform.parent != null)
+        {
+            transform.SetParent(null, true);
+            transform.localScale = Vector3.one;
+        }
+
+        EnsureLineRenderer();
+        EnsureIndicator();
+        SetVisible(visible);
+    }
+
+    private void OnEnable()
     {
         EnsureLineRenderer();
         EnsureIndicator();
@@ -36,20 +51,7 @@ public class MortarStirGuide : MonoBehaviour
         if (!visible)
             return;
 
-        if (target != null)
-            transform.position = target.position + worldOffset;
-
-        BuildCircle();
-
-        angle += spinSpeedDegrees * Time.deltaTime;
-        float rad = angle * Mathf.Deg2Rad;
-
-        if (movingIndicator != null)
-        {
-            Vector3 localPos = new Vector3(Mathf.Cos(rad) * radius, 0f, Mathf.Sin(rad) * radius);
-            movingIndicator.localPosition = localPos;
-            movingIndicator.localRotation = Quaternion.Euler(0f, -angle, 0f);
-        }
+        UpdateGuide();
     }
 
     public void SetTarget(Transform newTarget)
@@ -61,6 +63,9 @@ public class MortarStirGuide : MonoBehaviour
     {
         visible = value;
 
+        EnsureLineRenderer();
+        EnsureIndicator();
+
         if (lineRenderer != null)
             lineRenderer.enabled = visible;
 
@@ -68,40 +73,56 @@ public class MortarStirGuide : MonoBehaviour
             movingIndicator.gameObject.SetActive(visible);
     }
 
+    private void UpdateGuide()
+    {
+        Vector3 center = target != null
+            ? target.position + worldOffset
+            : transform.position + worldOffset;
+
+        transform.position = center;
+        transform.rotation = Quaternion.identity;
+        transform.localScale = Vector3.one;
+
+        BuildWorldCircle(center);
+
+        angle += spinSpeedDegrees * Time.deltaTime;
+        float rad = angle * Mathf.Deg2Rad;
+
+        if (movingIndicator != null)
+        {
+            Vector3 pos = center + new Vector3(Mathf.Cos(rad) * radius, 0f, Mathf.Sin(rad) * radius);
+            Vector3 tangent = new Vector3(-Mathf.Sin(rad), 0f, Mathf.Cos(rad)).normalized;
+
+            movingIndicator.position = pos;
+            movingIndicator.rotation = Quaternion.LookRotation(tangent, Vector3.up);
+            movingIndicator.localScale = indicatorScale;
+        }
+    }
+
     private void EnsureLineRenderer()
     {
-        lineRenderer = GetComponent<LineRenderer>();
+        if (lineRenderer == null)
+            lineRenderer = GetComponent<LineRenderer>();
 
         if (lineRenderer == null)
             lineRenderer = gameObject.AddComponent<LineRenderer>();
 
-        lineRenderer.useWorldSpace = false;
+        lineRenderer.useWorldSpace = true;
         lineRenderer.loop = true;
         lineRenderer.positionCount = Mathf.Max(8, segments);
         lineRenderer.startWidth = lineWidth;
         lineRenderer.endWidth = lineWidth;
         lineRenderer.numCornerVertices = 3;
         lineRenderer.numCapVertices = 3;
+        lineRenderer.startColor = lineColor;
+        lineRenderer.endColor = lineColor;
+        lineRenderer.enabled = visible;
 
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null)
-            shader = Shader.Find("Sprites/Default");
+        if (runtimeMaterial == null)
+            runtimeMaterial = CreateGuideMaterial();
 
-        if (shader != null)
-        {
-            Material mat = new Material(shader);
-            mat.name = "Runtime_MortarStirGuide_Material";
-
-            if (mat.HasProperty("_BaseColor"))
-                mat.SetColor("_BaseColor", lineColor);
-
-            if (mat.HasProperty("_Color"))
-                mat.SetColor("_Color", lineColor);
-
-            lineRenderer.material = mat;
-        }
-
-        BuildCircle();
+        if (runtimeMaterial != null)
+            lineRenderer.sharedMaterial = runtimeMaterial;
     }
 
     private void EnsureIndicator()
@@ -119,13 +140,13 @@ public class MortarStirGuide : MonoBehaviour
             Destroy(col);
 
         Renderer renderer = indicator.GetComponent<Renderer>();
-        if (renderer != null && lineRenderer != null)
-            renderer.sharedMaterial = lineRenderer.material;
+        if (renderer != null)
+            renderer.sharedMaterial = lineRenderer != null ? lineRenderer.sharedMaterial : CreateGuideMaterial();
 
         movingIndicator = indicator.transform;
     }
 
-    private void BuildCircle()
+    private void BuildWorldCircle(Vector3 center)
     {
         if (lineRenderer == null)
             return;
@@ -137,16 +158,47 @@ public class MortarStirGuide : MonoBehaviour
         {
             float t = (float)i / count;
             float rad = t * Mathf.PI * 2f;
-            Vector3 pos = new Vector3(Mathf.Cos(rad) * radius, 0f, Mathf.Sin(rad) * radius);
+
+            Vector3 pos = center + new Vector3(
+                Mathf.Cos(rad) * radius,
+                0f,
+                Mathf.Sin(rad) * radius
+            );
+
             lineRenderer.SetPosition(i, pos);
         }
+    }
+
+    private Material CreateGuideMaterial()
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        if (shader == null)
+            shader = Shader.Find("Sprites/Default");
+
+        if (shader == null)
+            shader = Shader.Find("Unlit/Color");
+
+        if (shader == null)
+            return null;
+
+        Material mat = new Material(shader);
+        mat.name = "Runtime_MortarStirGuide_Material";
+
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", lineColor);
+
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", lineColor);
+
+        return mat;
     }
 
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        segments = Mathf.Max(8, segments);
         radius = Mathf.Max(0.01f, radius);
+        segments = Mathf.Max(8, segments);
         lineWidth = Mathf.Max(0.001f, lineWidth);
     }
 #endif

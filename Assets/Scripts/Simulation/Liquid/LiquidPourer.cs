@@ -126,6 +126,30 @@ public class LiquidPourer : MonoBehaviour
         Vector3 start = GetPourStartPosition();
         Vector3 missVelocity = GetNoReceiverStreamVelocity();
 
+        MortarWaterIntakeZone mortarReceiver = FindMortarReceiverAlongStream(start, missVelocity);
+        if (mortarReceiver != null)
+        {
+            float transferredMl = mortarReceiver.ReceiveFrom(sourceContainer, amountMl);
+
+            if (transferredMl > 0f)
+            {
+                CurrentReceiver = null;
+                Vector3 end = mortarReceiver.ReceiverPoint.position;
+                DrawStreamToTarget(start, end, true);
+                PlayStreamParticles(start, (end - start).normalized);
+
+                if (debugLogs)
+                    Debug.Log($"{name} transferred {transferredMl:0.###} ml directly to mortar", this);
+
+                return;
+            }
+
+            // The stream is aimed at the mortar but the current 50 ml phase is already full.
+            // Do not silently drain the measuring glass as a missed spill.
+            StopPourVisual();
+            return;
+        }
+
         LiquidReceiverZone receiver = FindReceiverAlongStream(start, missVelocity);
 
         if (receiver != null)
@@ -444,6 +468,49 @@ public class LiquidPourer : MonoBehaviour
                 // Prefer receivers closer to the stream start. This avoids catching random FillZones behind the target.
                 float sequencePenalty = t * 0.02f;
                 float score = distanceScore + sequencePenalty;
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestReceiver = receiver;
+                }
+            }
+        }
+
+        return bestReceiver;
+    }
+
+    private MortarWaterIntakeZone FindMortarReceiverAlongStream(Vector3 start, Vector3 velocity)
+    {
+        MortarWaterIntakeZone bestReceiver = null;
+        float bestScore = float.MaxValue;
+
+        int samples = Mathf.Max(1, receiverPathSamples);
+        for (int s = 0; s < samples; s++)
+        {
+            float t = samples == 1 ? 0f : s / (float)(samples - 1);
+            Vector3 samplePoint = GetBallisticPoint(start, velocity, t);
+
+            int hitCount = Physics.OverlapSphereNonAlloc(
+                samplePoint,
+                receiverSearchRadius,
+                receiverHits,
+                receiverLayers,
+                QueryTriggerInteraction.Collide
+            );
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = receiverHits[i];
+                if (hit == null)
+                    continue;
+
+                MortarWaterIntakeZone receiver = hit.GetComponentInParent<MortarWaterIntakeZone>();
+                if (receiver == null || !receiver.CanReceiveFrom(sourceContainer))
+                    continue;
+
+                Vector3 target = receiver.ReceiverPoint.position;
+                float score = (target - samplePoint).sqrMagnitude + t * 0.02f;
 
                 if (score < bestScore)
                 {

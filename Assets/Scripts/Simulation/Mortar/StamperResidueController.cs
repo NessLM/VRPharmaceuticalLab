@@ -1,9 +1,13 @@
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 [DisallowMultipleComponent]
 public class StamperResidueController : MonoBehaviour
 {
+    [Header("Mixing State")]
+    [SerializeField] private MortarController mortar;
+
     [Header("Residue Visual")]
     [SerializeField] private GameObject residueVisual;
 
@@ -11,19 +15,32 @@ public class StamperResidueController : MonoBehaviour
     [SerializeField] private Transform residuePoint;
     [SerializeField] private Transform sudipTip;
     [SerializeField] private XRGrabInteractable sudipGrab;
+    [SerializeField] private XRGrabInteractable stamperGrab;
     [SerializeField] private bool requireSudipHeld = true;
+    [SerializeField] private bool requireStamperReleased = true;
     [SerializeField] private float scrapeRadius = 0.08f;
     [SerializeField] private float requiredScrapeTime = 0.45f;
+
+    [Header("Events")]
+    [SerializeField] private UnityEvent onResidueCleared = new UnityEvent();
 
     [Header("Debug")]
     [SerializeField] private bool hasResidue;
     [SerializeField] private float scrapeTimer;
+
+    private Vector3 residueOriginalScale = Vector3.one;
 
     public bool HasResidue => hasResidue;
     public bool IsCleaned => !hasResidue;
 
     private void Awake()
     {
+        if (stamperGrab == null)
+            stamperGrab = GetComponent<XRGrabInteractable>();
+
+        if (residueVisual != null)
+            residueOriginalScale = residueVisual.transform.localScale;
+
         SetResidueVisible(false);
     }
 
@@ -41,6 +58,14 @@ public class StamperResidueController : MonoBehaviour
         if (requireSudipHeld && (sudipGrab == null || !sudipGrab.isSelected))
         {
             scrapeTimer = 0f;
+            ResetResiduePose();
+            return;
+        }
+
+        if (requireStamperReleased && stamperGrab != null && stamperGrab.isSelected)
+        {
+            scrapeTimer = 0f;
+            ResetResiduePose();
             return;
         }
 
@@ -49,19 +74,27 @@ public class StamperResidueController : MonoBehaviour
         if (distance > scrapeRadius)
         {
             scrapeTimer = 0f;
+            ResetResiduePose();
             return;
         }
 
         scrapeTimer += Time.deltaTime;
+        AnimateScrape();
 
         if (scrapeTimer >= requiredScrapeTime)
             ClearResidue();
+    }
+
+    public void BindMortar(MortarController targetMortar)
+    {
+        mortar = targetMortar;
     }
 
     public void ShowResidue()
     {
         hasResidue = true;
         scrapeTimer = 0f;
+        ResetResiduePose();
         SetResidueVisible(true);
     }
 
@@ -70,6 +103,25 @@ public class StamperResidueController : MonoBehaviour
         hasResidue = false;
         scrapeTimer = 0f;
         SetResidueVisible(false);
+        mortar?.CompleteScrape();
+        onResidueCleared?.Invoke();
+    }
+
+    private void AnimateScrape()
+    {
+        if (residueVisual == null)
+            return;
+
+        float t = requiredScrapeTime > 0f ? Mathf.Clamp01(scrapeTimer / requiredScrapeTime) : 1f;
+        float shrink = Mathf.Lerp(1f, 0.2f, t);
+        residueVisual.transform.localScale = residueOriginalScale * shrink;
+        residueVisual.transform.localRotation *= Quaternion.Euler(0f, 0f, 220f * Time.deltaTime);
+    }
+
+    private void ResetResiduePose()
+    {
+        if (residueVisual != null)
+            residueVisual.transform.localScale = residueOriginalScale;
     }
 
     private void SetResidueVisible(bool value)

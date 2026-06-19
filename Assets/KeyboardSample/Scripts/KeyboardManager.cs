@@ -21,11 +21,12 @@ public class KeyboardManager : MonoBehaviour
 
     public void OpenKeybord(TMP_InputField inputField)
     {
+        if (inputField == null)
+            return;
 
-        CurrentText = string.Empty;
-        _KeyboardGameobject.SetActive(true);
-        if (string.IsNullOrEmpty(inputField.text))
-            CurrentText = inputField.text;
+        CurrentText = inputField.text ?? string.Empty;
+        if (_KeyboardGameobject != null)
+            _KeyboardGameobject.SetActive(true);
 
         _CurrentInputField = inputField;
         _CurrentInputField.text = CurrentText;
@@ -33,11 +34,12 @@ public class KeyboardManager : MonoBehaviour
 
     public void OpenNumpad(TMP_InputField inputField)
     {
+        if (inputField == null)
+            return;
 
-        CurrentText = string.Empty;
-        _NumpadGameObject.SetActive(true);
-        if (string.IsNullOrEmpty(inputField.text))
-            CurrentText = inputField.text;
+        CurrentText = inputField.text ?? string.Empty;
+        if (_NumpadGameObject != null)
+            _NumpadGameObject.SetActive(true);
 
         _CurrentInputField = inputField;
         _CurrentInputField.text = CurrentText;
@@ -46,21 +48,29 @@ public class KeyboardManager : MonoBehaviour
     public void Done()
     {
         CurrentText = string.Empty;
-        _KeyboardGameobject.SetActive(false);
+        if (_KeyboardGameobject != null)
+            _KeyboardGameobject.SetActive(false);
+
+        if (_NumpadGameObject != null)
+            _NumpadGameObject.SetActive(false);
+
+        _CurrentInputField = null;
     }
 
     public void AddingChar(string character)
     {
+        if (_CurrentInputField == null)
+            return;
+
         CurrentText = CurrentText + character;
         _CurrentInputField.text = CurrentText;
     }
 
     public void DelChar()
     {
-        if (CurrentText.Length == 0) return;
+        if (_CurrentInputField == null || CurrentText.Length == 0) return;
         CurrentText = CurrentText.Remove(CurrentText.Length - 1);
         _CurrentInputField.text = CurrentText;
     }
 
 }
-

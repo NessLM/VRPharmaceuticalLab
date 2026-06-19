@@ -2748,7 +2748,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &168133120
 Transform:
   m_ObjectHideFlags: 0
@@ -6671,7 +6671,7 @@ Transform:
   m_GameObject: {fileID: 400938976}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.72, z: 0}
+  m_LocalPosition: {x: 0, y: 0.723, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10889,7 +10889,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   snapPoint: {fileID: 1505638756}
-  disableGrabAfterSnap: 1
 --- !u!1 &747215507
 GameObject:
   m_ObjectHideFlags: 0
@@ -22936,8 +22935,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 3.3563852, y: 0.3545022, z: 2.491708}
-  m_Center: {x: -0.021145344, y: 0.15217423, z: -0.048680753}
+  m_Size: {x: 3.3563852, y: 0.27812004, z: 2.491708}
+  m_Center: {x: -0.021145344, y: 0.09969473, z: -0.048680753}
 --- !u!114 &1480999733
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31193,7 +31192,6 @@ MonoBehaviour:
   singlePerkamenPrefab: {fileID: 1480999733}
   spawnPoint: {fileID: 400938977}
   spawnCooldown: 0.15
-  forceGrabAfterSpawn: 1
   maxLiveSpawned: 0
 --- !u!65 &2061011699
 BoxCollider:
@@ -33598,7 +33596,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a68095ef7f9eb2f4f83e83b1e8163393, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.0149
+      value: 1.0132
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a68095ef7f9eb2f4f83e83b1e8163393, type: 3}
       propertyPath: m_LocalPosition.z
@@ -33638,7 +33636,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a68095ef7f9eb2f4f83e83b1e8163393, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a68095ef7f9eb2f4f83e83b1e8163393, type: 3}
       propertyPath: m_TagString

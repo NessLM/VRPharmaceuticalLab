@@ -1,74 +1,116 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-/// <summary>
-/// Mortar that receives powder from HornSpoon and tracks grinding progress from StamperController.
-/// When grinding progress reaches the threshold, material is marked as homogeneous.
-/// Attach to: Mortar GameObject.
-/// </summary>
 public class MortarController : MonoBehaviour
 {
-    [Header("Capacity")]
+    [Header("Powder Capacity")]
     [SerializeField] private float maxCapacityMg = 3000f;
     [SerializeField] private float currentAmountMg = 0f;
 
-    [Header("Grinding")]
+    [Header("Recipe Visual Limit")]
+    [Tooltip("Batas visual penuh untuk resep aktif. Untuk resep Difenhidramin sekarang = 250 mg.")]
+    [SerializeField] private float powderVisualMaxMg = 250f;
+
+    [Header("Transfer Guard")]
+    [SerializeField] private bool requireExplicitPowderTransfer = true;
+    [SerializeField] private bool acceptingPowderTransfer;
+
+    [Header("Water")]
+    [SerializeField] private float maxWaterMl = 100f;
+    [SerializeField] private float currentWaterMl = 0f;
+
+    [Header("Grinding / Mixing")]
     [SerializeField] private float grindingProgressRequired = 100f;
     [SerializeField] private float currentGrindingProgress = 0f;
     [SerializeField] private bool isHomogeneous = false;
 
-    [Header("Powder Visual")]
-    [Tooltip("Child Transform of the powder mesh inside the mortar bowl.")]
-    [SerializeField] private Transform powderMesh;
-    [SerializeField] private bool createDefaultVisualIfMissing = true;
-    [SerializeField] private Vector3 emptyLocalScale = new Vector3(0.8f, 0.001f, 0.8f);
-    [SerializeField] private Vector3 fullLocalScale = new Vector3(0.8f, 0.35f, 0.8f);
-    [SerializeField] private Vector3 emptyLocalPosition = Vector3.zero;
-    [SerializeField] private Vector3 fullLocalPosition = new Vector3(0f, 0.175f, 0f);
-    [SerializeField] private Renderer powderRenderer;
+    [Header("Step 5 Stir Phase")]
+    [SerializeField] private float stirProgressRequired = 25f;
+    [SerializeField] private float currentStirProgress = 0f;
+    [SerializeField] private bool waitingForStir = false;
+    [SerializeField] private int completedStirPhases = 0;
+
+    [Header("Powder Mesh Visual Levels")]
+    [Tooltip("Root kosong yang menampung semua level bubuk.")]
+    [SerializeField] private Transform powderVisualRoot;
+
+    [Tooltip("Isi dari kecil ke besar. Contoh: Bubuk_Level_01, Bubuk_Level_02, Bubuk_Level_03.")]
+    [SerializeField] private GameObject[] powderLevelObjects;
+
+    [SerializeField] private bool hideWhenEmpty = true;
+
+    [Tooltip("ON kalau mesh level sudah kamu atur manual pos/scale-nya di scene.")]
+    [SerializeField] private bool preserveAuthoredLevelTransforms = true;
+
+    [Header("Wet Visual Adjustment")]
+    [SerializeField] private bool adjustRootWhenWet = true;
+    [SerializeField] private float wetSpreadMultiplier = 1.08f;
+    [SerializeField] private float wetHeightMultiplier = 0.75f;
+
+    [Header("Powder Material / Color")]
     [SerializeField] private Material powderMaterial;
-    [SerializeField] private Color rawColor = Color.white;
-    [SerializeField] private Color homogeneousColor = new Color(0.88f, 0.88f, 0.78f);
+    [SerializeField] private Color rawColor = new Color(0.96f, 0.96f, 0.92f, 1f);
+    [SerializeField] private Color wetPowderColor = new Color(0.90f, 0.90f, 0.82f, 1f);
+    [SerializeField] private Color homogeneousColor = new Color(0.84f, 0.84f, 0.74f, 1f);
 
     [Header("Events")]
     public UnityEvent<float> onAmountChanged;
+    public UnityEvent<float> onWaterChanged;
     public UnityEvent<float> onGrindingProgressChanged;
+    public UnityEvent<float> onStirProgressChanged;
     public UnityEvent onBecameHomogeneous;
+
+    private Vector3 rootInitialLocalScale = Vector3.one;
+    private Vector3 rootInitialLocalPosition = Vector3.zero;
 
     public float MaxCapacityMg => maxCapacityMg;
     public float CurrentAmountMg => currentAmountMg;
-    [Header("Transfer Guard")]
-    [SerializeField] private bool requireExplicitPowderTransfer = true;
-    [SerializeField] private bool acceptingPowderTransfer;
-    public float FillRatio => maxCapacityMg > 0f ? currentAmountMg / maxCapacityMg : 0f;
-    public float GrindingProgressRatio => grindingProgressRequired > 0f ? currentGrindingProgress / grindingProgressRequired : 0f;
+    public float CurrentWaterMl => currentWaterMl;
+
+    public float PowderVisualMaxMg => powderVisualMaxMg;
+    public float FillRatio => maxCapacityMg > 0f ? Mathf.Clamp01(currentAmountMg / maxCapacityMg) : 0f;
+    public float VisualFillRatio => powderVisualMaxMg > 0f ? Mathf.Clamp01(currentAmountMg / powderVisualMaxMg) : 0f;
+    public float WaterRatio => maxWaterMl > 0f ? Mathf.Clamp01(currentWaterMl / maxWaterMl) : 0f;
+
+    public float GrindingProgressRatio => grindingProgressRequired > 0f ? Mathf.Clamp01(currentGrindingProgress / grindingProgressRequired) : 0f;
+
+    public float CurrentStirProgress => currentStirProgress;
+    public float CurrentStirProgress01 => stirProgressRequired > 0f ? Mathf.Clamp01(currentStirProgress / stirProgressRequired) : 0f;
+    public bool WaitingForStir => waitingForStir;
+    public int CompletedStirPhases => completedStirPhases;
+
     public bool IsHomogeneous => isHomogeneous;
-    public bool IsEmpty => currentAmountMg <= 0f;
-    public bool IsFull => currentAmountMg >= maxCapacityMg;
+    public bool IsEmpty => currentAmountMg <= 0.001f;
+    public bool IsFull => currentAmountMg >= maxCapacityMg - 0.001f;
     public bool IsAcceptingPowderTransfer => acceptingPowderTransfer;
+    public bool IsStep5MixDone => completedStirPhases >= 2 && isHomogeneous;
+
+    private void Awake()
+    {
+        if (powderVisualRoot != null)
+        {
+            rootInitialLocalScale = powderVisualRoot.localScale;
+            rootInitialLocalPosition = powderVisualRoot.localPosition;
+        }
+    }
+
+    private void Start()
+    {
+        ApplyMaterialToAllLevels();
+        UpdateVisual();
+    }
+
+    public void SetPowderVisualMaxMg(float value)
+    {
+        powderVisualMaxMg = Mathf.Max(1f, value);
+        UpdateVisual();
+    }
 
     public void SetAcceptingPowderTransfer(bool value)
     {
         acceptingPowderTransfer = value;
     }
 
-    private void Start()
-    {
-        if (powderMesh == null && createDefaultVisualIfMissing)
-            CreateDefaultPowderVisual();
-
-        if (powderRenderer == null && powderMesh != null)
-            powderRenderer = powderMesh.GetComponent<Renderer>();
-
-        if (powderRenderer != null && powderMaterial != null)
-            powderRenderer.sharedMaterial = powderMaterial;
-
-        UpdateVisual();
-    }
-
-    /// <summary>Adds powder to the mortar. Returns actual amount accepted in mg.</summary>
-    /// <summary>Adds powder to the mortar. Returns actual amount accepted in mg.</summary>
     public float AddPowder(float amountMg)
     {
         if (requireExplicitPowderTransfer && !acceptingPowderTransfer)
@@ -77,6 +119,9 @@ public class MortarController : MonoBehaviour
         float safeAmount = Mathf.Max(0f, amountMg);
         float available = Mathf.Max(0f, maxCapacityMg - currentAmountMg);
         float added = Mathf.Min(safeAmount, available);
+
+        if (added <= 0.001f)
+            return 0f;
 
         currentAmountMg += added;
 
@@ -91,244 +136,254 @@ public class MortarController : MonoBehaviour
         return AddPowder(amountMg);
     }
 
-    /// <summary>Adds grinding progress. Called by StamperController each frame it detects movement.</summary>
-    public void AddGrindingProgress(float amount)
+    public float AddWaterMl(float amountMl)
     {
-        if (isHomogeneous || IsEmpty) return;
+        float safeAmount = Mathf.Max(0f, amountMl);
+        float available = Mathf.Max(0f, maxWaterMl - currentWaterMl);
+        float added = Mathf.Min(safeAmount, available);
 
-        float prev = currentGrindingProgress;
-        currentGrindingProgress = Mathf.Min(currentGrindingProgress + amount, grindingProgressRequired);
+        if (added <= 0.001f)
+            return 0f;
 
-        if (!Mathf.Approximately(currentGrindingProgress, prev))
+        currentWaterMl += added;
+
+        UpdateVisual();
+        onWaterChanged?.Invoke(currentWaterMl);
+
+        return added;
+    }
+
+    public void SetWaterMl(float amountMl)
+    {
+        currentWaterMl = Mathf.Clamp(amountMl, 0f, maxWaterMl);
+        UpdateVisual();
+        onWaterChanged?.Invoke(currentWaterMl);
+    }
+
+    public void BeginStirPhase()
+    {
+        waitingForStir = true;
+        currentStirProgress = 0f;
+        onStirProgressChanged?.Invoke(CurrentStirProgress01);
+    }
+
+    public void AddStirProgress(float amount)
+    {
+        if (!waitingForStir)
+            return;
+
+        if (IsEmpty)
+            return;
+
+        float safeAmount = Mathf.Max(0f, amount);
+        currentStirProgress = Mathf.Min(currentStirProgress + safeAmount, stirProgressRequired);
+
+        onStirProgressChanged?.Invoke(CurrentStirProgress01);
+
+        if (currentStirProgress >= stirProgressRequired)
         {
-            onGrindingProgressChanged?.Invoke(GrindingProgressRatio);
+            waitingForStir = false;
+            completedStirPhases++;
 
-            if (currentGrindingProgress >= grindingProgressRequired)
+            if (completedStirPhases >= 2)
             {
                 isHomogeneous = true;
                 onBecameHomogeneous?.Invoke();
-                UpdateVisual();
             }
+
+            UpdateVisual();
         }
     }
 
-    /// <summary>Resets mortar contents and grinding progress.</summary>
+    public void AddGrindingProgress(float amount)
+    {
+        if (waitingForStir)
+        {
+            AddStirProgress(amount);
+            return;
+        }
+
+        if (isHomogeneous || IsEmpty)
+            return;
+
+        float safeAmount = Mathf.Max(0f, amount);
+        currentGrindingProgress = Mathf.Min(currentGrindingProgress + safeAmount, grindingProgressRequired);
+
+        onGrindingProgressChanged?.Invoke(GrindingProgressRatio);
+
+        if (currentGrindingProgress >= grindingProgressRequired)
+        {
+            isHomogeneous = true;
+            onBecameHomogeneous?.Invoke();
+            UpdateVisual();
+        }
+    }
+
+    public void ResetStep5MixData()
+    {
+        currentWaterMl = 0f;
+        currentStirProgress = 0f;
+        completedStirPhases = 0;
+        waitingForStir = false;
+        isHomogeneous = false;
+
+        UpdateVisual();
+        onWaterChanged?.Invoke(currentWaterMl);
+        onStirProgressChanged?.Invoke(CurrentStirProgress01);
+    }
+
     public void ResetMortar()
     {
         currentAmountMg = 0f;
+        currentWaterMl = 0f;
         currentGrindingProgress = 0f;
+        currentStirProgress = 0f;
+        completedStirPhases = 0;
+        waitingForStir = false;
         isHomogeneous = false;
+        acceptingPowderTransfer = false;
+
         UpdateVisual();
+
         onAmountChanged?.Invoke(currentAmountMg);
+        onWaterChanged?.Invoke(currentWaterMl);
+        onGrindingProgressChanged?.Invoke(GrindingProgressRatio);
+        onStirProgressChanged?.Invoke(CurrentStirProgress01);
     }
 
     private void UpdateVisual()
     {
-        if (powderMesh == null) return;
-
-        bool hasPowder = currentAmountMg > 0f;
-        powderMesh.gameObject.SetActive(hasPowder);
-
-        if (hasPowder)
-        {
-            float t = FillRatio;
-            powderMesh.localScale = Vector3.Lerp(emptyLocalScale, fullLocalScale, t);
-            powderMesh.localPosition = Vector3.Lerp(emptyLocalPosition, fullLocalPosition, t);
-
-            if (powderRenderer != null)
-                powderRenderer.material.color = isHomogeneous ? homogeneousColor : rawColor;
-        }
+        UpdateLevelVisibility();
+        UpdateWetRootShape();
+        ApplyCurrentColor();
     }
 
-    [ContextMenu("Create Default Powder Visual")]
-    private void CreateDefaultPowderVisual()
+    private void UpdateLevelVisibility()
     {
-        GameObject powderObject = new GameObject("MortarPowderVisual");
-        powderObject.transform.SetParent(transform, false);
-        powderObject.transform.localPosition = fullLocalPosition;
-        powderObject.transform.localRotation = Quaternion.identity;
-        powderObject.transform.localScale = Vector3.one;
+        if (powderLevelObjects == null || powderLevelObjects.Length == 0)
+            return;
 
-        MeshFilter meshFilter = powderObject.AddComponent<MeshFilter>();
-        MeshRenderer meshRenderer = powderObject.AddComponent<MeshRenderer>();
-
-        // Use a mound-shaped mesh instead of a primitive cylinder so it looks like actual powder
-        meshFilter.sharedMesh = BuildPowderMoundMesh();
-
-        powderMesh = powderObject.transform;
-        powderRenderer = meshRenderer;
-
-        if (powderMaterial != null)
+        for (int i = 0; i < powderLevelObjects.Length; i++)
         {
-            powderRenderer.sharedMaterial = powderMaterial;
+            if (powderLevelObjects[i] != null)
+                powderLevelObjects[i].SetActive(false);
         }
-        else
-        {
-            Material material = CreatePowderMaterial(rawColor, "Runtime_Mortar_Powder_Material");
-            if (material != null)
-                powderRenderer.sharedMaterial = material;
-        }
+
+        if (IsEmpty && hideWhenEmpty)
+            return;
+
+        float ratio = VisualFillRatio;
+
+        int index = Mathf.CeilToInt(ratio * powderLevelObjects.Length) - 1;
+        index = Mathf.Clamp(index, 0, powderLevelObjects.Length - 1);
+
+        if (powderLevelObjects[index] != null)
+            powderLevelObjects[index].SetActive(true);
     }
 
-    /// <summary>Generates a dome-shaped powder mound mesh in unit coordinates (0–1 range),
-    /// so it scales correctly via localScale just like Unity's built-in primitives.</summary>
-    private Mesh BuildPowderMoundMesh()
+    private void UpdateWetRootShape()
     {
-        // Defined in local unit coordinates (radius ~0.45, height 0–1)
-        // Mortar's localScale of (0.0026, 0.00087, 0.0026) + mortar world scale ~45.82
-        // gives a ~11cm wide, ~4cm tall mound at fullLocalScale.
-        const float moundRadiusX = 0.45f;
-        const float moundRadiusZ = 0.45f;
-        const float baseThickness = 0.04f;
-        const float moundPeakY = 0.90f;    // dome peak in unit Y (scaled by localScale.y)
-        const float noiseAmount = 0.012f;
-        const int segments = 32;
-        const int rings = 6;
+        if (!adjustRootWhenWet)
+            return;
 
-        var vertices = new System.Collections.Generic.List<Vector3>();
-        var normals = new System.Collections.Generic.List<Vector3>();
-        var uvs = new System.Collections.Generic.List<Vector2>();
-        var triangles = new System.Collections.Generic.List<int>();
+        if (powderVisualRoot == null)
+            return;
 
-        // Bottom flat cap
-        int bottomCenter = vertices.Count;
-        vertices.Add(Vector3.zero);
-        normals.Add(Vector3.down);
-        uvs.Add(new Vector2(0.5f, 0.5f));
+        if (!preserveAuthoredLevelTransforms)
+            return;
 
-        int bottomRingStart = vertices.Count;
-        for (int i = 0; i < segments; i++)
+        float waterT = WaterRatio;
+
+        Vector3 newScale = rootInitialLocalScale;
+        newScale.x *= Mathf.Lerp(1f, wetSpreadMultiplier, waterT);
+        newScale.z *= Mathf.Lerp(1f, wetSpreadMultiplier, waterT);
+        newScale.y *= Mathf.Lerp(1f, wetHeightMultiplier, waterT);
+
+        powderVisualRoot.localScale = newScale;
+        powderVisualRoot.localPosition = rootInitialLocalPosition;
+    }
+
+    private void ApplyCurrentColor()
+    {
+        if (powderLevelObjects == null)
+            return;
+
+        float waterT = WaterRatio;
+
+        Color colorNow = rawColor;
+
+        if (waterT > 0f)
+            colorNow = Color.Lerp(rawColor, wetPowderColor, waterT);
+
+        if (isHomogeneous)
+            colorNow = Color.Lerp(colorNow, homogeneousColor, 0.85f);
+
+        for (int i = 0; i < powderLevelObjects.Length; i++)
         {
-            float angle = i * Mathf.PI * 2f / segments;
-            vertices.Add(new Vector3(Mathf.Cos(angle) * moundRadiusX, 0f, Mathf.Sin(angle) * moundRadiusZ));
-            normals.Add(Vector3.down);
-            uvs.Add(new Vector2(0.5f + Mathf.Cos(angle) * 0.5f, 0.5f + Mathf.Sin(angle) * 0.5f));
-        }
-        for (int i = 0; i < segments; i++)
-        {
-            triangles.Add(bottomCenter);
-            triangles.Add(bottomRingStart + i);
-            triangles.Add(bottomRingStart + (i + 1) % segments);
-        }
+            GameObject level = powderLevelObjects[i];
 
-        // Thin side wall
-        int sideStart = vertices.Count;
-        for (int i = 0; i <= segments; i++)
-        {
-            float angle = i * Mathf.PI * 2f / segments;
-            float x = Mathf.Cos(angle) * moundRadiusX;
-            float z = Mathf.Sin(angle) * moundRadiusZ;
-            Vector3 normal = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)).normalized;
-
-            vertices.Add(new Vector3(x, 0f, z));
-            normals.Add(normal);
-            uvs.Add(new Vector2((float)i / segments, 0f));
-
-            vertices.Add(new Vector3(x, baseThickness, z));
-            normals.Add(normal);
-            uvs.Add(new Vector2((float)i / segments, 1f));
-        }
-        for (int i = 0; i < segments; i++)
-        {
-            int bl = sideStart + i * 2;
-            int tl = bl + 1;
-            int br = sideStart + (i + 1) * 2;
-            int tr = br + 1;
-            triangles.Add(bl); triangles.Add(tl); triangles.Add(tr);
-            triangles.Add(bl); triangles.Add(tr); triangles.Add(br);
-        }
-
-        // Dome top — concentric rings collapsing to peak
-        int[] ringStarts = new int[rings + 1];
-        for (int ring = 0; ring <= rings; ring++)
-        {
-            ringStarts[ring] = vertices.Count;
-            float inward = (float)ring / rings;
-            float ringRadiusX = moundRadiusX * (1f - inward);
-            float ringRadiusZ = moundRadiusZ * (1f - inward);
-            float y = baseThickness + moundPeakY * (inward * inward);
-
-            if (ring == rings)
-            {
-                vertices.Add(new Vector3(0f, baseThickness + moundPeakY, 0f));
-                normals.Add(Vector3.up);
-                uvs.Add(new Vector2(0.5f, 0.5f));
+            if (level == null || !level.activeSelf)
                 continue;
-            }
 
-            for (int i = 0; i < segments; i++)
+            Renderer[] renderers = level.GetComponentsInChildren<Renderer>(true);
+
+            foreach (Renderer renderer in renderers)
             {
-                float angle = i * Mathf.PI * 2f / segments;
-                float wave = Mathf.Sin(angle * 3.2f + ring * 0.8f) * noiseAmount;
-                vertices.Add(new Vector3(
-                    Mathf.Cos(angle) * ringRadiusX,
-                    y + wave,
-                    Mathf.Sin(angle) * ringRadiusZ));
-                normals.Add(Vector3.up);
-                uvs.Add(new Vector2(
-                    0.5f + Mathf.Cos(angle) * 0.5f,
-                    0.5f + Mathf.Sin(angle) * 0.5f));
+                if (renderer == null)
+                    continue;
+
+                if (powderMaterial != null)
+                    renderer.sharedMaterial = powderMaterial;
+
+                Material mat = renderer.material;
+
+                if (mat.HasProperty("_BaseColor"))
+                    mat.SetColor("_BaseColor", colorNow);
+
+                if (mat.HasProperty("_Color"))
+                    mat.SetColor("_Color", colorNow);
             }
         }
-
-        for (int ring = 0; ring < rings; ring++)
-        {
-            int outer = ringStarts[ring];
-            int inner = ringStarts[ring + 1];
-            bool last = ring == rings - 1;
-            for (int i = 0; i < segments; i++)
-            {
-                int next = (i + 1) % segments;
-                if (last)
-                {
-                    triangles.Add(outer + i);
-                    triangles.Add(inner);
-                    triangles.Add(outer + next);
-                }
-                else
-                {
-                    triangles.Add(outer + i); triangles.Add(inner + i); triangles.Add(inner + next);
-                    triangles.Add(outer + i); triangles.Add(inner + next); triangles.Add(outer + next);
-                }
-            }
-        }
-
-        Mesh mesh = new Mesh { name = "MortarPowderMound_Generated" };
-        mesh.SetVertices(vertices);
-        mesh.SetNormals(normals);
-        mesh.SetUVs(0, uvs);
-        mesh.SetTriangles(triangles, 0);
-        mesh.RecalculateBounds();
-        mesh.RecalculateNormals();
-        return mesh;
     }
 
-    private Material CreatePowderMaterial(Color color, string materialName)
+    private void ApplyMaterialToAllLevels()
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-        if (shader == null)
-            shader = Shader.Find("Standard");
-        if (shader == null)
-            return null;
+        if (powderMaterial == null || powderLevelObjects == null)
+            return;
 
-        Material material = new Material(shader)
+        for (int i = 0; i < powderLevelObjects.Length; i++)
         {
-            name = materialName
-        };
+            GameObject level = powderLevelObjects[i];
 
-        if (material.HasProperty("_BaseColor"))
-            material.SetColor("_BaseColor", color);
-        if (material.HasProperty("_Color"))
-            material.SetColor("_Color", color);
+            if (level == null)
+                continue;
 
-        return material;
+            Renderer[] renderers = level.GetComponentsInChildren<Renderer>(true);
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer != null)
+                    renderer.sharedMaterial = powderMaterial;
+            }
+        }
     }
 
 #if UNITY_EDITOR
     private void OnValidate()
     {
+        maxCapacityMg = Mathf.Max(1f, maxCapacityMg);
         currentAmountMg = Mathf.Clamp(currentAmountMg, 0f, maxCapacityMg);
+
+        powderVisualMaxMg = Mathf.Max(1f, powderVisualMaxMg);
+
+        maxWaterMl = Mathf.Max(1f, maxWaterMl);
+        currentWaterMl = Mathf.Clamp(currentWaterMl, 0f, maxWaterMl);
+
+        grindingProgressRequired = Mathf.Max(1f, grindingProgressRequired);
         currentGrindingProgress = Mathf.Clamp(currentGrindingProgress, 0f, grindingProgressRequired);
+
+        stirProgressRequired = Mathf.Max(1f, stirProgressRequired);
+        currentStirProgress = Mathf.Clamp(currentStirProgress, 0f, stirProgressRequired);
     }
 #endif
 }

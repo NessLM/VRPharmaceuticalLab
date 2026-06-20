@@ -13,6 +13,9 @@ public class MortarWaterVisual : MonoBehaviour
     [SerializeField] private bool createVisualIfMissing = true;
     [SerializeField] private bool hideWhenEmpty = true;
     [SerializeField] private float visualMaxWaterMl = 100f;
+    [SerializeField] private bool useProcedureStageVisualRatios = true;
+    [SerializeField, Range(0.05f, 0.9f)] private float firstStageVisualRatio = 0.12f;
+    [SerializeField, Range(0.1f, 1f)] private float secondStageVisualRatio = 0.34f;
     [SerializeField] private Vector3 emptyLocalPosition = new Vector3(0f, 0f, 0.000098f);
     [SerializeField] private Vector3 fullLocalPosition = new Vector3(0f, 0f, 0.00017f);
     [SerializeField] private Vector2 emptyLocalRadius = new Vector2(0.0017f, 0.0017f);
@@ -278,7 +281,7 @@ public class MortarWaterVisual : MonoBehaviour
             return;
 
         float waterMl = mortarController.CurrentWaterMl;
-        float water01 = visualMaxWaterMl > 0f ? Mathf.Clamp01(waterMl / visualMaxWaterMl) : 0f;
+        float water01 = GetVisualFillRatio(waterMl);
         float mix01 = mortarController.OverallMix01;
         bool show = !hideWhenEmpty || waterMl > 0.1f;
 
@@ -350,6 +353,21 @@ public class MortarWaterVisual : MonoBehaviour
 
         ApplyLiquidColor(water01, mix01, stirring);
         UpdateSuspendedPowder(surfacePosition, depth, water01, mix01, stirring, force);
+    }
+
+    private float GetVisualFillRatio(float waterMl)
+    {
+        if (!useProcedureStageVisualRatios || mortarController == null)
+            return visualMaxWaterMl > 0f ? Mathf.Clamp01(waterMl / visualMaxWaterMl) : 0f;
+
+        float firstStageMl = Mathf.Max(0.001f, mortarController.StageWaterMl);
+        float targetMl = Mathf.Max(firstStageMl, mortarController.TargetWaterMl);
+
+        if (waterMl <= firstStageMl)
+            return Mathf.Lerp(0f, firstStageVisualRatio, Mathf.Clamp01(waterMl / firstStageMl));
+
+        float secondStageProgress = Mathf.InverseLerp(firstStageMl, targetMl, waterMl);
+        return Mathf.Lerp(firstStageVisualRatio, secondStageVisualRatio, secondStageProgress);
     }
 
     private void ApplyLiquidColor(float water01, float mix01, bool stirring)
@@ -707,6 +725,8 @@ public class MortarWaterVisual : MonoBehaviour
     private void OnValidate()
     {
         visualMaxWaterMl = Mathf.Max(1f, visualMaxWaterMl);
+        firstStageVisualRatio = Mathf.Clamp(firstStageVisualRatio, 0.05f, 0.9f);
+        secondStageVisualRatio = Mathf.Clamp(secondStageVisualRatio, firstStageVisualRatio, 1f);
         particleCount = Mathf.Clamp(particleCount, 4, 40);
         particleMinSize = Mathf.Max(0.000005f, particleMinSize);
         particleMaxSize = Mathf.Max(particleMinSize, particleMaxSize);

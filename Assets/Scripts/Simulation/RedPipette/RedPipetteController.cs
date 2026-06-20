@@ -1550,8 +1550,23 @@ public class RedPipetteController : MonoBehaviour
     [ContextMenu("Debug Empty Pipette")]
     public void DebugEmptyPipette()
     {
+        ResetContents();
+    }
+
+    public void ResetContents()
+    {
+        if (isSnapped)
+            SetSnapped(false);
+
         pipetteMl = 0f;
         pipetteLiquid = null;
+        isTransferring = false;
+        waitingToExitSnapWindow = false;
+        nextAllowedSnapTime = 0f;
+
+        HandleCollisionIgnore(null);
+        StopFreeDispenseVisual();
+        StopRigidbodyMotion();
         RefreshVisual();
     }
 

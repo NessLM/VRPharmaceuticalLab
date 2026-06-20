@@ -130,11 +130,13 @@ public class BottleMixtureSuspension : MonoBehaviour
             angles[i] += idleDriftSpeed * (0.7f + i * 0.035f) * Time.deltaTime;
             float angle = angles[i] * Mathf.Deg2Rad;
             float bob = Mathf.Sin(Time.time * 0.65f + phases[i]) * visibleHeight * 0.018f;
+            float normalizedHeight = Mathf.Clamp01(heights[i] * container.FillRatio);
+            float profileScale = container.GetDiameterScaleAtHeight(normalizedHeight);
 
             particle.localPosition = new Vector3(
-                Mathf.Cos(angle) * radiusX * radii[i],
+                Mathf.Cos(angle) * radiusX * profileScale * radii[i],
                 Mathf.Clamp(visibleHeight * heights[i] + bob, particleSize, visibleHeight - particleSize),
-                Mathf.Sin(angle) * radiusZ * radii[i]);
+                Mathf.Sin(angle) * radiusZ * profileScale * radii[i]);
             particle.localScale = Vector3.one * particleSize;
         }
     }

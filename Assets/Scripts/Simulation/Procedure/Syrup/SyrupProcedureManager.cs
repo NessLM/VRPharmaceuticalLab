@@ -5,7 +5,6 @@ using System.Reflection;
 using EPOOutline;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
@@ -46,6 +45,12 @@ public class SyrupProcedureManager : MonoBehaviour
     private float Step3ScoopStepMg => activeRecipe != null ? activeRecipe.scoopStepMg : 50f;
     private string Step3PowderName => activeRecipe != null ? activeRecipe.powderName : "Difenhidramin";
     private float Step3PowderVisualMaxMg => activeRecipe != null ? activeRecipe.powderVisualMaxMg : Step3TargetPowderMg;
+    private string EtiketProductLine => activeRecipe != null
+        ? activeRecipe.etiketProductLine
+        : "DIFENHIDRAMIN 250 mg / 100 ml";
+    private string CompletionDetail => activeRecipe != null
+        ? activeRecipe.completionDetail
+        : "Obat sudah selesai dibuat, dikemas, dan diberi etiket.";
 
     [Header("Step 01 - Measure Water 100 ml")]
     [SerializeField] private LiquidContainer gelasUkurContainer;
@@ -136,7 +141,10 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private float step6ToleranceMl = 2f;
 
     [Header("Step 7-8 - Etiket")]
-    [SerializeField] private SyrupEtiketWorkflow etiketWorkflow;
+    [SerializeField] private EtiketWorkflow etiketWorkflow;
+
+    [Header("In-Scene Reset")]
+    [SerializeField] private SimulationStateResetter stateResetter;
 
     private float step6BottleStartMl;
     private bool etiketEventsBound;
@@ -198,6 +206,7 @@ public class SyrupProcedureManager : MonoBehaviour
     {
         ResolveSceneReferences();
         EnsureMortarWaterIntake();
+        EnsureStateResetter();
         ForceDisableProcedureOutlines();
     }
 
@@ -1374,7 +1383,10 @@ public class SyrupProcedureManager : MonoBehaviour
             doneIcon.SetActive(false);
 
         if (etiketWorkflow != null)
+        {
+            etiketWorkflow.ConfigureContent(EtiketProductLine, CompletionDetail);
             etiketWorkflow.BeginLabelSelection(stepCanvasRoot, bottleTarget);
+        }
 
         Debug.Log("[SyrupProcedure] Step 7 started.");
     }
@@ -1432,10 +1444,94 @@ public class SyrupProcedureManager : MonoBehaviour
 
     private void HandleEtiketBackRequested()
     {
-        Scene activeScene = SceneManager.GetActiveScene();
+        ResetSimulationInPlace();
+    }
 
-        if (!string.IsNullOrEmpty(activeScene.name))
-            SceneManager.LoadScene(activeScene.name);
+    public void ResetSimulationInPlace()
+    {
+        StopAllCoroutines();
+        ClearProcedureOutlines();
+        ResolveSceneReferences();
+        EnsureStateResetter();
+
+        if (etiketWorkflow != null)
+            etiketWorkflow.ResetWorkflow();
+
+        PerkamenSnapTarget[] parchmentTargets =
+            FindObjectsByType<PerkamenSnapTarget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (PerkamenSnapTarget target in parchmentTargets)
+            target.ClearSnapState(false);
+
+        StackPerkamenDispenser[] dispensers =
+            FindObjectsByType<StackPerkamenDispenser>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (StackPerkamenDispenser dispenser in dispensers)
+            dispenser.ResetDispenser();
+
+        if (gelasUkurContainer != null)
+            gelasUkurContainer.ClearLiquid();
+
+        if (bottleContainer != null)
+            bottleContainer.ClearLiquid();
+
+        if (mortarController != null)
+            mortarController.ResetMortar();
+
+        if (powderDepositZone != null)
+        {
+            powderDepositZone.ResetDeposit();
+            powderDepositZone.SetAcceptingDeposits(false);
+        }
+
+        if (spoonPowderPlateTransfer != null)
+            spoonPowderPlateTransfer.SetTransferEnabled(false);
+
+        if (mortarMixturePourer != null)
+            mortarMixturePourer.SetTransferEnabled(false);
+
+        if (stamperResidueController != null)
+            stamperResidueController.ClearResidue();
+
+        RedPipetteController[] pipettes =
+            FindObjectsByType<RedPipetteController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (RedPipetteController pipette in pipettes)
+            pipette.ResetContents();
+
+        HornSpoon[] spoons =
+            FindObjectsByType<HornSpoon>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (HornSpoon spoon in spoons)
+            spoon.ClearPowder();
+
+        BalanceWeightResetter[] weightResetters =
+            FindObjectsByType<BalanceWeightResetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (BalanceWeightResetter resetter in weightResetters)
+            resetter.ResetAllWeights();
+
+        MG_BalanceController[] balances =
+            FindObjectsByType<MG_BalanceController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (MG_BalanceController balance in balances)
+            balance.ResetVisualToBasePose();
+
+        WasherWaterController[] washers =
+            FindObjectsByType<WasherWaterController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (WasherWaterController washer in washers)
+            washer.TurnOffWater();
+
+        if (stateResetter != null)
+            stateResetter.ResetCapturedState();
+
+        currentStep = SyrupStep.Step_01_MeasureWater100ml;
+        step5MixState = Step5MixState.AddFirstWater50;
+        stepDone = false;
+        stableTimer = 0f;
+        isAnimating = false;
+        step6BottleStartMl = 0f;
+
+        SyrupIntroPanelController intro =
+            FindFirstObjectByType<SyrupIntroPanelController>(FindObjectsInactive.Include);
+        if (intro != null)
+            intro.ReturnToInitialState();
+
+        Debug.Log("[SyrupProcedure] Simulation reset in-place without reloading the scene.");
     }
 
     private void SetStep6ArrowActive(bool active)
@@ -1584,10 +1680,10 @@ public class SyrupProcedureManager : MonoBehaviour
     private void ResolveEtiketWorkflow()
     {
         if (etiketWorkflow == null)
-            etiketWorkflow = GetComponent<SyrupEtiketWorkflow>();
+            etiketWorkflow = GetComponent<EtiketWorkflow>();
 
         if (etiketWorkflow == null)
-            etiketWorkflow = gameObject.AddComponent<SyrupEtiketWorkflow>();
+            etiketWorkflow = gameObject.AddComponent<EtiketWorkflow>();
 
         etiketWorkflow.Initialize(stepCanvasRoot, bottleTarget);
 
@@ -1598,6 +1694,15 @@ public class SyrupProcedureManager : MonoBehaviour
         etiketWorkflow.LabelAttached += HandleEtiketAttached;
         etiketWorkflow.BackRequested += HandleEtiketBackRequested;
         etiketEventsBound = true;
+    }
+
+    private void EnsureStateResetter()
+    {
+        if (stateResetter == null)
+            stateResetter = GetComponent<SimulationStateResetter>();
+
+        if (stateResetter == null)
+            stateResetter = gameObject.AddComponent<SimulationStateResetter>();
     }
 
     private void SetMortarLocked(bool locked)

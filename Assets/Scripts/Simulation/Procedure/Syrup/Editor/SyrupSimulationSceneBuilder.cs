@@ -4,14 +4,16 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 
 [InitializeOnLoad]
 public static class SyrupSimulationSceneBuilder
 {
     private const string TargetScenePath = "Assets/Scenes/VRLabSimulation.unity";
-    private const string RigName = "[UI] Syrup Etiket World Panel";
-    private const int RigVersion = 3;
+    private const string RigName = "[UI] Etiket World Panel";
+    private const int RigVersion = 5;
+    private const string RoundedPanelSpritePath = "Assets/Plugins/VRTemplateAssets/Sprites/UI/Round Radius 10.png";
 
     static SyrupSimulationSceneBuilder()
     {
@@ -20,7 +22,7 @@ public static class SyrupSimulationSceneBuilder
         EditorSceneManager.sceneOpened += OnSceneOpened;
     }
 
-    [MenuItem("Tools/VR Lab/Rebuild Syrup Step 7 World UI")]
+    [MenuItem("Tools/VR Lab/Rebuild Etiket World UI")]
     public static void RebuildFromMenu()
     {
         BuildLoadedScene(forceRebuild: true);
@@ -52,10 +54,13 @@ public static class SyrupSimulationSceneBuilder
         if (!scene.IsValid() || scene.path != TargetScenePath)
             return;
 
-        SyrupEtiketPanelRig existingRig = FindInScene<SyrupEtiketPanelRig>(scene);
-        if (!forceRebuild && existingRig != null && existingRig.SceneVersion >= RigVersion && existingRig.IsConfigured)
+        EtiketPanelRig existingRig = FindInScene<EtiketPanelRig>(scene);
+        if (!forceRebuild && existingRig != null && existingRig.IsConfigured)
         {
+            UpgradeExistingRig(existingRig);
             CalibrateLiquidVisuals(scene);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
             return;
         }
 
@@ -71,15 +76,15 @@ public static class SyrupSimulationSceneBuilder
             typeof(TrackedDeviceGraphicRaycaster),
             typeof(LazyFollow),
             typeof(KeyboardManager),
-            typeof(SyrupEtiketPanelRig));
+            typeof(EtiketPanelRig));
 
         SceneManager.MoveGameObjectToScene(root, scene);
         if (uiParent != null)
             root.transform.SetParent(uiParent.transform, false);
 
         RectTransform rootRect = root.GetComponent<RectTransform>();
-        rootRect.sizeDelta = new Vector2(860f, 660f);
-        rootRect.localScale = Vector3.one * 0.001f;
+        rootRect.sizeDelta = new Vector2(820f, 620f);
+        rootRect.localScale = Vector3.one * 0.0009f;
         rootRect.localPosition = Vector3.zero;
         rootRect.localRotation = Quaternion.identity;
 
@@ -93,30 +98,31 @@ public static class SyrupSimulationSceneBuilder
         scaler.referencePixelsPerUnit = 100f;
 
         LazyFollow lazyFollow = root.GetComponent<LazyFollow>();
-        lazyFollow.targetOffset = new Vector3(0f, -0.04f, 1.18f);
-        lazyFollow.applyTargetInLocalSpace = true;
+        lazyFollow.targetOffset = new Vector3(-0.12f, -0.1f, 0.4f);
+        lazyFollow.applyTargetInLocalSpace = false;
+        lazyFollow.followInLocalSpace = false;
         lazyFollow.positionFollowMode = LazyFollow.PositionFollowMode.Follow;
         lazyFollow.rotationFollowMode = LazyFollow.RotationFollowMode.LookAtWithWorldUp;
-        lazyFollow.movementSpeed = 4.5f;
-        lazyFollow.minDistanceAllowed = 0.08f;
-        lazyFollow.maxDistanceAllowed = 0.38f;
-        lazyFollow.timeUntilThresholdReachesMaxDistance = 1.25f;
+        lazyFollow.movementSpeed = 9f;
+        lazyFollow.movementSpeedVariancePercentage = 0.15f;
+        lazyFollow.minDistanceAllowed = 0.02f;
+        lazyFollow.maxDistanceAllowed = 0.1f;
+        lazyFollow.timeUntilThresholdReachesMaxDistance = 0.45f;
         lazyFollow.snapOnEnable = true;
 
-        Image shell = CreateImage("Panel Shell", root.transform, Vector2.zero, new Vector2(840f, 640f), new Color(0.045f, 0.06f, 0.08f, 0.97f));
-        CreateImage("Panel Border", shell.transform, Vector2.zero, new Vector2(828f, 628f), new Color(0.11f, 0.15f, 0.19f, 1f));
-        Image content = CreateImage("Panel Content", shell.transform, Vector2.zero, new Vector2(816f, 616f), new Color(0.055f, 0.07f, 0.09f, 1f));
+        Image shell = CreateRoundedImage("Panel Shell", root.transform, Vector2.zero, new Vector2(800f, 600f), new Color(0f, 0f, 0f, 0.84f));
+        Image content = CreateRoundedImage("Panel Content", shell.transform, Vector2.zero, new Vector2(770f, 570f), new Color(0.06f, 0.08f, 0.11f, 0.96f));
 
         GameObject choicePanel = CreatePanel("PNL Pilih Etiket", content.transform);
-        CreateText("Judul", choicePanel.transform, "PILIH ETIKET OBAT", 38f, FontStyles.Bold, new Vector2(0f, 248f), new Vector2(740f, 60f), Color.white);
+        CreateText("Judul", choicePanel.transform, "PILIH ETIKET OBAT", 38f, FontStyles.Bold, new Vector2(0f, 238f), new Vector2(700f, 60f), Color.white);
         CreateText(
             "Keterangan",
             choicePanel.transform,
             "Arahkan ray controller dan tekan trigger.\nPutih untuk obat dalam • Biru untuk obat luar.",
             22f,
             FontStyles.Normal,
-            new Vector2(0f, 185f),
-            new Vector2(740f, 70f),
+            new Vector2(0f, 176f),
+            new Vector2(700f, 70f),
             new Color(0.78f, 0.86f, 0.94f, 1f));
 
         Button whiteButton = CreateEtiketChoice(
@@ -143,8 +149,8 @@ public static class SyrupSimulationSceneBuilder
             "Untuk resep sirup, pilihan yang tepat adalah etiket putih.",
             20f,
             FontStyles.Italic,
-            new Vector2(0f, -248f),
-            new Vector2(730f, 44f),
+            new Vector2(0f, -238f),
+            new Vector2(690f, 44f),
             new Color(1f, 0.72f, 0.22f, 1f));
 
         GameObject formPanel = CreatePanel("PNL Form Etiket", content.transform);
@@ -177,11 +183,11 @@ public static class SyrupSimulationSceneBuilder
         Button createLabel = CreateButton("BTN Buat Etiket", formPanel.transform, "BUAT ETIKET", new Vector2(180f, -230f), new Vector2(260f, 62f), new Color(1f, 0.62f, 0.08f, 1f), Color.black);
 
         GameObject successPanel = CreatePanel("PNL Simulasi Selesai", content.transform);
-        CreateText("Judul Selesai", successPanel.transform, "SIMULASI SELESAI", 48f, FontStyles.Bold, new Vector2(0f, 125f), new Vector2(720f, 72f), new Color(0.32f, 1f, 0.58f, 1f));
-        CreateText(
+        TMP_Text successTitle = CreateText("Judul Selesai", successPanel.transform, "SIMULASI SELESAI", 48f, FontStyles.Bold, new Vector2(0f, 125f), new Vector2(700f, 72f), new Color(0.32f, 1f, 0.58f, 1f));
+        TMP_Text successDetail = CreateText(
             "Detail Selesai",
             successPanel.transform,
-            "Sirup Difenhidramin 250 mg / 100 ml sudah dibuat,\ndimasukkan ke botol, dan diberi etiket.",
+            "Obat sudah selesai dibuat, dikemas, dan diberi etiket.",
             25f,
             FontStyles.Normal,
             new Vector2(0f, 20f),
@@ -196,7 +202,7 @@ public static class SyrupSimulationSceneBuilder
         keyboardSo.FindProperty("_NumpadGameObject").objectReferenceValue = null;
         keyboardSo.ApplyModifiedPropertiesWithoutUndo();
 
-        SyrupEtiketPanelRig rig = root.GetComponent<SyrupEtiketPanelRig>();
+        EtiketPanelRig rig = root.GetComponent<EtiketPanelRig>();
         SerializedObject rigSo = new SerializedObject(rig);
         SetObject(rigSo, "worldCanvas", canvas);
         SetObject(rigSo, "lazyFollow", lazyFollow);
@@ -217,17 +223,39 @@ public static class SyrupSimulationSceneBuilder
         SetObject(rigSo, "dateInput", dateInput);
         SetObject(rigSo, "chooseAgainButton", chooseAgain);
         SetObject(rigSo, "createLabelButton", createLabel);
+        SetObject(rigSo, "successTitle", successTitle);
+        SetObject(rigSo, "successDetail", successDetail);
         SetObject(rigSo, "backButton", backButton);
         SetObject(rigSo, "keyboardManager", keyboardManager);
         rigSo.FindProperty("sceneVersion").intValue = RigVersion;
+        rigSo.FindProperty("followHorizontalOffset").floatValue = -0.12f;
+        rigSo.FindProperty("followVerticalOffset").floatValue = -0.1f;
+        rigSo.FindProperty("followDistance").floatValue = 0.4f;
+        rigSo.FindProperty("panelWorldScale").floatValue = 0.0009f;
+        rigSo.FindProperty("keyboardLocalPosition").vector3Value = new Vector3(0f, -430f, -28f);
+        rigSo.FindProperty("keyboardLocalEuler").vector3Value = new Vector3(24f, 0f, 0f);
+        rigSo.FindProperty("keyboardLocalScale").floatValue = 920f;
         rigSo.ApplyModifiedPropertiesWithoutUndo();
 
-        SyrupEtiketWorkflow workflow = FindInScene<SyrupEtiketWorkflow>(scene);
+        EtiketWorkflow workflow = FindInScene<EtiketWorkflow>(scene);
         if (workflow != null)
         {
             SerializedObject workflowSo = new SerializedObject(workflow);
             SetObject(workflowSo, "panelRig", rig);
             workflowSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        SyrupProcedureManager procedureManager = FindInScene<SyrupProcedureManager>(scene);
+        if (procedureManager != null)
+        {
+            SimulationStateResetter resetter = procedureManager.GetComponent<SimulationStateResetter>();
+            if (resetter == null)
+                resetter = procedureManager.gameObject.AddComponent<SimulationStateResetter>();
+
+            SerializedObject procedureSo = new SerializedObject(procedureManager);
+            SetObject(procedureSo, "etiketWorkflow", workflow);
+            SetObject(procedureSo, "stateResetter", resetter);
+            procedureSo.ApplyModifiedPropertiesWithoutUndo();
         }
 
         choicePanel.SetActive(false);
@@ -236,10 +264,11 @@ public static class SyrupSimulationSceneBuilder
         keyboardRoot.SetActive(false);
         root.SetActive(false);
 
+        SetLayerRecursively(root, LayerMask.NameToLayer("UI"));
         CalibrateLiquidVisuals(scene);
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
-        Debug.Log("[SyrupSceneBuilder] Step 7 world-space UI dan visual cairan selesai dibangun.");
+        Debug.Log("[SyrupSceneBuilder] Etiket world-space UI, grab point, reset, dan visual cairan selesai dibangun.");
     }
 
     private static void CalibrateLiquidVisuals(Scene scene)
@@ -267,6 +296,9 @@ public static class SyrupSimulationSceneBuilder
             SetObject(visualSo, "waterVisual", liquid);
             SetObject(visualSo, "waterRenderer", liquid.GetComponent<MeshRenderer>());
             visualSo.FindProperty("visualMaxWaterMl").floatValue = 200f;
+            visualSo.FindProperty("useProcedureStageVisualRatios").boolValue = true;
+            visualSo.FindProperty("firstStageVisualRatio").floatValue = 0.12f;
+            visualSo.FindProperty("secondStageVisualRatio").floatValue = 0.34f;
             visualSo.FindProperty("emptyLocalPosition").vector3Value = new Vector3(0f, 0f, 0.0001f);
             visualSo.FindProperty("fullLocalPosition").vector3Value = new Vector3(0f, 0f, 0.00125f);
             visualSo.FindProperty("emptyLocalRadius").vector2Value = new Vector2(0.00135f, 0.00135f);
@@ -291,18 +323,127 @@ public static class SyrupSimulationSceneBuilder
             bottleSo.FindProperty("diameterMultiplier").floatValue = 0.98f;
             bottleSo.FindProperty("rimPaddingPercent").floatValue = 0.02f;
             bottleSo.FindProperty("meshAngularSegments").intValue = 72;
-            bottleSo.FindProperty("meshHeightSegments").intValue = 4;
+            bottleSo.FindProperty("meshHeightSegments").intValue = 8;
             bottleSo.FindProperty("volumeSolveSamples").intValue = 1024;
             bottleSo.FindProperty("capSurfaceAtLowestRim").boolValue = false;
             bottleSo.FindProperty("autoSpillWhenPastRim").boolValue = false;
             bottleSo.FindProperty("spillOverflowWhenFull").boolValue = false;
+            bottleSo.FindProperty("useHeightDiameterProfile").boolValue = true;
+            bottleSo.FindProperty("diameterProfilePreset").enumValueIndex = 1;
+            bottleSo.FindProperty("minimumProfileMultiplier").floatValue = 0.28f;
+            bottleSo.FindProperty("diameterProfileByHeight").animationCurveValue = new AnimationCurve(
+                new Keyframe(0f, 0.72f),
+                new Keyframe(0.08f, 0.94f),
+                new Keyframe(0.24f, 1f),
+                new Keyframe(0.68f, 1f),
+                new Keyframe(0.82f, 0.9f),
+                new Keyframe(0.92f, 0.68f),
+                new Keyframe(1f, 0.46f));
             bottleSo.ApplyModifiedPropertiesWithoutUndo();
 
             if (bottle.GetComponent<BottleMixtureSuspension>() == null)
                 bottle.AddComponent<BottleMixtureSuspension>();
         }
 
+        EnsureMortarGrabSetup(scene);
         EditorSceneManager.MarkSceneDirty(scene);
+    }
+
+    private static void UpgradeExistingRig(EtiketPanelRig rig)
+    {
+        RectTransform rootRect = rig.GetComponent<RectTransform>();
+        if (rootRect != null)
+            rootRect.localScale = Vector3.one * 0.0009f;
+
+        LazyFollow lazyFollow = rig.GetComponent<LazyFollow>();
+        if (lazyFollow != null)
+        {
+            lazyFollow.targetOffset = new Vector3(-0.12f, -0.1f, 0.4f);
+            lazyFollow.applyTargetInLocalSpace = false;
+            lazyFollow.followInLocalSpace = false;
+            lazyFollow.positionFollowMode = LazyFollow.PositionFollowMode.Follow;
+            lazyFollow.rotationFollowMode = LazyFollow.RotationFollowMode.LookAtWithWorldUp;
+            lazyFollow.movementSpeed = 9f;
+            lazyFollow.movementSpeedVariancePercentage = 0.15f;
+            lazyFollow.minDistanceAllowed = 0.02f;
+            lazyFollow.maxDistanceAllowed = 0.1f;
+            lazyFollow.timeUntilThresholdReachesMaxDistance = 0.45f;
+            lazyFollow.snapOnEnable = true;
+        }
+
+        SerializedObject rigSo = new SerializedObject(rig);
+        rigSo.FindProperty("sceneVersion").intValue = RigVersion;
+        rigSo.FindProperty("followHorizontalOffset").floatValue = -0.12f;
+        rigSo.FindProperty("followVerticalOffset").floatValue = -0.1f;
+        rigSo.FindProperty("followDistance").floatValue = 0.4f;
+        rigSo.FindProperty("panelWorldScale").floatValue = 0.0009f;
+        rigSo.FindProperty("keyboardLocalPosition").vector3Value = new Vector3(0f, -430f, -28f);
+        rigSo.FindProperty("keyboardLocalEuler").vector3Value = new Vector3(24f, 0f, 0f);
+        rigSo.FindProperty("keyboardLocalScale").floatValue = 920f;
+        rigSo.ApplyModifiedPropertiesWithoutUndo();
+
+        Transform keyboard = rig.transform.Find("VR Keyboard Etiket");
+        if (keyboard != null)
+        {
+            keyboard.localPosition = new Vector3(0f, -430f, -28f);
+            keyboard.localRotation = Quaternion.Euler(24f, 0f, 0f);
+            keyboard.localScale = Vector3.one * 920f;
+        }
+
+        SetLayerRecursively(rig.gameObject, LayerMask.NameToLayer("UI"));
+    }
+
+    private static void EnsureMortarGrabSetup(Scene scene)
+    {
+        MortarController mortar = FindInScene<MortarController>(scene);
+        if (mortar == null)
+            return;
+
+        XRGrabInteractable grab = mortar.GetComponent<XRGrabInteractable>();
+        if (grab == null)
+            return;
+
+        Transform handle = mortar.transform.Find("GrabPoint_Handle");
+        if (handle == null)
+        {
+            GameObject handleObject = new GameObject("GrabPoint_Handle");
+            handleObject.transform.SetParent(mortar.transform, false);
+            handleObject.transform.localPosition = new Vector3(0f, 0f, 0.00012f);
+            handleObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            handle = handleObject.transform;
+        }
+
+        grab.attachTransform = handle;
+        grab.useDynamicAttach = false;
+        grab.matchAttachPosition = true;
+        grab.matchAttachRotation = true;
+        grab.snapToColliderVolume = true;
+
+        Transform assistTransform = mortar.transform.Find("[COL] Mortar Grab Assist");
+        SphereCollider assist;
+
+        if (assistTransform == null)
+        {
+            GameObject assistObject = new GameObject("[COL] Mortar Grab Assist");
+            assistObject.transform.SetParent(mortar.transform, false);
+            assistTransform = assistObject.transform;
+            assist = assistObject.AddComponent<SphereCollider>();
+        }
+        else
+        {
+            assist = assistTransform.GetComponent<SphereCollider>();
+            if (assist == null)
+                assist = assistTransform.gameObject.AddComponent<SphereCollider>();
+        }
+
+        assistTransform.localPosition = new Vector3(0f, 0f, 0.00018f);
+        assistTransform.localRotation = Quaternion.identity;
+        assistTransform.localScale = Vector3.one;
+        assist.radius = 0.00315f;
+        assist.isTrigger = true;
+
+        if (!grab.colliders.Contains(assist))
+            grab.colliders.Add(assist);
     }
 
     private static GameObject CreateKeyboard(Scene scene, Transform parent)
@@ -317,9 +458,9 @@ public static class SyrupSimulationSceneBuilder
 
         keyboard.name = "VR Keyboard Etiket";
         keyboard.transform.SetParent(parent, false);
-        keyboard.transform.localPosition = new Vector3(0f, -455f, -28f);
+        keyboard.transform.localPosition = new Vector3(0f, -430f, -28f);
         keyboard.transform.localRotation = Quaternion.Euler(24f, 0f, 0f);
-        keyboard.transform.localScale = Vector3.one * 860f;
+        keyboard.transform.localScale = Vector3.one * 920f;
         return keyboard;
     }
 
@@ -332,11 +473,11 @@ public static class SyrupSimulationSceneBuilder
         string header,
         string category)
     {
-        Image border = CreateImage(name, parent, position, new Vector2(330f, 300f), Color.black);
+        Image border = CreateRoundedImage(name, parent, position, new Vector2(330f, 300f), Color.black);
         Button button = border.gameObject.AddComponent<Button>();
         button.targetGraphic = border;
 
-        Image card = CreateImage("Card", border.transform, Vector2.zero, new Vector2(314f, 284f), cardColor);
+        Image card = CreateRoundedImage("Card", border.transform, Vector2.zero, new Vector2(314f, 284f), cardColor);
         CreateText("Header", card.transform, header, 27f, FontStyles.Bold, new Vector2(0f, 104f), new Vector2(285f, 46f), textColor);
         CreateImage("Divider", card.transform, new Vector2(0f, 62f), new Vector2(276f, 4f), Color.black);
         TMP_Text body = CreateText(
@@ -358,6 +499,7 @@ public static class SyrupSimulationSceneBuilder
         RectTransform root = CreateRect(name, parent, position, size);
         Image background = root.gameObject.AddComponent<Image>();
         background.color = new Color(0.94f, 0.96f, 0.98f, 1f);
+        ApplyRoundedSprite(background);
 
         TMP_InputField input = root.gameObject.AddComponent<TMP_InputField>();
         input.lineType = TMP_InputField.LineType.SingleLine;
@@ -388,13 +530,34 @@ public static class SyrupSimulationSceneBuilder
         return image;
     }
 
+    private static Image CreateRoundedImage(string name, Transform parent, Vector2 position, Vector2 size, Color color)
+    {
+        Image image = CreateImage(name, parent, position, size, color);
+        ApplyRoundedSprite(image);
+        return image;
+    }
+
     private static Button CreateButton(string name, Transform parent, string label, Vector2 position, Vector2 size, Color background, Color foreground)
     {
-        Image image = CreateImage(name, parent, position, size, background);
+        Image image = CreateRoundedImage(name, parent, position, size, background);
         Button button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
         CreateText("Text", image.transform, label, 23f, FontStyles.Bold, Vector2.zero, size - new Vector2(12f, 10f), foreground);
         return button;
+    }
+
+    private static void ApplyRoundedSprite(Image image)
+    {
+        if (image == null)
+            return;
+
+        Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(RoundedPanelSpritePath);
+        if (sprite == null)
+            return;
+
+        image.sprite = sprite;
+        image.type = Image.Type.Sliced;
+        image.pixelsPerUnitMultiplier = 4f;
     }
 
     private static TMP_Text CreateText(string name, Transform parent, string value, float fontSize, FontStyles style, Vector2 position, Vector2 size, Color color)
@@ -442,6 +605,16 @@ public static class SyrupSimulationSceneBuilder
         SerializedProperty property = serializedObject.FindProperty(propertyName);
         if (property != null)
             property.objectReferenceValue = value;
+    }
+
+    private static void SetLayerRecursively(GameObject root, int layer)
+    {
+        if (root == null || layer < 0)
+            return;
+
+        root.layer = layer;
+        foreach (Transform child in root.transform)
+            SetLayerRecursively(child.gameObject, layer);
     }
 
     private static T FindInScene<T>(Scene scene) where T : Component

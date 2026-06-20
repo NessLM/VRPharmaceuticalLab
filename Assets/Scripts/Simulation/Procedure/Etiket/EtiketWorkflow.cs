@@ -5,15 +5,22 @@ using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 [DisallowMultipleComponent]
-public class SyrupEtiketWorkflow : MonoBehaviour
+public class EtiketWorkflow : MonoBehaviour
 {
     [Header("Scene UI")]
-    [SerializeField] private SyrupEtiketPanelRig panelRig;
+    [SerializeField] private EtiketPanelRig panelRig;
 
     [Header("World Label")]
     [SerializeField] private float attachDistance = 0.12f;
     [SerializeField] private Vector2 labelSizeMeters = new Vector2(0.07f, 0.042f);
-    [SerializeField] private Vector3 labelSpawnOffset = new Vector3(0.26f, 0.16f, 0f);
+    [SerializeField] private Vector3 labelSpawnOffset = new Vector3(0.18f, 0.12f, 0f);
+
+    [Header("Editable Etiket Content")]
+    [SerializeField] private string productLine = "DIFENHIDRAMIN 250 mg / 100 ml";
+    [SerializeField] private string completionTitle = "SIMULASI SELESAI";
+    [TextArea(2, 4)]
+    [SerializeField] private string completionDetail =
+        "Obat sudah selesai dibuat, dikemas, dan diberi etiket.";
 
     public event Action<GameObject> LabelCreated;
     public event Action LabelAttached;
@@ -41,6 +48,15 @@ public class SyrupEtiketWorkflow : MonoBehaviour
         BindPanelEvents();
     }
 
+    public void ConfigureContent(string newProductLine, string newCompletionDetail)
+    {
+        if (!string.IsNullOrWhiteSpace(newProductLine))
+            productLine = newProductLine.Trim();
+
+        if (!string.IsNullOrWhiteSpace(newCompletionDetail))
+            completionDetail = newCompletionDetail.Trim();
+    }
+
     public void BeginLabelSelection(RectTransform unusedCanvasRoot, Transform bottleTarget)
     {
         Initialize(unusedCanvasRoot, bottleTarget);
@@ -52,7 +68,7 @@ public class SyrupEtiketWorkflow : MonoBehaviour
 
         if (panelRig == null || !panelRig.IsConfigured)
         {
-            Debug.LogError("[SyrupEtiket] World-space Etiket UI belum tersedia di VRLabSimulation.", this);
+            Debug.LogError("[Etiket] World-space Etiket UI belum tersedia di VRLabSimulation.", this);
             return;
         }
 
@@ -82,6 +98,13 @@ public class SyrupEtiketWorkflow : MonoBehaviour
         if (panelRig != null)
         {
             panelRig.ConfigureFollowTarget(Camera.main != null ? Camera.main.transform : null);
+
+            if (panelRig.SuccessTitle != null)
+                panelRig.SuccessTitle.text = completionTitle;
+
+            if (panelRig.SuccessDetail != null)
+                panelRig.SuccessDetail.text = completionDetail;
+
             panelRig.ShowSuccess();
         }
     }
@@ -104,7 +127,7 @@ public class SyrupEtiketWorkflow : MonoBehaviour
     private void ResolvePanelRig()
     {
         if (panelRig == null)
-            panelRig = FindFirstObjectByType<SyrupEtiketPanelRig>(FindObjectsInactive.Include);
+            panelRig = FindFirstObjectByType<EtiketPanelRig>(FindObjectsInactive.Include);
     }
 
     private void BindPanelEvents()
@@ -193,12 +216,12 @@ public class SyrupEtiketWorkflow : MonoBehaviour
 
         DestroyCurrentLabel();
 
-        labelObject = new GameObject("EtiketObat_Grabbable");
+        labelObject = new GameObject("Etiket_Grabbable");
         labelObject.transform.position = GetLabelSpawnPosition();
         labelObject.transform.rotation = GetFacingRotation(labelObject.transform.position);
 
         BoxCollider collider = labelObject.AddComponent<BoxCollider>();
-        collider.size = new Vector3(labelSizeMeters.x * 1.06f, labelSizeMeters.y * 1.08f, 0.004f);
+        collider.size = new Vector3(labelSizeMeters.x * 1.18f, labelSizeMeters.y * 1.18f, 0.012f);
 
         labelRigidbody = labelObject.AddComponent<Rigidbody>();
         labelRigidbody.mass = 0.025f;
@@ -207,6 +230,11 @@ public class SyrupEtiketWorkflow : MonoBehaviour
         labelRigidbody.interpolation = RigidbodyInterpolation.Interpolate;
 
         labelGrab = labelObject.AddComponent<XRGrabInteractable>();
+        Transform grabPoint = CreateGrabPointHandle(labelObject.transform);
+        labelGrab.attachTransform = grabPoint;
+        labelGrab.useDynamicAttach = false;
+        labelGrab.matchAttachPosition = true;
+        labelGrab.matchAttachRotation = true;
         labelGrab.selectEntered.AddListener(_ => labelWasGrabbed = true);
 
         CreateLabelCardVisual();
@@ -272,7 +300,7 @@ public class SyrupEtiketWorkflow : MonoBehaviour
         CreateText(
             "TXT_EtiketFooter",
             card.transform,
-            "<b>DIFENHIDRAMIN 250 mg / 100 ml</b>",
+            $"<b>{productLine}</b>",
             32f,
             FontStyles.Bold,
             new Vector2(0f, -240f),
@@ -357,6 +385,28 @@ public class SyrupEtiketWorkflow : MonoBehaviour
         labelRigidbody = null;
     }
 
+    public void ResetWorkflow()
+    {
+        DestroyCurrentLabel();
+        whiteEtiket = true;
+        labelWasGrabbed = false;
+        labelIsAttached = false;
+
+        ResolvePanelRig();
+        if (panelRig != null)
+            panelRig.HideAll();
+    }
+
+    private static Transform CreateGrabPointHandle(Transform parent)
+    {
+        GameObject handle = new GameObject("GrabPoint_Handle");
+        handle.transform.SetParent(parent, false);
+        handle.transform.localPosition = Vector3.zero;
+        handle.transform.localRotation = Quaternion.identity;
+        handle.transform.localScale = Vector3.one;
+        return handle.transform;
+    }
+
     private static Image CreateSizedImage(string objectName, Transform parent, Vector2 position, Vector2 size, Color color)
     {
         RectTransform rect = CreateRect(objectName, parent);
@@ -418,4 +468,13 @@ public class SyrupEtiketWorkflow : MonoBehaviour
             ? input.text.Trim()
             : fallback;
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        attachDistance = Mathf.Max(0.04f, attachDistance);
+        labelSizeMeters.x = Mathf.Max(0.03f, labelSizeMeters.x);
+        labelSizeMeters.y = Mathf.Max(0.02f, labelSizeMeters.y);
+    }
+#endif
 }

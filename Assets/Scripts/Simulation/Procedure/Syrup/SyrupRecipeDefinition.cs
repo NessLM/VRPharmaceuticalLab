@@ -22,4 +22,11 @@ public class SyrupRecipeDefinition : ScriptableObject
 
     [Header("Visual")]
     public float powderVisualMaxMg = 250f;
+
+    [Header("Etiket")]
+    public string etiketProductLine = "DIFENHIDRAMIN 250 mg / 100 ml";
+
+    [TextArea(2, 4)]
+    public string completionDetail =
+        "Sirup Difenhidramin 250 mg / 100 ml sudah dibuat, dimasukkan ke botol, dan diberi etiket.";
 }

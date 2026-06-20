@@ -38,6 +38,8 @@ public class MortarWaterVisual : MonoBehaviour
     [SerializeField] private float surfacePulseAmount = 0.035f;
     [SerializeField] private float surfacePulseSpeed = 9f;
     [SerializeField] private float rippleRotationSpeed = 150f;
+    [SerializeField] private float stirringWobbleAmount = 0.000018f;
+    [SerializeField] private float stirringWobbleSpeed = 11f;
 
     private Transform particleRoot;
     private Transform rippleVisual;
@@ -131,8 +133,18 @@ public class MortarWaterVisual : MonoBehaviour
         // Mortar root sudah X=-90. Mesh dibuat pada bidang XY, jadi tidak perlu rotasi 90 derajat lagi.
         waterVisual.localRotation = Quaternion.identity;
 
+        MeshFilter waterFilter = waterVisual.GetComponent<MeshFilter>();
+        if (waterFilter == null)
+            waterFilter = waterVisual.gameObject.AddComponent<MeshFilter>();
+
+        if (waterFilter.sharedMesh == null)
+            waterFilter.sharedMesh = BuildSurfaceMesh();
+
         if (waterRenderer == null)
             waterRenderer = waterVisual.GetComponentInChildren<Renderer>(true);
+
+        if (waterRenderer == null)
+            waterRenderer = waterVisual.gameObject.AddComponent<MeshRenderer>();
 
         if (waterRenderer != null)
         {
@@ -278,11 +290,16 @@ public class MortarWaterVisual : MonoBehaviour
         if (!show)
             return;
 
-        Vector3 surfacePosition = Vector3.Lerp(emptyLocalPosition, fullLocalPosition, water01);
-        Vector2 radius = Vector2.Lerp(emptyLocalRadius, fullLocalRadius, water01);
-        float depth = Mathf.Lerp(emptyLocalDepth, fullLocalDepth, water01);
+        // Mortar melebar ke atas. Kurva terpisah membuat volume terlihat tumbuh
+        // dari dasar, lalu radius mengikuti dinding mangkuk secara bertahap.
+        float surfaceFill01 = Mathf.SmoothStep(0f, 1f, water01);
+        float radiusFill01 = Mathf.Pow(water01, 0.82f);
+        float depthFill01 = Mathf.Pow(water01, 0.92f);
+        Vector3 surfacePosition = Vector3.Lerp(emptyLocalPosition, fullLocalPosition, surfaceFill01);
+        Vector2 radius = Vector2.Lerp(emptyLocalRadius, fullLocalRadius, radiusFill01);
+        float depth = Mathf.Lerp(emptyLocalDepth, fullLocalDepth, depthFill01);
         Vector3 baseScale = new Vector3(radius.x, radius.y, depth);
-        bool stirring = mortarController.WaitingForStir;
+        bool stirring = mortarController.IsActivelyStirring;
 
         float pulse = stirring
             ? 1f + Mathf.Sin(Time.time * surfacePulseSpeed) * surfacePulseAmount
@@ -292,10 +309,21 @@ public class MortarWaterVisual : MonoBehaviour
         animatedScale.x *= pulse;
         animatedScale.y *= 2f - pulse;
 
-        swirlAngle += Time.deltaTime * (stirring ? rippleRotationSpeed * 0.35f : 3f);
-        rippleAngle += Time.deltaTime * (stirring ? rippleRotationSpeed : 12f);
+        if (stirring)
+        {
+            swirlAngle += Time.deltaTime * rippleRotationSpeed * 0.35f;
+            rippleAngle += Time.deltaTime * rippleRotationSpeed;
+        }
 
-        waterVisual.localPosition = surfacePosition;
+        Vector3 wobble = stirring
+            ? new Vector3(
+                Mathf.Sin(Time.time * stirringWobbleSpeed) * stirringWobbleAmount,
+                Mathf.Cos(Time.time * stirringWobbleSpeed * 0.83f) * stirringWobbleAmount,
+                0f
+            )
+            : Vector3.zero;
+
+        waterVisual.localPosition = surfacePosition + wobble;
 
         if (keepSurfaceWorldLevel)
         {
@@ -304,14 +332,16 @@ public class MortarWaterVisual : MonoBehaviour
         }
         else
         {
-            waterVisual.localRotation = Quaternion.Euler(0f, 0f, swirlAngle);
+            waterVisual.localRotation = stirring
+                ? Quaternion.Euler(0f, 0f, swirlAngle)
+                : Quaternion.identity;
         }
 
         waterVisual.localScale = animatedScale;
 
         if (rippleVisual != null)
         {
-            rippleVisual.gameObject.SetActive(stirring || mix01 > 0.01f);
+            rippleVisual.gameObject.SetActive(stirring);
             rippleVisual.localRotation = Quaternion.Euler(0f, 0f, rippleAngle);
 
             float ringPulse = 0.88f + Mathf.Sin(Time.time * 7f) * 0.06f;
@@ -332,7 +362,7 @@ public class MortarWaterVisual : MonoBehaviour
             color.a = Mathf.Lerp(firstWaterColor.a, mixedColor.a, Mathf.Max(water01, mix01));
 
             if (stirring)
-                color = Color.Lerp(color, Color.white, 0.08f + Mathf.Sin(Time.time * 8f) * 0.025f);
+                color = Color.Lerp(color, Color.white, 0.02f + Mathf.Sin(Time.time * 8f) * 0.008f);
 
             SetMaterialColor(mat, color);
         }
@@ -340,7 +370,7 @@ public class MortarWaterVisual : MonoBehaviour
         if (runtimeRippleMaterial != null)
         {
             Color ringColor = highlightColor;
-            ringColor.a *= stirring ? 1f : Mathf.Lerp(0.25f, 0.55f, mix01);
+            ringColor.a *= stirring ? 1f : 0f;
             SetMaterialColor(runtimeRippleMaterial, ringColor);
         }
     }
@@ -357,7 +387,7 @@ public class MortarWaterVisual : MonoBehaviour
         else
             particleRoot.localRotation = Quaternion.identity;
 
-        float liquidRadius = Mathf.Lerp(emptyLocalRadius.x * 0.38f, fullLocalRadius.x * 0.38f, water01);
+        float liquidRadius = Mathf.Lerp(emptyLocalRadius.x * 0.72f, fullLocalRadius.x * 0.78f, water01);
         float orbitSpeed = stirring ? stirringOrbitSpeed : idleOrbitSpeed;
         int visibleCount = mix01 >= 0.995f
             ? 0
@@ -382,16 +412,19 @@ public class MortarWaterVisual : MonoBehaviour
             if (!visible)
                 continue;
 
-            particleAngles[i] += orbitSpeed * particleSpeeds[i] * Time.deltaTime;
+            if (stirring || idleOrbitSpeed > 0.001f)
+                particleAngles[i] += orbitSpeed * particleSpeeds[i] * Time.deltaTime;
 
             float radians = particleAngles[i] * Mathf.Deg2Rad;
             float radialWave = stirring
                 ? 1f + Mathf.Sin(Time.time * 6f + particlePhases[i]) * 0.16f
-                : 1f + Mathf.Sin(Time.time * 1.2f + particlePhases[i]) * 0.035f;
+                : 1f;
 
             float radius = liquidRadius * particleRadii[i] * radialWave;
-            float z = -depth * particleDepths[i] +
-                      Mathf.Sin(Time.time * (stirring ? 7f : 1.5f) + particlePhases[i]) * 0.000012f;
+            float z = -depth * particleDepths[i];
+
+            if (stirring)
+                z += Mathf.Sin(Time.time * 7f + particlePhases[i]) * 0.000012f;
 
             particle.localPosition = new Vector3(
                 Mathf.Cos(radians) * radius,
@@ -427,7 +460,7 @@ public class MortarWaterVisual : MonoBehaviour
 
         for (int ring = 1; ring <= topRings; ring++)
         {
-            float radius = 0.5f * ring / topRings;
+            float radius = ring / (float)topRings;
 
             for (int i = 0; i < segments; i++)
             {
@@ -446,7 +479,7 @@ public class MortarWaterVisual : MonoBehaviour
         {
             float vertical01 = ring / (float)(sideRings - 1);
             float curved = Mathf.Pow(vertical01, 0.62f);
-            float radius = Mathf.Lerp(0.18f, 0.5f, curved);
+            float radius = Mathf.Lerp(0.24f, 1f, curved);
             float z = Mathf.Lerp(-1f, -0.018f, vertical01);
 
             for (int i = 0; i < segments; i++)
@@ -550,8 +583,8 @@ public class MortarWaterVisual : MonoBehaviour
     private Mesh BuildRippleMesh()
     {
         const int segments = 72;
-        const float innerRadius = 0.26f;
-        const float outerRadius = 0.31f;
+        const float innerRadius = 0.58f;
+        const float outerRadius = 0.68f;
 
         Vector3[] vertices = new Vector3[segments * 2];
         Vector2[] uvs = new Vector2[vertices.Length];
@@ -681,6 +714,8 @@ public class MortarWaterVisual : MonoBehaviour
         fullLocalDepth = Mathf.Max(emptyLocalDepth, fullLocalDepth);
         idleOrbitSpeed = Mathf.Max(0f, idleOrbitSpeed);
         stirringOrbitSpeed = Mathf.Max(idleOrbitSpeed, stirringOrbitSpeed);
+        stirringWobbleAmount = Mathf.Max(0f, stirringWobbleAmount);
+        stirringWobbleSpeed = Mathf.Max(0f, stirringWobbleSpeed);
     }
 #endif
 }

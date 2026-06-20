@@ -151,7 +151,10 @@ public class LiquidContainer : MonoBehaviour
     public bool HasLiquidVisual => liquidVisual != null;
     public bool ClampVisualHeightToCollider => false;
     public float VisualMaxHeightLocal => GetEffectiveFullHeightLocal();
+    public float VisualDiameterXLocal => Mathf.Max(0.000001f, diameterXLocal * diameterMultiplier);
+    public float VisualDiameterZLocal => Mathf.Max(0.000001f, diameterZLocal * diameterMultiplier);
     public Vector3 FillAxisLocal => GetFillAxisLocal();
+    public Transform LiquidSpace => liquidSpace;
 
     private bool wasEmpty = true;
     private bool wasFull = false;

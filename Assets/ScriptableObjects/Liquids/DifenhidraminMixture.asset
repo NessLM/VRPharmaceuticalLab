@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: DifenhidraminMixture
   m_EditorClassIdentifier:
   liquidName: Campuran Difenhidramin 250 mg / 100 ml
-  liquidColor: {r: 0.94, g: 0.97, b: 0.94, a: 0.58}
+  liquidColor: {r: 0.42, g: 0.74, b: 1, a: 0.42}

@@ -79,6 +79,8 @@ public class MortarController : MonoBehaviour
     [SerializeField] private bool animateMixtureWhileStirring = true;
     [SerializeField] private float mixturePulseAmount = 0.035f;
     [SerializeField] private float mixturePulseSpeed = 8f;
+    [Tooltip("Efek cairan tetap aktif sebentar setelah gerakan Stamper terakhir agar animasinya tidak patah-patah.")]
+    [SerializeField] private float activeStirEffectHoldSeconds = 0.16f;
 
     public float MaxCapacityMg => maxCapacityMg;
     public float CurrentAmountMg => currentAmountMg;
@@ -103,10 +105,15 @@ public class MortarController : MonoBehaviour
     public bool IsFull => currentAmountMg >= maxCapacityMg - 0.001f;
     public bool IsAcceptingPowderTransfer => acceptingPowderTransfer;
     public bool WaitingForStir => currentPhase == MortarMixPhase.StirStage1 || currentPhase == MortarMixPhase.StirStage2;
+    public bool IsActivelyStirring =>
+        WaitingForStir &&
+        Application.isPlaying &&
+        Time.time - lastStirMotionTime <= activeStirEffectHoldSeconds;
     public bool IsStep5MixDone => currentPhase == MortarMixPhase.Complete;
     public float RemainingWaterMlForCurrentPhase => Mathf.Max(0f, GetCurrentWaterLimitForPhase() - currentWaterMl);
 
     private Vector3[] powderOriginalScales;
+    private float lastStirMotionTime = float.NegativeInfinity;
 
     private void Awake()
     {
@@ -255,7 +262,10 @@ public class MortarController : MonoBehaviour
             currentPhase = MortarMixPhase.StirStage2;
 
         if (WaitingForStir)
+        {
             currentStirProgress = 0f;
+            lastStirMotionTime = float.NegativeInfinity;
+        }
 
         RefreshVisuals();
     }
@@ -273,6 +283,7 @@ public class MortarController : MonoBehaviour
         if (safeAmount <= 0.0001f)
             return;
 
+        lastStirMotionTime = Time.time;
         currentStirProgress = Mathf.Min(currentStirProgress + safeAmount, stirProgressRequired);
         onStirProgressChanged?.Invoke(CurrentStirProgress01);
 
@@ -328,6 +339,7 @@ public class MortarController : MonoBehaviour
         hasResidueOnStamper = false;
         isHomogeneous = false;
         currentPhase = MortarMixPhase.AddWaterStage1;
+        lastStirMotionTime = float.NegativeInfinity;
 
         RefreshVisuals();
 
@@ -345,6 +357,7 @@ public class MortarController : MonoBehaviour
         isHomogeneous = false;
         acceptingPowderTransfer = false;
         currentPhase = MortarMixPhase.AddWaterStage1;
+        lastStirMotionTime = float.NegativeInfinity;
 
         RefreshVisuals();
 
@@ -510,7 +523,7 @@ public class MortarController : MonoBehaviour
         scale.x *= spreadBonus;
         scale.y *= spreadBonus;
 
-        if (animateMixtureWhileStirring && WaitingForStir)
+        if (animateMixtureWhileStirring && IsActivelyStirring)
         {
             float pulse = 1f + Mathf.Sin(Time.time * mixturePulseSpeed) * mixturePulseAmount;
             scale.x *= pulse;
@@ -795,6 +808,7 @@ public class MortarController : MonoBehaviour
         stirProgressRequired = Mathf.Max(1f, stirProgressRequired);
         currentStirProgress = Mathf.Clamp(currentStirProgress, 0f, stirProgressRequired);
         wetPowderMinimumScale = Mathf.Clamp(wetPowderMinimumScale, 0.05f, 1f);
+        activeStirEffectHoldSeconds = Mathf.Clamp(activeStirEffectHoldSeconds, 0.05f, 0.5f);
     }
 #endif
 }

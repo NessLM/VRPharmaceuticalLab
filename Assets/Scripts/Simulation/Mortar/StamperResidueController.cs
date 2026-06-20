@@ -85,11 +85,6 @@ public class StamperResidueController : MonoBehaviour
             ClearResidue();
     }
 
-    public void BindMortar(MortarController targetMortar)
-    {
-        mortar = targetMortar;
-    }
-
     public void ShowResidue()
     {
         hasResidue = true;
@@ -98,11 +93,17 @@ public class StamperResidueController : MonoBehaviour
         SetResidueVisible(true);
     }
 
+    public void BindMortar(MortarController targetMortar)
+    {
+        mortar = targetMortar;
+    }
+
     public void ClearResidue()
     {
         hasResidue = false;
         scrapeTimer = 0f;
         SetResidueVisible(false);
+
         mortar?.CompleteScrape();
         onResidueCleared?.Invoke();
     }

@@ -28,7 +28,7 @@ public class SyrupIntroPanelController : MonoBehaviour
         ResetIntro();
     }
 
-    private void ResetIntro()
+    public void ResetIntro()
     {
         StopAllCoroutines();
 
@@ -55,6 +55,11 @@ public class SyrupIntroPanelController : MonoBehaviour
         StartCoroutine(ShowStartButtonAfterDelay());
 
         Debug.Log("[SyrupIntro] Intro opened. Start button locked.");
+    }
+
+    public void ReturnToInitialState()
+    {
+        ResetIntro();
     }
 
     private IEnumerator ShowStartButtonAfterDelay()

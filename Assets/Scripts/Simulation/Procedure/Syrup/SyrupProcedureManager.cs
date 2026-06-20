@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -6,6 +6,7 @@ using EPOOutline;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class SyrupProcedureManager : MonoBehaviour
 {
@@ -15,6 +16,21 @@ public class SyrupProcedureManager : MonoBehaviour
         Step_02_PlaceParchmentOnScale,
         Step_03_WeighPowder,
         Step_04_MovePowderToMortar,
+        Step_05_MixWithWater,
+        Step_06_PourIntoBottle,
+        Step_07_CreateEtiket,
+        Step_08_AttachEtiket,
+        Done
+    }
+
+    private enum Step5MixState
+    {
+        AddFirstWater50,
+        StirFirst,
+        ScrapeFirst,
+        AddSecondWater50,
+        StirSecond,
+        ScrapeSecond,
         Done
     }
 
@@ -29,6 +45,12 @@ public class SyrupProcedureManager : MonoBehaviour
     private float Step3ScoopStepMg => activeRecipe != null ? activeRecipe.scoopStepMg : 50f;
     private string Step3PowderName => activeRecipe != null ? activeRecipe.powderName : "Difenhidramin";
     private float Step3PowderVisualMaxMg => activeRecipe != null ? activeRecipe.powderVisualMaxMg : Step3TargetPowderMg;
+    private string EtiketProductLine => activeRecipe != null
+        ? activeRecipe.etiketProductLine
+        : "DIFENHIDRAMIN 250 mg / 100 ml";
+    private string CompletionDetail => activeRecipe != null
+        ? activeRecipe.completionDetail
+        : "Obat sudah selesai dibuat, dikemas, dan diberi etiket.";
 
     [Header("Step 01 - Measure Water 100 ml")]
     [SerializeField] private LiquidContainer gelasUkurContainer;
@@ -84,6 +106,48 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private WorldStepArrow mortarStepArrow;
     [SerializeField] private float step4StableRequiredTime = 0.5f;
     [SerializeField] private SpoonPowderPlateTransfer spoonPowderPlateTransfer;
+
+    [Header("Step 5 - Mixing With Water")]
+    [SerializeField] private Step5MixState step5MixState;
+    [SerializeField] private float step5WaterPortionMl = 50f;
+    [SerializeField] private float step5WaterToleranceMl = 5f;
+
+    [SerializeField] private Outlinable redPipetteOutline;
+    [SerializeField] private Outlinable stamperOutline;
+    [SerializeField] private Outlinable sudipOutline;
+
+    [SerializeField] private Transform redPipetteTarget;
+    [SerializeField] private Transform stamperTarget;
+    [SerializeField] private Transform sudipTarget;
+
+    [SerializeField] private WorldStepArrow waterToMortarArrow;
+    [SerializeField] private WorldStepArrow stamperStepArrow;
+    [SerializeField] private WorldStepArrow sudipStepArrow;
+
+    [SerializeField] private MortarStirGuide mortarStirGuide;
+    [SerializeField] private StamperResidueController stamperResidueController;
+
+    [SerializeField] private XRGrabInteractable mortarGrabInteractable;
+    [SerializeField] private Rigidbody mortarRigidbody;
+
+    [Header("Step 6 - Pour Mixture Into Bottle")]
+    [SerializeField] private MortarMixturePourer mortarMixturePourer;
+    [SerializeField] private LiquidContainer bottleContainer;
+    [SerializeField] private Transform bottleTarget;
+    [SerializeField] private Transform bottleReceiverTarget;
+    [SerializeField] private Outlinable bottleOutline;
+    [SerializeField] private WorldStepArrow bottleStepArrow;
+    [SerializeField] private float step6TargetMl = 100f;
+    [SerializeField] private float step6ToleranceMl = 2f;
+
+    [Header("Step 7-8 - Etiket")]
+    [SerializeField] private EtiketWorkflow etiketWorkflow;
+
+    [Header("In-Scene Reset")]
+    [SerializeField] private SimulationStateResetter stateResetter;
+
+    private float step6BottleStartMl;
+    private bool etiketEventsBound;
 
     private const string Step01Instruction = "Step 1: Isi gelas ukur sampai 100 ml";
     private const string Step01StartProgress = "Tekan tombol air merah, lalu arahkan gelas ukur ke aliran air.";
@@ -141,12 +205,18 @@ public class SyrupProcedureManager : MonoBehaviour
     private void OnEnable()
     {
         ResolveSceneReferences();
+        EnsureMortarWaterIntake();
+        EnsureStateResetter();
         ForceDisableProcedureOutlines();
     }
 
     private void OnDisable()
     {
         StopAllCoroutines();
+
+        if (mortarMixturePourer != null)
+            mortarMixturePourer.SetTransferEnabled(false);
+
         ForceDisableProcedureOutlines();
     }
     private void ForceDisableProcedureOutlines()
@@ -157,6 +227,10 @@ public class SyrupProcedureManager : MonoBehaviour
         SetProcedureOutlineOff(perkamenStackOutline);
         SetProcedureOutlineOff(timbanganOutline);
         SetProcedureOutlineOff(mortarOutline);
+        SetProcedureOutlineOff(redPipetteOutline);
+        SetProcedureOutlineOff(stamperOutline);
+        SetProcedureOutlineOff(sudipOutline);
+        SetProcedureOutlineOff(bottleOutline);
 
         foreach (KeyValuePair<Outlinable, bool> entry in outlinePreviousStates)
             SetProcedureOutlineOff(entry.Key);
@@ -165,6 +239,11 @@ public class SyrupProcedureManager : MonoBehaviour
         SetStep2ArrowsActive(false);
         SetStep3ArrowsActive(false);
         SetStep4ArrowsActive(false);
+        SetStep5ArrowsActive(false);
+        SetStep6ArrowActive(false);
+
+        if (mortarStirGuide != null)
+            mortarStirGuide.SetVisible(false);
 
         outlinePreviousStates.Clear();
     }
@@ -245,12 +324,17 @@ public class SyrupProcedureManager : MonoBehaviour
             CheckStep03WeighPowder();
         else if (currentStep == SyrupStep.Step_04_MovePowderToMortar)
             CheckStep04MovePowderToMortar();
+        else if (currentStep == SyrupStep.Step_05_MixWithWater)
+            CheckStep05MixWithWater();
+        else if (currentStep == SyrupStep.Step_06_PourIntoBottle)
+            CheckStep06PourIntoBottle();
     }
     public void BeginSyrupProcedure()
     {
         StopAllCoroutines();
         ClearProcedureOutlines();
         ResolveSceneReferences();
+        EnsureMortarWaterIntake();
 
         currentStep = SyrupStep.Step_01_MeasureWater100ml;
         stepDone = false;
@@ -695,7 +779,7 @@ public class SyrupProcedureManager : MonoBehaviour
             return;
 
         stepDone = true;
-        currentStep = SyrupStep.Done;
+        StartCoroutine(ShowStep05AfterStep04());
 
         if (progressText != null)
             progressText.text = $"Step 4 selesai. Bubuk {Step3PowderName} sudah dipindahkan ke mortar.";
@@ -860,6 +944,8 @@ public class SyrupProcedureManager : MonoBehaviour
 
         ResolveStep3References();
         ResolveStep4References();
+        ResolveStep5References();
+        ResolveStep6References();
     }
 
     private void ResolveStep3References()
@@ -913,6 +999,737 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (spoonPowderPlateTransfer == null)
             spoonPowderPlateTransfer = FindSceneComponentByName<SpoonPowderPlateTransfer>("sendokTanduk");
+    }
+
+    private void CheckStep05MixWithWater()
+    {
+        ResolveStep5References();
+
+        if (mortarController == null)
+        {
+            if (progressText != null)
+                progressText.text = "Mortar belum tersambung ke Step 5.";
+            return;
+        }
+
+        float waterMl = mortarController.CurrentWaterMl;
+
+        switch (step5MixState)
+        {
+            case Step5MixState.AddFirstWater50:
+                {
+                    if (progressText != null)
+                        progressText.text = $"Air tahap 1: {waterMl:0.#} / {step5WaterPortionMl:0} ml.\nMasukkan air 50 ml ke mortar.";
+
+                    if (mortarController.CurrentPhase == MortarMixPhase.StirStage1)
+                    {
+                        SetStep5State(Step5MixState.StirFirst);
+                    }
+
+                    break;
+                }
+
+            case Step5MixState.StirFirst:
+                {
+                    if (progressText != null)
+                        progressText.text = $"Aduk tahap 1: {mortarController.CurrentStirProgress01 * 100f:0}%.\nGerakkan stamper memutar di dalam mortar.";
+
+                    if (!mortarController.WaitingForStir && mortarController.CompletedStirPhases >= 1)
+                    {
+                        if (stamperResidueController != null)
+                            stamperResidueController.ShowResidue();
+
+                        SetStep5State(Step5MixState.ScrapeFirst);
+                    }
+
+                    break;
+                }
+
+            case Step5MixState.ScrapeFirst:
+                {
+                    if (progressText != null)
+                        progressText.text = "Bersihkan sisa bubuk di ujung stamper menggunakan sudip.";
+
+                    if (stamperResidueController == null || stamperResidueController.IsCleaned)
+                    {
+                        mortarController.CompleteScrape();
+                        SetStep5State(Step5MixState.AddSecondWater50);
+                    }
+
+                    break;
+                }
+
+            case Step5MixState.AddSecondWater50:
+                {
+                    float secondWater = Mathf.Max(0f, waterMl - step5WaterPortionMl);
+
+                    if (progressText != null)
+                        progressText.text = $"Air tahap 2: {secondWater:0.#} / {step5WaterPortionMl:0} ml.\nTambahkan 50 ml air lagi ke mortar.";
+
+                    if (mortarController.CurrentPhase == MortarMixPhase.StirStage2)
+                    {
+                        SetStep5State(Step5MixState.StirSecond);
+                    }
+
+                    break;
+                }
+
+            case Step5MixState.StirSecond:
+                {
+                    if (progressText != null)
+                        progressText.text = $"Aduk tahap 2: {mortarController.CurrentStirProgress01 * 100f:0}%.\nAduk lagi sampai campuran homogen.";
+
+                    if (!mortarController.WaitingForStir && mortarController.CompletedStirPhases >= 2)
+                    {
+                        if (stamperResidueController != null)
+                            stamperResidueController.ShowResidue();
+
+                        SetStep5State(Step5MixState.ScrapeSecond);
+                    }
+
+                    break;
+                }
+
+            case Step5MixState.ScrapeSecond:
+                {
+                    if (progressText != null)
+                        progressText.text = "Bersihkan lagi sisa campuran di ujung stamper menggunakan sudip.";
+
+                    if (stamperResidueController == null || stamperResidueController.IsCleaned)
+                    {
+                        mortarController.CompleteScrape();
+                        CompleteStep05();
+                    }
+
+                    break;
+                }
+        }
+    }
+
+    private IEnumerator ShowStep05AfterStep04()
+    {
+        isAnimating = true;
+        yield return new WaitForSeconds(0.5f);
+        ShowDefaultStep05();
+        isAnimating = false;
+    }
+
+    public void ShowDefaultStep05()
+    {
+        ClearProcedureOutlines();
+        ResolveSceneReferences();
+        ResolveStep5References();
+
+        currentStep = SyrupStep.Step_05_MixWithWater;
+        stepDone = false;
+        stableTimer = 0f;
+        step5MixState = Step5MixState.AddFirstWater50;
+
+        SetMortarLocked(true);
+
+        if (mortarController != null)
+            mortarController.ResetStep5MixData();
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
+
+        SetStep5State(Step5MixState.AddFirstWater50);
+
+        Debug.Log("[SyrupProcedure] Step 5 started.");
+    }
+
+    private void SetStep5State(Step5MixState newState)
+    {
+        step5MixState = newState;
+
+        ClearProcedureOutlines();
+
+        SetStep5ArrowsActive(false);
+        if (mortarStirGuide != null)
+            mortarStirGuide.SetVisible(false);
+
+        if (instructionText != null)
+            instructionText.text = "Step 5: Campur bubuk dengan air";
+
+        switch (step5MixState)
+        {
+            case Step5MixState.AddFirstWater50:
+            case Step5MixState.AddSecondWater50:
+                SetProcedureOutlineActive(gelasUkurOutline, true);
+                SetProcedureOutlineActive(redPipetteOutline, true);
+                SetProcedureOutlineActive(mortarOutline, true);
+                SetStep5WaterGuide(true);
+                break;
+
+            case Step5MixState.StirFirst:
+            case Step5MixState.StirSecond:
+                SetProcedureOutlineActive(stamperOutline, true);
+                SetProcedureOutlineActive(mortarOutline, true);
+
+                if (mortarStirGuide != null)
+                {
+                    mortarStirGuide.SetTarget(mortarTarget != null ? mortarTarget : mortarController.transform);
+                    mortarStirGuide.SetVisible(true);
+                }
+
+                SetStep5StirGuide(true);
+                break;
+
+            case Step5MixState.ScrapeFirst:
+            case Step5MixState.ScrapeSecond:
+                SetProcedureOutlineActive(sudipOutline, true);
+                SetProcedureOutlineActive(stamperOutline, true);
+                SetStep5ScrapeGuide(true);
+                break;
+        }
+    }
+
+    private void SetStep5ArrowsActive(bool active)
+    {
+        SetStep5WaterGuide(active);
+        SetStep5StirGuide(active);
+        SetStep5ScrapeGuide(active);
+    }
+
+    private void SetStep5WaterGuide(bool active)
+    {
+        Transform target = mortarTarget != null ? mortarTarget : (mortarController != null ? mortarController.transform : null);
+        SetGuideArrow(ref waterToMortarArrow, "ARW_Step5_WaterToMortar", target, "\u2193\nMasukkan air\n50 ml", new Vector3(0f, 0.35f, 0f), active && useStepArrowPointer);
+    }
+
+    private void SetStep5StirGuide(bool active)
+    {
+        Transform target = mortarTarget != null ? mortarTarget : (mortarController != null ? mortarController.transform : null);
+        SetGuideArrow(ref stamperStepArrow, "ARW_Step5_Stamper", target, "\u21bb\nAduk memutar\npakai stamper", new Vector3(0f, 0.42f, 0f), active && useStepArrowPointer);
+    }
+
+    private void SetStep5ScrapeGuide(bool active)
+    {
+        Transform target = stamperTarget != null ? stamperTarget : null;
+        SetGuideArrow(ref sudipStepArrow, "ARW_Step5_Sudip", target, "\u2193\nBersihkan stamper\npakai sudip", new Vector3(0f, 0.35f, 0f), active && useStepArrowPointer);
+    }
+
+    private void CompleteStep05()
+    {
+        if (stepDone)
+            return;
+
+        stepDone = true;
+        currentStep = SyrupStep.Done;
+
+        if (instructionText != null)
+            instructionText.text = "Step 5 selesai";
+
+        if (progressText != null)
+            progressText.text = "Campuran sudah selesai diaduk. Lanjutkan ke Step 6: tuang ke botol.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(true);
+
+        SetStep5ArrowsActive(false);
+
+        if (mortarStirGuide != null)
+            mortarStirGuide.SetVisible(false);
+
+        SetMortarLocked(false);
+        ClearProcedureOutlines();
+        StartCoroutine(ShowStep06AfterStep05());
+
+        Debug.Log("[SyrupProcedure] Step 5 complete.");
+    }
+
+    private IEnumerator ShowStep06AfterStep05()
+    {
+        isAnimating = true;
+        yield return new WaitForSeconds(0.65f);
+        ShowDefaultStep06();
+        isAnimating = false;
+    }
+
+    public void ShowDefaultStep06()
+    {
+        ClearProcedureOutlines();
+        ResolveSceneReferences();
+        ResolveStep6References();
+
+        currentStep = SyrupStep.Step_06_PourIntoBottle;
+        stepDone = false;
+        stableTimer = 0f;
+        step6BottleStartMl = bottleContainer != null ? bottleContainer.CurrentMl : 0f;
+
+        SetMortarLocked(false);
+
+        if (mortarMixturePourer != null)
+        {
+            mortarMixturePourer.ConfigureTarget(bottleContainer, bottleReceiverTarget);
+            mortarMixturePourer.SetTransferEnabled(true);
+        }
+
+        if (instructionText != null)
+            instructionText.text = "Step 6: Tuang campuran ke botol";
+
+        if (progressText != null)
+            progressText.text = "Grab badan mortar, dekatkan bibir mortar ke mulut botol, lalu putar sekitar 90 derajat sampai campuran masuk.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
+
+        SetProcedureOutlineActive(mortarOutline, true);
+        SetProcedureOutlineActive(bottleOutline, true);
+        SetStep6ArrowActive(true);
+
+        Debug.Log("[SyrupProcedure] Step 6 started.");
+    }
+
+    private void CheckStep06PourIntoBottle()
+    {
+        ResolveStep6References();
+
+        if (mortarController == null || bottleContainer == null)
+        {
+            if (progressText != null)
+                progressText.text = "Mortar atau LiquidContainer botol belum tersambung.";
+
+            return;
+        }
+
+        float transferredMl = Mathf.Max(0f, bottleContainer.CurrentMl - step6BottleStartMl);
+
+        if (progressText != null)
+        {
+            string heldStatus = mortarMixturePourer != null && mortarMixturePourer.IsHeld
+                ? "Mortar sedang digrab."
+                : "Grab mortar terlebih dahulu.";
+            float tilt = mortarMixturePourer != null ? mortarMixturePourer.CurrentTiltAngle : 0f;
+            float requiredTilt = mortarMixturePourer != null ? mortarMixturePourer.RequiredTiltAngle : 85f;
+
+            progressText.text =
+                $"Campuran di botol: {transferredMl:0.0} / {step6TargetMl:0} ml.\n" +
+                $"Sisa di mortar: {mortarController.CurrentWaterMl:0.0} ml. " +
+                $"{heldStatus} Kemiringan: {tilt:0}\u00b0 / {requiredTilt:0}\u00b0.";
+        }
+
+        bool targetReached = transferredMl >= step6TargetMl - step6ToleranceMl;
+        bool mortarEmpty = mortarController.CurrentWaterMl <= step6ToleranceMl &&
+                           transferredMl >= step6TargetMl - step6ToleranceMl * 2f;
+
+        if (targetReached || mortarEmpty)
+            CompleteStep06();
+    }
+
+    private void CompleteStep06()
+    {
+        if (stepDone)
+            return;
+
+        stepDone = true;
+        currentStep = SyrupStep.Done;
+
+        if (mortarMixturePourer != null)
+            mortarMixturePourer.SetTransferEnabled(false);
+
+        if (bottleContainer != null)
+        {
+            float finalBottleMl = Mathf.Min(
+                bottleContainer.CapacityMl,
+                step6BottleStartMl + step6TargetMl
+            );
+            bottleContainer.SetLiquidAmount(finalBottleMl);
+        }
+
+        if (mortarController != null)
+            mortarController.ClearCompletedMixture();
+
+        if (instructionText != null)
+            instructionText.text = "Step 6 selesai";
+
+        if (progressText != null)
+            progressText.text = "Campuran Difenhidramin 250 mg dalam 100 ml sudah masuk ke botol. Lanjutkan dengan membuat etiket.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(true);
+
+        SetStep6ArrowActive(false);
+        ClearProcedureOutlines();
+        StartCoroutine(ShowStep07AfterStep06());
+
+        Debug.Log("[SyrupProcedure] Step 6 complete.");
+    }
+
+    private IEnumerator ShowStep07AfterStep06()
+    {
+        isAnimating = true;
+        yield return new WaitForSeconds(0.65f);
+        ShowDefaultStep07();
+        isAnimating = false;
+    }
+
+    public void ShowDefaultStep07()
+    {
+        ClearProcedureOutlines();
+        ResolveSceneReferences();
+        ResolveEtiketWorkflow();
+
+        currentStep = SyrupStep.Step_07_CreateEtiket;
+        stepDone = false;
+
+        if (instructionText != null)
+            instructionText.text = "Step 7: Pilih dan isi etiket obat";
+
+        if (progressText != null)
+            progressText.text = "Pilih etiket putih atau biru, lalu isi No., nama, kegunaan/aturan pakai, dan tanggal.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
+
+        if (etiketWorkflow != null)
+        {
+            etiketWorkflow.ConfigureContent(EtiketProductLine, CompletionDetail);
+            etiketWorkflow.BeginLabelSelection(stepCanvasRoot, bottleTarget);
+        }
+
+        Debug.Log("[SyrupProcedure] Step 7 started.");
+    }
+
+    private void HandleEtiketCreated(GameObject labelObject)
+    {
+        currentStep = SyrupStep.Step_08_AttachEtiket;
+        stepDone = false;
+
+        if (instructionText != null)
+            instructionText.text = "Step 8: Tempelkan etiket ke botol";
+
+        if (progressText != null)
+            progressText.text = "Grab etiket, dekatkan ke bagian depan botol, lalu lepaskan sampai etiket menempel.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
+
+        SetProcedureOutlineActive(bottleOutline, true);
+        SetGuideArrow(
+            ref bottleStepArrow,
+            "ARW_Step6_Bottle",
+            bottleTarget,
+            "\u2193\nTempel etiket\nke botol",
+            new Vector3(0f, 0.32f, 0f),
+            useStepArrowPointer
+        );
+    }
+
+    private void HandleEtiketAttached()
+    {
+        if (stepDone)
+            return;
+
+        stepDone = true;
+        currentStep = SyrupStep.Done;
+
+        ClearProcedureOutlines();
+        SetStep6ArrowActive(false);
+
+        if (instructionText != null)
+            instructionText.text = "Pembuatan sirup selesai";
+
+        if (progressText != null)
+            progressText.text = "Etiket sudah menempel pada botol. Semua tahap simulasi berhasil diselesaikan.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(true);
+
+        if (etiketWorkflow != null)
+            etiketWorkflow.ShowSuccess();
+
+        Debug.Log("[SyrupProcedure] Etiket attached. Syrup simulation complete.");
+    }
+
+    private void HandleEtiketBackRequested()
+    {
+        ResetSimulationInPlace();
+    }
+
+    public void ResetSimulationInPlace()
+    {
+        StopAllCoroutines();
+        ClearProcedureOutlines();
+        ResolveSceneReferences();
+        EnsureStateResetter();
+
+        if (etiketWorkflow != null)
+            etiketWorkflow.ResetWorkflow();
+
+        PerkamenSnapTarget[] parchmentTargets =
+            FindObjectsByType<PerkamenSnapTarget>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (PerkamenSnapTarget target in parchmentTargets)
+            target.ClearSnapState(false);
+
+        StackPerkamenDispenser[] dispensers =
+            FindObjectsByType<StackPerkamenDispenser>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (StackPerkamenDispenser dispenser in dispensers)
+            dispenser.ResetDispenser();
+
+        if (gelasUkurContainer != null)
+            gelasUkurContainer.ClearLiquid();
+
+        if (bottleContainer != null)
+            bottleContainer.ClearLiquid();
+
+        if (mortarController != null)
+            mortarController.ResetMortar();
+
+        if (powderDepositZone != null)
+        {
+            powderDepositZone.ResetDeposit();
+            powderDepositZone.SetAcceptingDeposits(false);
+        }
+
+        if (spoonPowderPlateTransfer != null)
+            spoonPowderPlateTransfer.SetTransferEnabled(false);
+
+        if (mortarMixturePourer != null)
+            mortarMixturePourer.SetTransferEnabled(false);
+
+        if (stamperResidueController != null)
+            stamperResidueController.ClearResidue();
+
+        RedPipetteController[] pipettes =
+            FindObjectsByType<RedPipetteController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (RedPipetteController pipette in pipettes)
+            pipette.ResetContents();
+
+        HornSpoon[] spoons =
+            FindObjectsByType<HornSpoon>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (HornSpoon spoon in spoons)
+            spoon.ClearPowder();
+
+        BalanceWeightResetter[] weightResetters =
+            FindObjectsByType<BalanceWeightResetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (BalanceWeightResetter resetter in weightResetters)
+            resetter.ResetAllWeights();
+
+        MG_BalanceController[] balances =
+            FindObjectsByType<MG_BalanceController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (MG_BalanceController balance in balances)
+            balance.ResetVisualToBasePose();
+
+        WasherWaterController[] washers =
+            FindObjectsByType<WasherWaterController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (WasherWaterController washer in washers)
+            washer.TurnOffWater();
+
+        if (stateResetter != null)
+            stateResetter.ResetCapturedState();
+
+        currentStep = SyrupStep.Step_01_MeasureWater100ml;
+        step5MixState = Step5MixState.AddFirstWater50;
+        stepDone = false;
+        stableTimer = 0f;
+        isAnimating = false;
+        step6BottleStartMl = 0f;
+
+        SyrupIntroPanelController intro =
+            FindFirstObjectByType<SyrupIntroPanelController>(FindObjectsInactive.Include);
+        if (intro != null)
+            intro.ReturnToInitialState();
+
+        Debug.Log("[SyrupProcedure] Simulation reset in-place without reloading the scene.");
+    }
+
+    private void SetStep6ArrowActive(bool active)
+    {
+        Transform target = bottleReceiverTarget != null
+            ? bottleReceiverTarget
+            : bottleTarget;
+
+        SetGuideArrow(
+            ref bottleStepArrow,
+            "ARW_Step6_Bottle",
+            target,
+            "\u2193\nTuang campuran\nke botol",
+            new Vector3(0f, 0.32f, 0f),
+            active && useStepArrowPointer
+        );
+    }
+
+    private void ResolveStep5References()
+    {
+        if (mortarController == null)
+            mortarController = FindSceneComponentByName<MortarController>("Mortar");
+
+        if (mortarTarget == null && mortarController != null)
+            mortarTarget = mortarController.transform;
+
+        if (mortarOutline == null && mortarController != null)
+            mortarOutline = mortarController.GetComponent<Outlinable>();
+
+        if (mortarGrabInteractable == null && mortarController != null)
+            mortarGrabInteractable = mortarController.GetComponent<XRGrabInteractable>();
+
+        if (mortarRigidbody == null && mortarController != null)
+            mortarRigidbody = mortarController.GetComponent<Rigidbody>();
+
+        if (redPipetteTarget == null)
+        {
+            GameObject obj = FindSceneObjectByName("Red_pipette_NakedSingularity");
+            if (obj != null)
+                redPipetteTarget = obj.transform;
+        }
+
+        if (redPipetteOutline == null && redPipetteTarget != null)
+            redPipetteOutline = redPipetteTarget.GetComponent<Outlinable>();
+
+        if (stamperTarget == null)
+        {
+            GameObject obj = FindSceneObjectByName("Stamper");
+            if (obj != null)
+                stamperTarget = obj.transform;
+        }
+
+        if (stamperOutline == null && stamperTarget != null)
+            stamperOutline = stamperTarget.GetComponent<Outlinable>();
+
+        if (sudipTarget == null)
+        {
+            GameObject obj = FindSceneObjectByName("Sudip");
+            if (obj != null)
+                sudipTarget = obj.transform;
+        }
+
+        if (sudipOutline == null && sudipTarget != null)
+            sudipOutline = sudipTarget.GetComponent<Outlinable>();
+
+        if (mortarStirGuide == null)
+            mortarStirGuide = FindSceneComponentByName<MortarStirGuide>("VIS_MortarStirGuide");
+
+        if (stamperResidueController == null)
+            stamperResidueController = FindSceneComponentByName<StamperResidueController>("Stamper");
+
+        if (stamperResidueController != null && mortarController != null)
+            stamperResidueController.BindMortar(mortarController);
+
+        if (waterToMortarArrow == null)
+            waterToMortarArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step5_WaterToMortar");
+
+        if (stamperStepArrow == null)
+            stamperStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step5_Stamper");
+
+        if (sudipStepArrow == null)
+            sudipStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step5_Sudip");
+
+        EnsureMortarWaterIntake();
+    }
+
+    private void ResolveStep6References()
+    {
+        if (mortarController == null)
+            mortarController = FindSceneComponentByName<MortarController>("Mortar");
+
+        if (mortarMixturePourer == null && mortarController != null)
+            mortarMixturePourer = mortarController.GetComponent<MortarMixturePourer>();
+
+        if (bottleTarget == null)
+        {
+            GameObject bottle = FindSceneObjectByName("bottle");
+            if (bottle != null)
+                bottleTarget = bottle.transform;
+        }
+
+        if (bottleContainer == null && bottleTarget != null)
+            bottleContainer = bottleTarget.GetComponent<LiquidContainer>();
+
+        if (bottleReceiverTarget == null)
+        {
+            GameObject receiver = FindSceneObjectByName("BottleReceiverZone");
+            if (receiver != null)
+                bottleReceiverTarget = receiver.transform;
+        }
+
+        if (bottleOutline == null && bottleTarget != null)
+        {
+            bottleOutline = bottleTarget.GetComponent<Outlinable>();
+
+            if (bottleOutline == null)
+                bottleOutline = bottleTarget.gameObject.AddComponent<Outlinable>();
+        }
+
+        if (bottleStepArrow == null)
+            bottleStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step6_Bottle");
+
+        if (mortarMixturePourer != null)
+            mortarMixturePourer.ConfigureTarget(bottleContainer, bottleReceiverTarget);
+
+        ResolveEtiketWorkflow();
+    }
+
+    private void EnsureMortarWaterIntake()
+    {
+        if (mortarController == null)
+            return;
+
+        MortarWaterIntakeZone intake = mortarController.GetComponentInChildren<MortarWaterIntakeZone>(true);
+        Transform intakePoint = mortarController.transform.Find("MortarPourPoint");
+
+        if (intakePoint == null)
+            intakePoint = mortarController.transform;
+
+        if (intake == null)
+            intake = intakePoint.gameObject.AddComponent<MortarWaterIntakeZone>();
+
+        intake.Configure(mortarController, intakePoint);
+    }
+
+    private void ResolveEtiketWorkflow()
+    {
+        if (etiketWorkflow == null)
+            etiketWorkflow = GetComponent<EtiketWorkflow>();
+
+        if (etiketWorkflow == null)
+            etiketWorkflow = gameObject.AddComponent<EtiketWorkflow>();
+
+        etiketWorkflow.Initialize(stepCanvasRoot, bottleTarget);
+
+        if (etiketEventsBound)
+            return;
+
+        etiketWorkflow.LabelCreated += HandleEtiketCreated;
+        etiketWorkflow.LabelAttached += HandleEtiketAttached;
+        etiketWorkflow.BackRequested += HandleEtiketBackRequested;
+        etiketEventsBound = true;
+    }
+
+    private void EnsureStateResetter()
+    {
+        if (stateResetter == null)
+            stateResetter = GetComponent<SimulationStateResetter>();
+
+        if (stateResetter == null)
+            stateResetter = gameObject.AddComponent<SimulationStateResetter>();
+    }
+
+    private void SetMortarLocked(bool locked)
+    {
+        if (mortarGrabInteractable != null)
+            mortarGrabInteractable.enabled = !locked;
+
+        if (mortarRigidbody != null)
+        {
+            if (locked)
+            {
+                mortarRigidbody.linearVelocity = Vector3.zero;
+                mortarRigidbody.angularVelocity = Vector3.zero;
+                mortarRigidbody.useGravity = false;
+                mortarRigidbody.isKinematic = true;
+            }
+            else
+            {
+                bool kinematicMovement = mortarGrabInteractable != null &&
+                    mortarGrabInteractable.movementType == XRBaseInteractable.MovementType.Kinematic;
+
+                mortarRigidbody.linearVelocity = Vector3.zero;
+                mortarRigidbody.angularVelocity = Vector3.zero;
+                mortarRigidbody.isKinematic = kinematicMovement;
+                mortarRigidbody.useGravity = false;
+            }
+        }
     }
 
     private void SetGuideArrow(ref WorldStepArrow arrow, string objectName, Transform target, string label, Vector3 offset, bool active)

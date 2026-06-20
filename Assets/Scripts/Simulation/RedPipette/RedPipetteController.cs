@@ -154,6 +154,13 @@ public class RedPipetteController : MonoBehaviour
     [SerializeField] private bool useFreeDispenseLineVisual = true;
     [SerializeField] private Material freeDispenseLineMaterial;
 
+    [Header("Mortar Dispense")]
+    [SerializeField] private bool allowMortarDispense = true;
+    [SerializeField] private MortarController mortarDispenseTarget;
+    [SerializeField] private Transform mortarDispensePoint;
+    [SerializeField] private float mortarDispenseRadius = 0.22f;
+    [SerializeField] private bool requireTipNearMortar = true;
+
     [Header("LiquidMesh Visual")]
     [SerializeField] private bool hideVisualWhenEmpty = true;
 
@@ -719,16 +726,86 @@ public class RedPipetteController : MonoBehaviour
             return;
         }
 
-        float amount = Mathf.Min(freeDispenseRateMlPerSecond * Time.deltaTime, pipetteMl);
-        pipetteMl -= amount;
+        float requestAmount = Mathf.Min(freeDispenseRateMlPerSecond * Time.deltaTime, pipetteMl);
+        float consumedAmount = requestAmount;
 
-        UpdateFreeDispenseVisual(true);
+        if (TryDispenseToMortar(requestAmount, out float acceptedToMortar, out bool aimedAtMortar))
+        {
+            consumedAmount = acceptedToMortar;
+        }
+        else if (aimedAtMortar)
+        {
+            // Ujung pipet memang berada di mortar, tetapi state mortar belum menerima air.
+            // Jangan menghilangkan isi pipet seolah-olah air dibuang ke udara.
+            consumedAmount = 0f;
+        }
+
+        pipetteMl -= consumedAmount;
+
+        UpdateFreeDispenseVisual(consumedAmount > 0.001f);
 
         if (pipetteMl <= 0.001f)
         {
             pipetteMl = 0f;
             pipetteLiquid = null;
             StopFreeDispenseVisual();
+        }
+    }
+
+    private bool TryDispenseToMortar(float requestMl, out float acceptedMl, out bool aimedAtMortar)
+    {
+        acceptedMl = 0f;
+        aimedAtMortar = false;
+
+        if (!allowMortarDispense)
+            return false;
+
+        if (requestMl <= 0.001f)
+            return false;
+
+        if (mortarDispenseTarget == null)
+            ResolveMortarDispenseTarget();
+
+        if (mortarDispenseTarget == null)
+            return false;
+
+        Transform point = mortarDispensePoint != null
+            ? mortarDispensePoint
+            : mortarDispenseTarget.transform;
+
+        if (requireTipNearMortar && tipPoint != null && point != null)
+        {
+            float distance = Vector3.Distance(tipPoint.position, point.position);
+
+            if (distance > mortarDispenseRadius)
+                return false;
+        }
+
+        aimedAtMortar = true;
+        acceptedMl = mortarDispenseTarget.AddWaterMl(requestMl);
+        return acceptedMl > 0.001f;
+    }
+
+    private void ResolveMortarDispenseTarget()
+    {
+        MortarController[] mortars = Resources.FindObjectsOfTypeAll<MortarController>();
+
+        foreach (MortarController mortar in mortars)
+        {
+            if (mortar == null || mortar.gameObject == null)
+                continue;
+
+            if (!mortar.gameObject.scene.IsValid())
+                continue;
+
+            if (mortar.name == "Mortar")
+            {
+                mortarDispenseTarget = mortar;
+                return;
+            }
+
+            if (mortarDispenseTarget == null)
+                mortarDispenseTarget = mortar;
         }
     }
 
@@ -1473,8 +1550,23 @@ public class RedPipetteController : MonoBehaviour
     [ContextMenu("Debug Empty Pipette")]
     public void DebugEmptyPipette()
     {
+        ResetContents();
+    }
+
+    public void ResetContents()
+    {
+        if (isSnapped)
+            SetSnapped(false);
+
         pipetteMl = 0f;
         pipetteLiquid = null;
+        isTransferring = false;
+        waitingToExitSnapWindow = false;
+        nextAllowedSnapTime = 0f;
+
+        HandleCollisionIgnore(null);
+        StopFreeDispenseVisual();
+        StopRigidbodyMotion();
         RefreshVisual();
     }
 

@@ -14,6 +14,12 @@ using UnityEngine.Rendering;
 /// </summary>
 public class LiquidContainer : MonoBehaviour
 {
+    private enum DiameterProfilePreset
+    {
+        CustomCurve,
+        RoundedMedicineBottle
+    }
+
     [Header("Liquid Data")]
     [SerializeField] private LiquidData currentLiquid;
     [Tooltip("Used when volume is added but no liquid type is set yet.")]
@@ -46,6 +52,17 @@ public class LiquidContainer : MonoBehaviour
 
     [Tooltip("Internal diameter on LiquidSpace local Z.")]
     [SerializeField] private float diameterZLocal = 0.07f;
+
+    [Header("Container Shape Profile")]
+    [Tooltip("ON = diameter changes from bottom to top, useful for rounded bottles and tapered shoulders.")]
+    [SerializeField] private bool useHeightDiameterProfile = false;
+
+    [SerializeField] private DiameterProfilePreset diameterProfilePreset = DiameterProfilePreset.CustomCurve;
+
+    [Tooltip("X = normalized height, Y = diameter multiplier. Keep values positive.")]
+    [SerializeField] private AnimationCurve diameterProfileByHeight = AnimationCurve.Linear(0f, 1f, 1f, 1f);
+
+    [SerializeField, Range(0.1f, 1f)] private float minimumProfileMultiplier = 0.25f;
 
     [Tooltip("Container local direction from bottom to mouth/rim. Auto Detect usually finds this. Pyrex imported with X=-90 often uses Z.")]
     [SerializeField] private Vector3 fillAxisLocal = Vector3.up;
@@ -151,7 +168,11 @@ public class LiquidContainer : MonoBehaviour
     public bool HasLiquidVisual => liquidVisual != null;
     public bool ClampVisualHeightToCollider => false;
     public float VisualMaxHeightLocal => GetEffectiveFullHeightLocal();
+    public float VisualDiameterXLocal => Mathf.Max(0.000001f, diameterXLocal * diameterMultiplier);
+    public float VisualDiameterZLocal => Mathf.Max(0.000001f, diameterZLocal * diameterMultiplier);
     public Vector3 FillAxisLocal => GetFillAxisLocal();
+    public Transform LiquidSpace => liquidSpace;
+    public float GetDiameterScaleAtHeight(float normalizedHeight) => EvaluateDiameterProfile(normalizedHeight);
 
     private bool wasEmpty = true;
     private bool wasFull = false;
@@ -169,6 +190,7 @@ public class LiquidContainer : MonoBehaviour
     private readonly List<int> clippedTriangles = new List<int>(6600);
     private readonly List<Vector3> capPoints = new List<Vector3>(768);
     private readonly List<float> solveDots = new List<float>(4096);
+    private readonly float[] profileVolumeCdf = new float[65];
 
     private bool sourceDirty = true;
     private float cachedHeight;
@@ -219,6 +241,9 @@ public class LiquidContainer : MonoBehaviour
         fullHeightLocal = Mathf.Max(0.000001f, fullHeightLocal);
         diameterXLocal = Mathf.Max(0.000001f, diameterXLocal);
         diameterZLocal = Mathf.Max(0.000001f, diameterZLocal);
+        minimumProfileMultiplier = Mathf.Clamp(minimumProfileMultiplier, 0.1f, 1f);
+        if (diameterProfileByHeight == null || diameterProfileByHeight.length == 0)
+            diameterProfileByHeight = AnimationCurve.Linear(0f, 1f, 1f, 1f);
         fillAxisLocal = GetFillAxisLocal();
         autoBottomPaddingPercent = Mathf.Clamp01(autoBottomPaddingPercent);
         autoHeightPercent = Mathf.Clamp(autoHeightPercent, 0.45f, 1f);
@@ -666,7 +691,7 @@ public class LiquidContainer : MonoBehaviour
         if (!worldAlignLiquidSurface)
         {
             float visibleHeight = Mathf.Max(meshSkin, Mathf.Lerp(h * 0.01f, h, t));
-            BuildSimpleFilledCylinder(visibleHeight, dx, dz);
+            BuildSimpleFilledCylinder(visibleHeight, h, dx, dz);
         }
         else
         {
@@ -709,13 +734,18 @@ public class LiquidContainer : MonoBehaviour
         return Mathf.Max(0.000001f, fullHeightLocal * (1f - rimPaddingPercent));
     }
 
-    private void BuildSimpleFilledCylinder(float h, float dx, float dz)
+    private void BuildSimpleFilledCylinder(float visibleHeight, float fullProfileHeight, float dx, float dz)
     {
-        BuildSourceCylinder(h, dx, dz, true);
+        BuildSourceCylinder(visibleHeight, dx, dz, true, fullProfileHeight);
         BuildFullVolumeMesh();
     }
 
-    private void BuildSourceCylinder(float h, float dx, float dz, bool temporary = false)
+    private void BuildSourceCylinder(
+        float h,
+        float dx,
+        float dz,
+        bool temporary = false,
+        float profileReferenceHeight = -1f)
     {
         sourceVertices.Clear();
         sourceUvs.Clear();
@@ -727,6 +757,7 @@ public class LiquidContainer : MonoBehaviour
         float rz = Mathf.Max(0.000001f, dz * 0.5f);
         int angular = Mathf.Max(16, meshAngularSegments);
         int heightSteps = Mathf.Max(1, meshHeightSegments);
+        float referenceHeight = profileReferenceHeight > 0f ? profileReferenceHeight : h;
 
         int[,] ring = new int[heightSteps + 1, angular];
 
@@ -734,11 +765,16 @@ public class LiquidContainer : MonoBehaviour
         {
             float yn = yIndex / (float)heightSteps;
             float y = Mathf.Lerp(bottom, top, yn);
+            float profileY = referenceHeight > 0f ? Mathf.Clamp01(y / referenceHeight) : yn;
+            float profileScale = EvaluateDiameterProfile(profileY);
 
             for (int s = 0; s < angular; s++)
             {
                 float a = s / (float)angular * Mathf.PI * 2f;
-                Vector3 p = new Vector3(Mathf.Cos(a) * rx, y, Mathf.Sin(a) * rz);
+                Vector3 p = new Vector3(
+                    Mathf.Cos(a) * rx * profileScale,
+                    y,
+                    Mathf.Sin(a) * rz * profileScale);
                 ring[yIndex, s] = AddSourceVertex(p, new Vector2(s / (float)angular, yn));
             }
         }
@@ -764,6 +800,7 @@ public class LiquidContainer : MonoBehaviour
 
         if (!temporary)
         {
+            RebuildProfileVolumeCdf();
             cachedHeight = h;
             cachedDiameterX = dx;
             cachedDiameterZ = dz;
@@ -857,13 +894,17 @@ public class LiquidContainer : MonoBehaviour
     {
         float rx = Mathf.Max(0.000001f, dx * 0.5f);
         float rz = Mathf.Max(0.000001f, dz * 0.5f);
+        float rimScale = EvaluateDiameterProfile(1f);
         int segments = Mathf.Max(16, rimSampleSegments);
 
         float lowest = float.PositiveInfinity;
         for (int i = 0; i < segments; i++)
         {
             float a = i / (float)segments * Mathf.PI * 2f;
-            Vector3 rimPoint = new Vector3(Mathf.Cos(a) * rx, h - meshSkin, Mathf.Sin(a) * rz);
+            Vector3 rimPoint = new Vector3(
+                Mathf.Cos(a) * rx * rimScale,
+                h - meshSkin,
+                Mathf.Sin(a) * rz * rimScale);
             float d = Vector3.Dot(normalLocal, rimPoint);
             if (d < lowest)
                 lowest = d;
@@ -885,10 +926,15 @@ public class LiquidContainer : MonoBehaviour
             float u2 = Frac((i + 0.5f) * 0.75487766625f);
             float u3 = Frac((i + 0.5f) * 0.56984029099f);
 
-            float y = Mathf.Lerp(meshSkin, Mathf.Max(meshSkin * 2f, h - meshSkin), u1);
+            float normalizedHeight = SampleNormalizedHeightByVolume(u1);
+            float y = Mathf.Lerp(meshSkin, Mathf.Max(meshSkin * 2f, h - meshSkin), normalizedHeight);
             float r = Mathf.Sqrt(u2);
             float theta = u3 * Mathf.PI * 2f;
-            Vector3 p = new Vector3(Mathf.Cos(theta) * rx * r, y, Mathf.Sin(theta) * rz * r);
+            float profileScale = EvaluateDiameterProfile(normalizedHeight);
+            Vector3 p = new Vector3(
+                Mathf.Cos(theta) * rx * profileScale * r,
+                y,
+                Mathf.Sin(theta) * rz * profileScale * r);
 
             if (Vector3.Dot(normalLocal, p) <= planeConstant)
                 inside++;
@@ -981,10 +1027,15 @@ public class LiquidContainer : MonoBehaviour
             float u2 = Frac((i + 0.5f) * 0.75487766625f);
             float u3 = Frac((i + 0.5f) * 0.56984029099f);
 
-            float y = Mathf.Lerp(meshSkin, Mathf.Max(meshSkin * 2f, h - meshSkin), u1);
+            float normalizedHeight = SampleNormalizedHeightByVolume(u1);
+            float y = Mathf.Lerp(meshSkin, Mathf.Max(meshSkin * 2f, h - meshSkin), normalizedHeight);
             float r = Mathf.Sqrt(u2);
             float theta = u3 * Mathf.PI * 2f;
-            Vector3 p = new Vector3(Mathf.Cos(theta) * rx * r, y, Mathf.Sin(theta) * rz * r);
+            float profileScale = EvaluateDiameterProfile(normalizedHeight);
+            Vector3 p = new Vector3(
+                Mathf.Cos(theta) * rx * profileScale * r,
+                y,
+                Mathf.Sin(theta) * rz * profileScale * r);
             float d = Vector3.Dot(normal, p);
             solveDots.Add(d);
             minDot = Mathf.Min(minDot, d);
@@ -1023,6 +1074,100 @@ public class LiquidContainer : MonoBehaviour
     private float Frac(float v)
     {
         return v - Mathf.Floor(v);
+    }
+
+    private float EvaluateDiameterProfile(float normalizedHeight)
+    {
+        if (!useHeightDiameterProfile)
+            return 1f;
+
+        if (diameterProfilePreset == DiameterProfilePreset.RoundedMedicineBottle)
+            return EvaluateRoundedMedicineBottleProfile(normalizedHeight);
+
+        if (diameterProfileByHeight == null || diameterProfileByHeight.length == 0)
+            return 1f;
+
+        return Mathf.Max(
+            minimumProfileMultiplier,
+            diameterProfileByHeight.Evaluate(Mathf.Clamp01(normalizedHeight)));
+    }
+
+    private float EvaluateRoundedMedicineBottleProfile(float normalizedHeight)
+    {
+        float y = Mathf.Clamp01(normalizedHeight);
+
+        if (y < 0.08f)
+            return Mathf.Lerp(0.72f, 0.94f, Mathf.SmoothStep(0f, 1f, y / 0.08f));
+
+        if (y < 0.24f)
+            return Mathf.Lerp(0.94f, 1f, Mathf.SmoothStep(0f, 1f, (y - 0.08f) / 0.16f));
+
+        if (y < 0.68f)
+            return 1f;
+
+        if (y < 0.82f)
+            return Mathf.Lerp(1f, 0.9f, Mathf.SmoothStep(0f, 1f, (y - 0.68f) / 0.14f));
+
+        if (y < 0.92f)
+            return Mathf.Lerp(0.9f, 0.68f, Mathf.SmoothStep(0f, 1f, (y - 0.82f) / 0.1f));
+
+        return Mathf.Lerp(0.68f, 0.46f, Mathf.SmoothStep(0f, 1f, (y - 0.92f) / 0.08f));
+    }
+
+    private void RebuildProfileVolumeCdf()
+    {
+        profileVolumeCdf[0] = 0f;
+        float cumulative = 0f;
+        float previousArea = Mathf.Pow(EvaluateDiameterProfile(0f), 2f);
+
+        for (int i = 1; i < profileVolumeCdf.Length; i++)
+        {
+            float y = i / (float)(profileVolumeCdf.Length - 1);
+            float area = Mathf.Pow(EvaluateDiameterProfile(y), 2f);
+            cumulative += (previousArea + area) * 0.5f;
+            profileVolumeCdf[i] = cumulative;
+            previousArea = area;
+        }
+
+        if (cumulative <= 0.000001f)
+        {
+            for (int i = 0; i < profileVolumeCdf.Length; i++)
+                profileVolumeCdf[i] = i / (float)(profileVolumeCdf.Length - 1);
+            return;
+        }
+
+        for (int i = 1; i < profileVolumeCdf.Length; i++)
+            profileVolumeCdf[i] /= cumulative;
+    }
+
+    private float SampleNormalizedHeightByVolume(float sample01)
+    {
+        if (!useHeightDiameterProfile)
+            return Mathf.Clamp01(sample01);
+
+        if (profileVolumeCdf[profileVolumeCdf.Length - 1] <= 0f)
+            RebuildProfileVolumeCdf();
+
+        float target = Mathf.Clamp01(sample01);
+        int low = 0;
+        int high = profileVolumeCdf.Length - 1;
+
+        while (high - low > 1)
+        {
+            int mid = (low + high) / 2;
+            if (profileVolumeCdf[mid] < target)
+                low = mid;
+            else
+                high = mid;
+        }
+
+        float segmentStart = profileVolumeCdf[low];
+        float segmentEnd = profileVolumeCdf[high];
+        float segmentT = segmentEnd > segmentStart
+            ? Mathf.InverseLerp(segmentStart, segmentEnd, target)
+            : 0f;
+
+        return (low + segmentT) / (profileVolumeCdf.Length - 1);
     }
 
     private void ClipMeshByPlane(Vector3 normal, float planeConstant)

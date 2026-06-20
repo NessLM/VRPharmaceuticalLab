@@ -176,6 +176,35 @@ public class StackPerkamenDispenser : MonoBehaviour
         }
     }
 
+    public void ResetDispenser()
+    {
+        if (spawnRoutine != null)
+        {
+            StopCoroutine(spawnRoutine);
+            spawnRoutine = null;
+        }
+
+        busy = false;
+        PruneLiveSpawned();
+
+        foreach (XRGrabInteractable parchment in liveSpawned)
+        {
+            if (parchment == null)
+                continue;
+
+            if (parchment.isSelected && parchment.interactionManager != null)
+            {
+                List<IXRSelectInteractor> interactors = new List<IXRSelectInteractor>(parchment.interactorsSelecting);
+                foreach (IXRSelectInteractor interactor in interactors)
+                    parchment.interactionManager.SelectExit(interactor, parchment);
+            }
+
+            Destroy(parchment.gameObject);
+        }
+
+        liveSpawned.Clear();
+    }
+
     private void TrySetTag(GameObject target, string tagName)
     {
         if (target == null)

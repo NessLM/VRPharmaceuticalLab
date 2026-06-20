@@ -38,6 +38,13 @@ public class StamperController : MonoBehaviour
         foreach (var hit in hits)
         {
             var mortar = hit.GetComponent<MortarController>();
+
+            if (mortar == null)
+                mortar = hit.GetComponentInParent<MortarController>();
+
+            if (mortar == null)
+                mortar = hit.GetComponentInChildren<MortarController>();
+
             if (mortar != null)
             {
                 currentMortar = mortar;

@@ -1,9 +1,38 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-// Setup runtime untuk bahan salep. Dipanggil manual dari SalepProcedureManager,
-// BUKAN auto-run saat scene load (RuntimeInitializeOnLoadMethod dihapus).
+// Setup runtime untuk bahan salep.
+// AMAN: auto-run hanya di PLAY MODE (RuntimeInitializeOnLoadMethod), TIDAK menyimpan
+// scene, jadi tidak menyebabkan revert layout (penyebab revert dulu adalah script
+// EDITOR [InitializeOnLoad] + SaveScene yang sudah dimatikan). Juga dipanggil ulang
+// (idempotent) dari SalepProcedureManager.BeginSalepProcedure saat MULAI SIMULASI.
 public static class SalepIngredientRuntimeSetup
 {
+    // Takaran per scoop & target total (mg) sesuai resep Salep.
+    private const float AsamScoopMg = 50f;
+    private const float AsamTargetMg = 200f;
+    private const float SulfurScoopMg = 100f;
+    private const float SulfurTargetMg = 400f;
+    private const float VaselinScoopMg = 2000f;   // 2 g
+    private const float VaselinTargetMg = 9400f;  // 9.4 g
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void AutoConfigureOnPlay()
+    {
+        // Hanya untuk VRLabSimulation. Jangan sentuh scene Padat / lain.
+        if (SceneManager.GetActiveScene().name != "VRLabSimulation")
+            return;
+
+        try
+        {
+            ConfigureScene();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[SalepIngredientRuntimeSetup] Auto-config gagal: {ex}");
+        }
+    }
+
     public static void ConfigureScene()
     {
         Material asamMaterial = ConfigurePowderJar(
@@ -11,14 +40,20 @@ public static class SalepIngredientRuntimeSetup
             "AsamSalisilat",
             "Asam Salisilat",
             IngredientVisualType.PowderWhiteCrystal,
-            new Color(0.97f, 0.975f, 0.96f, 1f));
+            new Color(0.97f, 0.975f, 0.96f, 1f),
+            AsamScoopMg,
+            AsamTargetMg,
+            false);
 
         ConfigurePowderJar(
             "Jar_SulfurPP",
             "SulfurPP",
             "Sulfur PP",
             IngredientVisualType.PowderYellow,
-            new Color(1f, 0.9f, 0.46f, 1f));
+            new Color(1f, 0.9f, 0.46f, 1f),
+            SulfurScoopMg,
+            SulfurTargetMg,
+            false);
 
         Material creamMaterial = ConfigureCreamJar();
 
@@ -29,6 +64,49 @@ public static class SalepIngredientRuntimeSetup
             spoon.ConfigureIngredientScoopSupport(true, 0.085f);
             spoon.EnsureCreamVisual(creamMaterial != null ? creamMaterial : asamMaterial);
         }
+
+        BindBench(spoon);
+    }
+
+    private static void BindBench(HornSpoon spoon)
+    {
+        PowderDepositZone depositZone = Object.FindFirstObjectByType<PowderDepositZone>(
+            FindObjectsInactive.Include);
+        MortarController mortar = Object.FindFirstObjectByType<MortarController>(
+            FindObjectsInactive.Include);
+
+        IngredientVisualProfile asam = GetProfile("Jar_AsamSalisilat");
+        IngredientVisualProfile sulfur = GetProfile("Jar_SulfurPP");
+        IngredientVisualProfile vaselin = GetProfile("Jar_VaselinAlbum");
+
+        SalepBench bench = SalepBench.Instance;
+        if (bench == null)
+            bench = Object.FindFirstObjectByType<SalepBench>(FindObjectsInactive.Include);
+
+        if (bench == null)
+        {
+            GameObject host = depositZone != null
+                ? depositZone.gameObject
+                : (mortar != null ? mortar.gameObject : new GameObject("[SYS] SalepBench"));
+            bench = host.AddComponent<SalepBench>();
+        }
+
+        bench.Bind(depositZone, spoon, mortar, asam, sulfur, vaselin);
+
+        Debug.Log(
+            "[SalepBench] Konfigurasi Salep aktif. " +
+            $"Asam={(asam != null ? asam.AmountPerScoopMg + "/" + asam.TargetTotalMg : "null")}, " +
+            $"Sulfur={(sulfur != null ? sulfur.AmountPerScoopMg + "/" + sulfur.TargetTotalMg : "null")}, " +
+            $"Vaselin={(vaselin != null ? vaselin.AmountPerScoopMg + "/" + vaselin.TargetTotalMg : "null")}, " +
+            $"depositZone={(depositZone != null ? "OK" : "MISSING")}, " +
+            $"spoon={(spoon != null ? "OK" : "MISSING")}, " +
+            $"mortar={(mortar != null ? "OK" : "MISSING")}.");
+    }
+
+    private static IngredientVisualProfile GetProfile(string jarName)
+    {
+        GameObject jar = FindObjectByName(jarName);
+        return jar != null ? jar.GetComponent<IngredientVisualProfile>() : null;
     }
 
     private static Material ConfigurePowderJar(
@@ -36,7 +114,10 @@ public static class SalepIngredientRuntimeSetup
         string ingredientId,
         string displayName,
         IngredientVisualType visualType,
-        Color color)
+        Color color,
+        float scoopMg,
+        float targetMg,
+        bool displayInGrams)
     {
         GameObject jar = FindObjectByName(jarName);
         if (jar == null)
@@ -70,6 +151,17 @@ public static class SalepIngredientRuntimeSetup
             material,
             color,
             new Color(color.r, color.g, color.b, 0.42f));
+        profile.ConfigureScoop(scoopMg, targetMg, displayInGrams);
+
+        // Pastikan jar punya stok cukup untuk total target bahan.
+        PowderContainer container = jar.GetComponent<PowderContainer>();
+        if (container != null)
+            container.EnsureStock(targetMg);
+
+        // Sinkronkan scoop amount pada ScoopBottleTarget jika ada.
+        ScoopBottleTarget scoopTarget = jar.GetComponentInChildren<ScoopBottleTarget>(true);
+        if (scoopTarget != null)
+            scoopTarget.ApplyProfileScoopAmount();
 
         return material;
     }
@@ -109,6 +201,15 @@ public static class SalepIngredientRuntimeSetup
             material,
             color,
             new Color(color.r, color.g, color.b, 0.18f));
+        profile.ConfigureScoop(VaselinScoopMg, VaselinTargetMg, true);
+
+        PowderContainer container = jar.GetComponent<PowderContainer>();
+        if (container != null)
+            container.EnsureStock(VaselinTargetMg);
+
+        ScoopBottleTarget scoopTarget = jar.GetComponentInChildren<ScoopBottleTarget>(true);
+        if (scoopTarget != null)
+            scoopTarget.ApplyProfileScoopAmount();
 
         return material;
     }

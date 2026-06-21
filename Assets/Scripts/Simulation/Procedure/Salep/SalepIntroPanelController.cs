@@ -23,6 +23,9 @@ public sealed class SalepIntroPanelController : MonoBehaviour
     [Header("Reset")]
     [SerializeField] private SimulationResetManager resetManager;
 
+    [Header("Tooltip Gate (opsional)")]
+    [SerializeField] private SalepTooltipGate tooltipGate;
+
     [Header("Safety")]
     [SerializeField] private float startButtonAppearDelay = 1f;
 
@@ -67,6 +70,9 @@ public sealed class SalepIntroPanelController : MonoBehaviour
         if (salepIngredientsRoot != null)
             salepIngredientsRoot.SetActive(true);
 
+        if (tooltipGate != null)
+            tooltipGate.SetSimulationActive(false);
+
         StartCoroutine(ShowStartButtonAfterDelay());
     }
 
@@ -109,6 +115,9 @@ public sealed class SalepIntroPanelController : MonoBehaviour
             if (manager != null)
                 manager.BeginSalepProcedure();
         }
+
+        if (tooltipGate != null)
+            tooltipGate.SetSimulationActive(true);
     }
 
     public void ToggleInformation()

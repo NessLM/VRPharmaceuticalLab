@@ -53,8 +53,18 @@ public sealed class SalepProcedureManager : MonoBehaviour
     [Header("Reset")]
     [SerializeField] private SimulationResetManager resetManager;
 
+    [Header("Step Flow")]
+    [Tooltip("SCAFFOLD sementara: step yang belum punya deteksi interaksi (perkamen, " +
+             "pindah ke mortar, mixing, isi pot) maju otomatis setelah jeda. Matikan kalau " +
+             "deteksi interaksi sudah dibuat. Step menimbang (2/5/8) TIDAK ikut ini — " +
+             "mereka maju saat target gram tercapai.")]
+    [SerializeField] private bool autoAdvanceNonInteractiveSteps = true;
+    [SerializeField] private float gapStepSeconds = 5f;
+
     [Header("Runtime State")]
     [SerializeField] private SalepStep currentStep = SalepStep.Idle;
+
+    private float stepEnterTime;
 
     private static readonly string[] StepTitles =
     {
@@ -95,6 +105,57 @@ public sealed class SalepProcedureManager : MonoBehaviour
         UpdateChecklist();
     }
 
+    private void Update()
+    {
+        SalepBench bench = SalepBench.Instance;
+        if (bench == null)
+            return;
+
+        // Selama step menimbang, progressText menampilkan amount live dari timbangan
+        // (mis. "Asam Salisilat: 50 / 200 mg"), menimpa kalimat instruksi detail.
+        if (progressText != null && bench.IsWeighingActive)
+        {
+            string progress = bench.GetWeighingProgressText();
+            if (!string.IsNullOrEmpty(progress))
+                progressText.text = progress;
+        }
+
+        // Auto-advance step menimbang saat target tercapai (Step 2/5/8).
+        if (IsWeighingStep(currentStep) && bench.WeighingTargetReached)
+        {
+            CompleteCurrentStep();
+            return;
+        }
+
+        // Scaffold: step non-interaktif maju otomatis setelah jeda agar prosedur mengalir
+        // sampai deteksi interaksi sungguhan dibuat.
+        if (autoAdvanceNonInteractiveSteps &&
+            IsGapStep(currentStep) &&
+            Time.time - stepEnterTime >= gapStepSeconds)
+        {
+            CompleteCurrentStep();
+        }
+    }
+
+    private static bool IsWeighingStep(SalepStep step)
+    {
+        return step == SalepStep.Step_02_WeighAsamSalisilat200mg
+            || step == SalepStep.Step_05_WeighSulfurPP400mg
+            || step == SalepStep.Step_08_WeighVaselinAlbum;
+    }
+
+    // Step tanpa deteksi interaksi yang dimajukan otomatis oleh scaffold.
+    private static bool IsGapStep(SalepStep step)
+    {
+        return step == SalepStep.Step_01_PrepareParchmentOnBalance
+            || step == SalepStep.Step_03_MoveAsamSalisilatToMortar
+            || step == SalepStep.Step_04_ResetBalance
+            || step == SalepStep.Step_06_MoveSulfurPPToMortar
+            || step == SalepStep.Step_07_MixPowdersInMortar
+            || step == SalepStep.Step_09_MixVaselinWithPowders
+            || step == SalepStep.Step_10_MoveOintmentToPot;
+    }
+
     public void BeginSalepProcedure()
     {
         // Fallback runtime setup jika editor repair belum pernah dijalankan.
@@ -113,7 +174,9 @@ public sealed class SalepProcedureManager : MonoBehaviour
     public void ShowStep(SalepStep step)
     {
         currentStep = step;
+        stepEnterTime = Time.time;
         SetAllGuidance(false);
+        ApplyBenchForStep(step);
 
         int stepIndex = GetStepIndex(step);
         if (stepIndex >= 0)
@@ -169,6 +232,9 @@ public sealed class SalepProcedureManager : MonoBehaviour
         currentStep = SalepStep.Idle;
         SetAllGuidance(false);
 
+        if (SalepBench.Instance != null)
+            SalepBench.Instance.ResetAll();
+
         if (doneIcon != null)
             doneIcon.SetActive(false);
 
@@ -201,6 +267,64 @@ public sealed class SalepProcedureManager : MonoBehaviour
             string mark = complete ? "\u2713" : active ? "\u25b6" : "\u25a1";
             string title = index < StepTitles.Length ? StepTitles[index] : $"Step {index + 1}";
             item.text = $"{mark} {index + 1}. {title}";
+        }
+    }
+
+    // Drive SalepBench (timbangan + visual mortar) sesuai step aktif.
+    // Defensif: bench mungkin belum ada jika ConfigureScene belum jalan.
+    private void ApplyBenchForStep(SalepStep step)
+    {
+        SalepBench bench = SalepBench.Instance;
+        if (bench == null)
+            return;
+
+        // Default: tidak ada bahan yang boleh di-scoop. Step menimbang akan
+        // mengaktifkan bahannya sendiri lewat BeginWeighing.
+        bench.SetScoopableIngredient(null);
+
+        switch (step)
+        {
+            case SalepStep.Step_02_WeighAsamSalisilat200mg:
+                bench.BeginWeighing("AsamSalisilat");
+                break;
+
+            case SalepStep.Step_03_MoveAsamSalisilatToMortar:
+                bench.SetMortarPhase(SalepMortarPhase.AsamPowder, 0.35f);
+                bench.ClearPan();
+                break;
+
+            case SalepStep.Step_04_ResetBalance:
+                bench.ClearPan();
+                break;
+
+            case SalepStep.Step_05_WeighSulfurPP400mg:
+                bench.BeginWeighing("SulfurPP");
+                break;
+
+            case SalepStep.Step_06_MoveSulfurPPToMortar:
+                bench.SetMortarPhase(SalepMortarPhase.PowderMix, 0.55f);
+                bench.ClearPan();
+                break;
+
+            case SalepStep.Step_07_MixPowdersInMortar:
+                bench.SetMortarPhase(SalepMortarPhase.PowdersHomogeneous, 0.55f);
+                break;
+
+            case SalepStep.Step_08_WeighVaselinAlbum:
+                bench.BeginWeighing("VaselinAlbum");
+                break;
+
+            case SalepStep.Step_09_MixVaselinWithPowders:
+                bench.SetMortarPhase(SalepMortarPhase.CreamAdded, 0.8f);
+                break;
+
+            case SalepStep.Step_10_MoveOintmentToPot:
+                bench.SetMortarPhase(SalepMortarPhase.SalepHomogeneous, 1f);
+                break;
+
+            case SalepStep.Done:
+                bench.SetMortarPhase(SalepMortarPhase.SalepHomogeneous, 1f);
+                break;
         }
     }
 

@@ -95,6 +95,7 @@ public class HornSpoon : MonoBehaviour
     private float nextAllowedDumpTime;
     private Material defaultPowderMaterial;
     private Color defaultPowderColor;
+    private float defaultCapacityMg;
 
     public float MaxCapacityMg => maxCapacityMg;
     public float CurrentAmountMg => currentAmountMg;
@@ -114,6 +115,7 @@ public class HornSpoon : MonoBehaviour
     {
         defaultPowderMaterial = powderMaterial;
         defaultPowderColor = powderColor;
+        defaultCapacityMg = maxCapacityMg;
         grabInteractable = GetComponent<XRGrabInteractable>();
 
         if (tipTransform == null)
@@ -566,6 +568,8 @@ public class HornSpoon : MonoBehaviour
             currentVisualType = IngredientVisualType.PowderWhiteCrystal;
             currentIngredientMaterial = defaultPowderMaterial != null ? defaultPowderMaterial : powderMaterial;
             currentIngredientColor = defaultPowderColor;
+            // Difenhidramin/legacy: keep the authored default capacity untouched.
+            maxCapacityMg = defaultCapacityMg;
             return;
         }
 
@@ -574,6 +578,17 @@ public class HornSpoon : MonoBehaviour
         currentVisualType = profile.VisualType;
         currentIngredientMaterial = profile.SpoonMaterial;
         currentIngredientColor = profile.FallbackColor;
+        // Salep ingredients: one scoop fills the spoon to "full" using the ingredient's
+        // per-scoop amount, so the visual fill ratio reads correctly per ingredient.
+        maxCapacityMg = Mathf.Max(1f, profile.AmountPerScoopMg);
+    }
+
+    /// <summary>Override the spoon capacity (mg). Used by Salep per-ingredient scoop sizing.</summary>
+    public void SetCapacityMg(float capacityMg)
+    {
+        maxCapacityMg = Mathf.Max(1f, capacityMg);
+        currentAmountMg = Mathf.Clamp(currentAmountMg, 0f, maxCapacityMg);
+        UpdateVisual();
     }
 
     private void ResetIngredientSelection()
@@ -583,6 +598,8 @@ public class HornSpoon : MonoBehaviour
         currentVisualType = IngredientVisualType.PowderWhiteCrystal;
         currentIngredientMaterial = null;
         currentIngredientColor = defaultPowderColor;
+        // Restore the authored default so the empty spoon returns to its neutral state.
+        maxCapacityMg = defaultCapacityMg;
     }
 
     private void CreateDefaultPowderVisual()

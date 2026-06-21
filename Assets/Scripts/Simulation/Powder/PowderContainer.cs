@@ -69,6 +69,21 @@ public class PowderContainer : MonoBehaviour
         UpdateVisual();
     }
 
+    /// <summary>Pastikan jar punya stok cukup untuk total target bahan (mis. Vaselin 9.4 g).</summary>
+    public void EnsureStock(float requiredMg, float headroomMultiplier = 1.25f)
+    {
+        float required = Mathf.Max(0f, requiredMg) * Mathf.Max(1f, headroomMultiplier);
+        if (maxAmountMg < required)
+            maxAmountMg = required;
+        if (currentAmountMg < required)
+            currentAmountMg = required;
+
+        initialAmountMg = currentAmountMg;
+        initialAmountCaptured = true;
+        UpdateVisual();
+        onAmountChanged?.Invoke(currentAmountMg);
+    }
+
     public void ResetAmount()
     {
         CaptureInitialAmount();

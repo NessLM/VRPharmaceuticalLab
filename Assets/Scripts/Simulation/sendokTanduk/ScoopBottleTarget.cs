@@ -29,6 +29,10 @@ public sealed class ScoopBottleTarget : MonoBehaviour
     [Header("Amount")]
     [SerializeField] private float scoopAmountMg = 120f;
 
+    [Tooltip("Jika ON dan IngredientVisualProfile tersedia, scoopAmountMg diambil dari " +
+             "profile.AmountPerScoopMg (Asam 50, Sulfur 100, Vaselin 2000).")]
+    [SerializeField] private bool useProfileScoopAmount = true;
+
     [Header("Tip Detection Fallback")]
     [SerializeField] private float tipEligibilityRadius = 0.38f;
     [SerializeField] private float tipInsideRadius = 0.24f;
@@ -86,6 +90,54 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 
         SetPrompt(canAnySpoonScoop);
         FacePromptToCamera();
+
+        ReconcileSpoonPrompts();
+    }
+
+    // Gating tooltip sendok: spoon prompt hanya muncul saat bahan ini benar-benar
+    // bisa diambil (tutup terbuka + step sesuai + ada isi). Mencegah tooltip
+    // "Ambil" muncul saat toples tertutup atau bukan target step.
+    private void ReconcileSpoonPrompts()
+    {
+        foreach (HornSpoon spoon in eligibleSpoons.Keys)
+            ReconcileSpoonPrompt(spoon);
+
+        foreach (HornSpoon spoon in proximitySpoons)
+        {
+            if (!eligibleSpoons.ContainsKey(spoon))
+                ReconcileSpoonPrompt(spoon);
+        }
+    }
+
+    private void ReconcileSpoonPrompt(HornSpoon spoon)
+    {
+        if (spoon == null)
+            return;
+
+        SpoonScoopActivator activator = GetActivator(spoon);
+        if (activator == null)
+            return;
+
+        if (IsAvailableForPrompt(spoon))
+            activator.SetCurrentTarget(this);
+        else
+            activator.ClearCurrentTarget(this);
+    }
+
+    // Lebih longgar dari CanScoop (abaikan cooldown/isScooping/spoon-empty) tapi tetap
+    // menghormati gating tutup + step, agar prompt tidak berkedip saat animasi scoop.
+    private bool IsAvailableForPrompt(HornSpoon spoon)
+    {
+        if (spoon == null)
+            return false;
+
+        if (!IsLidOpenEnough() || !PassesSalepStepGate())
+            return false;
+
+        if (powderContainer == null || !powderContainer.IsAccessible || powderContainer.IsEmpty)
+            return false;
+
+        return true;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -129,6 +181,16 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         Log($"Spoon exited zone: {spoon.name}");
     }
 
+    /// <summary>Ambil ulang scoopAmountMg dari IngredientVisualProfile (dipanggil setup runtime).</summary>
+    public void ApplyProfileScoopAmount()
+    {
+        if (ingredientProfile == null)
+            ingredientProfile = GetComponentInParent<IngredientVisualProfile>();
+
+        if (useProfileScoopAmount && ingredientProfile != null)
+            scoopAmountMg = ingredientProfile.AmountPerScoopMg;
+    }
+
     public bool CanScoop(HornSpoon spoon)
     {
         if (isScooping || Time.time < nextReadyTime)
@@ -140,10 +202,30 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         if (!IsLidOpenEnough())
             return false;
 
+        if (!PassesSalepStepGate())
+            return false;
+
         if (powderContainer == null || !powderContainer.IsAccessible || powderContainer.IsEmpty)
             return false;
 
         return spoon.IsEmpty;
+    }
+
+    /// <summary>
+    /// Step-gating Salep: jika bahan ini dikelola SalepBench, hanya boleh di-scoop saat
+    /// menjadi target step penimbangan yang aktif. Difenhidramin (profile null / tidak
+    /// dikelola bench) tidak terpengaruh.
+    /// </summary>
+    private bool PassesSalepStepGate()
+    {
+        if (ingredientProfile == null)
+            return true;
+
+        SalepBench bench = SalepBench.Instance;
+        if (bench == null || !bench.ManagesIngredient(ingredientProfile.IngredientId))
+            return true;
+
+        return bench.IsIngredientScoopable(ingredientProfile.IngredientId);
     }
 
     public bool TryScoop(HornSpoon spoon)
@@ -270,6 +352,18 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         float accepted = spoon.AddIngredient(taken, ingredientProfile);
         if (accepted < taken)
             powderContainer.AddPowder(taken - accepted);
+
+        // Floating amount text gaya Salep (+50 mg / +2 g) saat scoop berhasil.
+        // Hanya untuk bahan Salep yang punya IngredientVisualProfile; Difenhidramin (null) tidak.
+        if (ingredientProfile != null && accepted > 0.001f)
+        {
+            Transform anchor = entryAnchor != null ? entryAnchor : transform;
+            Color color = Color.Lerp(ingredientProfile.FallbackColor, Color.white, 0.35f);
+            SalepFloatingAmountText.Spawn(
+                anchor.position + Vector3.up * 0.07f,
+                ingredientProfile.FormatAmount(accepted, true),
+                color);
+        }
     }
 
     private void RefreshNearbySpoonsByTip(bool force = false)
@@ -425,6 +519,9 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 
         if (ingredientProfile == null)
             ingredientProfile = GetComponentInParent<IngredientVisualProfile>();
+
+        if (useProfileScoopAmount && ingredientProfile != null)
+            scoopAmountMg = ingredientProfile.AmountPerScoopMg;
 
         if (requiredOpenLid == null)
             requiredOpenLid = GetComponentInParent<BottleLid>();

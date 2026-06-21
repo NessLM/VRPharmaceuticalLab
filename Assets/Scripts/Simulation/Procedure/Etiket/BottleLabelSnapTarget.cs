@@ -66,7 +66,12 @@ public sealed class BottleLabelSnapTarget : MonoBehaviour
             return false;
         }
 
-        Transform target = labelAnchor != null ? labelAnchor : transform;
+        // Resolve parent: prefer labelAnchor, but only if it's in the bottle hierarchy.
+        // If not, fall back to bottleTransform so the label follows the grabbed bottle.
+        Transform anchorCandidate = labelAnchor != null ? labelAnchor : transform;
+        Transform attachParent = IsDescendantOf(anchorCandidate, bottleTransform)
+            ? anchorCandidate
+            : bottleTransform != null ? bottleTransform : anchorCandidate;
 
         if (labelRigidbody != null)
         {
@@ -77,9 +82,13 @@ public sealed class BottleLabelSnapTarget : MonoBehaviour
             labelRigidbody.detectCollisions = false;
         }
 
-        label.SetParent(target, false);
-        label.localPosition = attachedLocalPosition;
-        label.localRotation = Quaternion.Euler(attachedLocalEuler);
+        // Use worldPositionStays=true then set local manually so anchor world pose is preserved.
+        label.SetParent(attachParent, true);
+        if (attachParent == anchorCandidate)
+        {
+            label.localPosition = attachedLocalPosition;
+            label.localRotation = Quaternion.Euler(attachedLocalEuler);
+        }
         label.localScale = SanitizeScale(attachedLocalScale);
 
         Transform cardCanvas = FindDeepChild(label, "EtiketCardCanvas");
@@ -124,6 +133,23 @@ public sealed class BottleLabelSnapTarget : MonoBehaviour
 
         if (bottleLid == null && bottleTransform != null)
             bottleLid = bottleTransform.GetComponentInChildren<BottleLid>(true);
+    }
+
+    // Returns true if child is root itself or a descendant of root.
+    private static bool IsDescendantOf(Transform child, Transform root)
+    {
+        if (child == null || root == null)
+            return false;
+
+        Transform current = child;
+        while (current != null)
+        {
+            if (current == root)
+                return true;
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private static Transform FindDeepChild(Transform root, string targetName)

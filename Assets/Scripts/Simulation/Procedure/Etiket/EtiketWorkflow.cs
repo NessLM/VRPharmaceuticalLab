@@ -396,15 +396,11 @@ public class EtiketWorkflow : MonoBehaviour
                 return;
             }
 
-            labelObject.transform.SetPositionAndRotation(position, rotation);
-
+            // Parent ke bottle (atau labelSnapAnchor yang merupakan child bottle)
+            // dengan worldPositionStays=true, lalu snap ke local pose yang benar.
             Transform parent = labelSnapAnchor != null ? labelSnapAnchor : bottle;
             labelObject.transform.SetParent(parent, true);
-            if (labelSnapAnchor != null)
-            {
-                labelObject.transform.localPosition = Vector3.zero;
-                labelObject.transform.localRotation = Quaternion.identity;
-            }
+            labelObject.transform.SetPositionAndRotation(position, rotation);
 
             if (labelRigidbody != null)
             {

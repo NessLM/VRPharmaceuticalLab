@@ -97,6 +97,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
     public void BeginSalepProcedure()
     {
+        // Fallback runtime setup jika editor repair belum pernah dijalankan.
+        // Tidak mengubah layout; hanya memastikan IngredientVisualProfile & HornSpoon terkonfigurasi.
+        SalepIngredientRuntimeSetup.ConfigureScene();
+
         if (salepIngredientsRoot != null)
             salepIngredientsRoot.SetActive(true);
 

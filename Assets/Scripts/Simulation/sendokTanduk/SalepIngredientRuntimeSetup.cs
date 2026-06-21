@@ -1,14 +1,11 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
+// Setup runtime untuk bahan salep. Dipanggil manual dari SalepProcedureManager,
+// BUKAN auto-run saat scene load (RuntimeInitializeOnLoadMethod dihapus).
 public static class SalepIngredientRuntimeSetup
 {
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void ConfigureLoadedScene()
+    public static void ConfigureScene()
     {
-        if (SceneManager.GetActiveScene().name != "VRLabSimulation")
-            return;
-
         Material asamMaterial = ConfigurePowderJar(
             "Jar_AsamSalisilat",
             "AsamSalisilat",

@@ -5,11 +5,11 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
+// Manual-only repair tool. Auto-run dihapus agar tidak overwrite layout yang sudah diset manual.
+// Jalankan hanya lewat menu: Tools > VR Lab > Repair Salep Hierarchy And Intro
 internal static class SalepSceneVisualRepair
 {
     private const string ScenePath = "Assets/Scenes/VRLabSimulation.unity";
-    private const string SessionKey = "VRLab.SalepVisualRepair.20260621";
 
     private const string RecipeText =
         "R/ Asam Salisilat 200 mg\n" +
@@ -31,30 +31,20 @@ internal static class SalepSceneVisualRepair
         "Sulfur PP 400 mg\n" +
         "Vaselin Album ad 10 g";
 
-    static SalepSceneVisualRepair()
-    {
-        EditorApplication.delayCall += RepairLoadedSceneOnce;
-        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-    }
-
     [MenuItem("Tools/VR Lab/Repair Salep Hierarchy And Intro")]
     private static void RepairFromMenu()
     {
-        SessionState.EraseBool(SessionKey);
-        RepairLoadedSceneOnce();
+        RunRepair();
     }
 
-    private static void RepairLoadedSceneOnce()
+    private static void RunRepair()
     {
-        if (EditorApplication.isPlayingOrWillChangePlaymode ||
-            SessionState.GetBool(SessionKey, false))
-        {
-            return;
-        }
-
         Scene scene = SceneManager.GetActiveScene();
         if (!scene.IsValid() || scene.path != ScenePath)
+        {
+            Debug.LogWarning("[SalepSceneRepair] Buka scene VRLabSimulation.unity terlebih dahulu.");
             return;
+        }
 
         Transform models = FindInScene(scene, "Models");
         Transform interactable = models != null ? FindDeepChild(models, "Interactable") : null;
@@ -68,8 +58,7 @@ internal static class SalepSceneVisualRepair
 
         if (interactable == null || syrupSystem == null || salepSystem == null)
         {
-            Debug.LogWarning(
-                "[SalepSceneRepair] Hierarchy utama tidak lengkap. Repair tidak dijalankan.");
+            Debug.LogWarning("[SalepSceneRepair] Hierarchy utama tidak lengkap. Repair tidak dijalankan.");
             return;
         }
 
@@ -141,19 +130,8 @@ internal static class SalepSceneVisualRepair
         {
             EditorSceneManager.MarkSceneDirty(scene);
             Undo.CollapseUndoOperations(undoGroup);
-            Debug.Log(
-                "[SalepSceneRepair] Hierarchy dan Intro Salep diperbaiki pada scene aktif. " +
-                "Object bahan dipindah ke Models/Interactable, duplicate tools diarsipkan, " +
-                "dan layout Intro disamakan dengan Sirup.");
+            Debug.Log("[SalepSceneRepair] Repair selesai (manual). Simpan scene untuk menyimpan perubahan.");
         }
-
-        SessionState.SetBool(SessionKey, true);
-    }
-
-    private static void OnPlayModeStateChanged(PlayModeStateChange state)
-    {
-        if (state == PlayModeStateChange.EnteredEditMode)
-            EditorApplication.delayCall += RepairLoadedSceneOnce;
     }
 
     private static void ConfigureIntroText(Transform salepIntro)

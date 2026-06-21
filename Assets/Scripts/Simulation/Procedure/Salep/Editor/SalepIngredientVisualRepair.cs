@@ -5,36 +5,27 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
+// Manual-only repair tool. Auto-run dihapus agar tidak overwrite material/visual yang sudah diset manual.
+// Jalankan hanya lewat menu: Tools > VR Lab > Repair Salep Ingredient Visuals
 internal static class SalepIngredientVisualRepair
 {
     private const string ScenePath = "Assets/Scenes/VRLabSimulation.unity";
-    private const string SessionKey = "VRLab.SalepIngredientVisualRepair.20260621.v5";
     private const string MaterialFolder = "Assets/Models/Materials/Salep/";
-
-    static SalepIngredientVisualRepair()
-    {
-        EditorApplication.delayCall += RepairLoadedSceneOnce;
-    }
 
     [MenuItem("Tools/VR Lab/Repair Salep Ingredient Visuals")]
     private static void RepairFromMenu()
     {
-        SessionState.EraseBool(SessionKey);
-        RepairLoadedSceneOnce();
+        RunRepair();
     }
 
-    private static void RepairLoadedSceneOnce()
+    private static void RunRepair()
     {
-        if (EditorApplication.isPlayingOrWillChangePlaymode ||
-            SessionState.GetBool(SessionKey, false))
-        {
-            return;
-        }
-
         Scene scene = SceneManager.GetActiveScene();
         if (!scene.IsValid() || scene.path != ScenePath)
+        {
+            Debug.LogWarning("[SalepIngredientVisual] Buka scene VRLabSimulation.unity terlebih dahulu.");
             return;
+        }
 
         Transform models = FindInScene(scene, "Models");
         Transform interactable = models != null ? FindDeepChild(models, "Interactable") : null;
@@ -55,8 +46,6 @@ internal static class SalepIngredientVisualRepair
         Material asamAccent = LoadMaterial("MAT_AsamSalisilat_Accent.mat");
         Material sulfurAccent = LoadMaterial("MAT_SulfurPP_Accent.mat");
         Material vaselinAccent = LoadMaterial("MAT_VaselinAlbum_Accent.mat");
-
-        SessionState.SetBool(SessionKey, true);
 
         ingredients.gameObject.SetActive(true);
 
@@ -95,10 +84,7 @@ internal static class SalepIngredientVisualRepair
         ConfigureHornSpoon(scene, vaselinSpoonCream != null ? vaselinSpoonCream : vaselinCream);
 
         EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene);
-        Debug.Log(
-            "[SalepIngredientVisual] Visual Asam Salisilat, Sulfur PP, dan Vaselin Album " +
-            "diperbaiki. Semua bahan tetap aktif di scene.");
+        Debug.Log("[SalepIngredientVisual] Repair selesai (manual). Simpan scene untuk menyimpan perubahan.");
     }
 
     private static void ConfigurePowderJar(
@@ -410,7 +396,7 @@ internal static class SalepIngredientVisualRepair
             return;
         }
 
-        // Element 0 is the original neutral jar body. Only replace the built-in label slot.
+        // Element 0 tetap body netral. Hanya slot label (Element 1) yang diganti.
         materials[1] = labelMaterial;
         renderer.sharedMaterials = materials;
     }

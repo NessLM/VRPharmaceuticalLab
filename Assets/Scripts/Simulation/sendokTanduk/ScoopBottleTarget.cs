@@ -8,6 +8,7 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private PowderContainer powderContainer;
+    [SerializeField] private IngredientVisualProfile ingredientProfile;
     [SerializeField] private BottleLid requiredOpenLid;
     [SerializeField] private Collider scoopAccessZone;
     [SerializeField] private Transform entryAnchor;
@@ -172,7 +173,7 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         Quaternion spoonStartRot = spoon.transform.rotation;
 
         // Hide the real spoon so only the ghost is visible during animation
-        Renderer[] spoonRenderers = spoon.GetComponentsInChildren<Renderer>();
+        Renderer[] spoonRenderers = spoon.GetComponentsInChildren<Renderer>(true);
         SetRenderersEnabled(spoonRenderers, false);
 
         // Show ghost positioned exactly where the real spoon is
@@ -266,7 +267,7 @@ public sealed class ScoopBottleTarget : MonoBehaviour
             return;
 
         float taken = powderContainer.TakePowder(scoopAmountMg);
-        float accepted = spoon.AddPowder(taken);
+        float accepted = spoon.AddIngredient(taken, ingredientProfile);
         if (accepted < taken)
             powderContainer.AddPowder(taken - accepted);
     }
@@ -422,6 +423,9 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         if (powderContainer == null)
             powderContainer = GetComponentInParent<PowderContainer>();
 
+        if (ingredientProfile == null)
+            ingredientProfile = GetComponentInParent<IngredientVisualProfile>();
+
         if (requiredOpenLid == null)
             requiredOpenLid = GetComponentInParent<BottleLid>();
 
@@ -448,7 +452,10 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.32f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.015f, 0.045f);
         main.startSize = new ParticleSystem.MinMaxCurve(0.0025f, 0.006f);
-        main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.94f, 0.92f, 0.82f, 0.42f));
+        Color fxColor = ingredientProfile != null
+            ? ingredientProfile.ScoopFxColor
+            : new Color(0.94f, 0.92f, 0.82f, 0.42f);
+        main.startColor = new ParticleSystem.MinMaxGradient(fxColor);
         main.maxParticles = 36;
         main.gravityModifier = 0.05f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
@@ -474,7 +481,7 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 
     private void EmitDust()
     {
-        if (scoopDustFX == null)
+        if (scoopDustFX == null || (ingredientProfile != null && ingredientProfile.IsCream))
             return;
 
         if (insideAnchor != null)
@@ -616,7 +623,9 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         if (textMesh == null)
             textMesh = scoopPrompt.AddComponent<TextMesh>();
 
-        textMesh.text = "Ambil bubuk";
+        textMesh.text = ingredientProfile != null && ingredientProfile.IsCream
+            ? "Ambil krim"
+            : "Ambil bubuk";
         textMesh.anchor = TextAnchor.MiddleCenter;
         textMesh.alignment = TextAlignment.Center;
         textMesh.characterSize = 0.03f;

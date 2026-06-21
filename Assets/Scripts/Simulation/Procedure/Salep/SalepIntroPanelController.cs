@@ -38,9 +38,6 @@ public sealed class SalepIntroPanelController : MonoBehaviour
     private void OnDisable()
     {
         StopAllCoroutines();
-
-        if (salepIngredientsRoot != null)
-            salepIngredientsRoot.SetActive(false);
     }
 
     public void ResetIntro()
@@ -65,6 +62,8 @@ public sealed class SalepIntroPanelController : MonoBehaviour
         if (salepStepUI != null)
             salepStepUI.SetActive(false);
 
+        // Ingredient jars are permanent laboratory props. Simulation mode only controls
+        // procedure logic, UI, checkpoints, highlights, and arrows.
         if (salepIngredientsRoot != null)
             salepIngredientsRoot.SetActive(true);
 
@@ -99,6 +98,9 @@ public sealed class SalepIntroPanelController : MonoBehaviour
 
         if (salepStepUI != null)
             salepStepUI.SetActive(true);
+
+        if (salepIngredientsRoot != null)
+            salepIngredientsRoot.SetActive(true);
 
         if (salepStepManager != null)
         {

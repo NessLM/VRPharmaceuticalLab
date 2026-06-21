@@ -38,6 +38,14 @@ public class PowderContainer : MonoBehaviour
     public bool IsEmpty => currentAmountMg <= 0f;
     public bool IsFull => currentAmountMg >= maxAmountMg;
 
+    private float initialAmountMg;
+    private bool initialAmountCaptured;
+
+    private void Awake()
+    {
+        CaptureInitialAmount();
+    }
+
     private void Start()
     {
         if (powderMesh == null && createDefaultVisualIfMissing)
@@ -46,10 +54,27 @@ public class PowderContainer : MonoBehaviour
         if (powderRenderer == null && powderMesh != null)
             powderRenderer = powderMesh.GetComponent<Renderer>();
 
-        if (powderRenderer != null)
-            powderRenderer.material.color = powderColor;
+        ApplyPowderColor();
 
         UpdateVisual();
+    }
+
+    public void ConfigureMaterial(string newMaterialName, Color newPowderColor)
+    {
+        if (!string.IsNullOrWhiteSpace(newMaterialName))
+            materialName = newMaterialName.Trim();
+
+        powderColor = newPowderColor;
+        ApplyPowderColor();
+        UpdateVisual();
+    }
+
+    public void ResetAmount()
+    {
+        CaptureInitialAmount();
+        currentAmountMg = Mathf.Clamp(initialAmountMg, 0f, maxAmountMg);
+        UpdateVisual();
+        onAmountChanged?.Invoke(currentAmountMg);
     }
 
     /// <summary>Takes powder from this container. Returns actual amount taken in mg.</summary>
@@ -89,6 +114,33 @@ public class PowderContainer : MonoBehaviour
             powderMesh.localScale = Vector3.Lerp(emptyLocalScale, fullLocalScale, t);
             powderMesh.localPosition = Vector3.Lerp(emptyLocalPosition, fullLocalPosition, t);
         }
+    }
+
+    private void CaptureInitialAmount()
+    {
+        if (initialAmountCaptured)
+            return;
+
+        initialAmountMg = currentAmountMg;
+        initialAmountCaptured = true;
+    }
+
+    private void ApplyPowderColor()
+    {
+        if (powderRenderer == null && powderMesh != null)
+            powderRenderer = powderMesh.GetComponentInChildren<Renderer>(true);
+
+        if (powderRenderer == null)
+            return;
+
+        Material material = powderRenderer.material;
+        if (material == null)
+            return;
+
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", powderColor);
+        if (material.HasProperty("_Color"))
+            material.SetColor("_Color", powderColor);
     }
 
     [ContextMenu("Create Default Powder Visual")]

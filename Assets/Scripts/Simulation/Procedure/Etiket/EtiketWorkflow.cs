@@ -2,28 +2,59 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Transformers;
 
 [DisallowMultipleComponent]
 public class EtiketWorkflow : MonoBehaviour
 {
     [Header("Scene UI")]
-    [SerializeField] private EtiketPanelRig panelRig;
+    [SerializeField] private GameObject panelRoot;
+    [SerializeField] private GameObject choicePanel;
+    [SerializeField] private GameObject formPanel;
+    [SerializeField] private GameObject successPanel;
+    [SerializeField] private GameObject keyboardRoot;
+    [SerializeField] private Button whiteEtiketButton;
+    [SerializeField] private Button blueEtiketButton;
+    [SerializeField] private TMP_Text formTitle;
+    [SerializeField] private Image previewCard;
+    [SerializeField] private TMP_Text previewHeader;
+    [SerializeField] private TMP_Text previewBody;
+    [SerializeField] private TMP_Text formStatus;
+    [SerializeField] private TMP_InputField numberInput;
+    [SerializeField] private TMP_InputField nameInput;
+    [SerializeField] private TMP_InputField usageInput;
+    [SerializeField] private TMP_InputField dateInput;
+    [SerializeField] private Button chooseAgainButton;
+    [SerializeField] private Button createLabelButton;
+    [SerializeField] private TMP_Text successTitle;
+    [SerializeField] private TMP_Text successDetail;
+    [SerializeField] private Button backButton;
+    [SerializeField] private KeyboardManager keyboardManager;
 
-    [Header("World Label")]
-    [SerializeField] private float attachDistance = 0.12f;
-    [SerializeField] private Vector2 labelSizeMeters = new Vector2(0.07f, 0.042f);
-    [SerializeField] private Vector3 labelSpawnOffset = new Vector3(0.18f, 0.12f, 0f);
+    [Header("World Etiket")]
+    [SerializeField] private Transform labelSpawnAnchor;
+    [SerializeField] private Transform labelSnapAnchor;
+    [SerializeField] private BottleLabelSnapTarget bottleSnapTarget;
+    [SerializeField] private BottleLid requiredBottleLid;
+    [SerializeField] private float attachDistance = 0.14f;
+    [SerializeField] private Vector2 labelSizeMeters = new Vector2(0.105f, 0.063f);
+    [SerializeField] private Vector3 labelSpawnOffset = new Vector3(-0.08f, 0.08f, -0.12f);
+    [SerializeField] private float spawnDistanceInFrontOfBottle = 0.18f;
+    [SerializeField] private float spawnHeightAboveBottleCenter = 0.035f;
+    [SerializeField] private Vector3 grabColliderSize = new Vector3(0.15f, 0.1f, 0.035f);
 
     [Header("Editable Etiket Content")]
     [SerializeField] private string productLine = "DIFENHIDRAMIN 250 mg / 100 ml";
     [SerializeField] private string completionTitle = "SIMULASI SELESAI";
     [TextArea(2, 4)]
     [SerializeField] private string completionDetail =
-        "Obat sudah selesai dibuat, dikemas, dan diberi etiket.";
+        "Obat sudah selesai dibuat, dikemas, diberi etiket, dan ditutup.";
 
     public event Action<GameObject> LabelCreated;
     public event Action LabelAttached;
+    public event Action BottleNotClosed;
     public event Action BackRequested;
 
     private Transform bottle;
@@ -31,6 +62,8 @@ public class EtiketWorkflow : MonoBehaviour
     private GameObject labelObject;
     private XRGrabInteractable labelGrab;
     private Rigidbody labelRigidbody;
+    private Collider[] labelColliders;
+    private UnityEngine.UI.Outline labelOutline;
     private bool whiteEtiket = true;
     private bool labelWasGrabbed;
     private bool labelIsAttached;
@@ -39,12 +72,22 @@ public class EtiketWorkflow : MonoBehaviour
     private static readonly Color WhiteEtiket = new Color(0.97f, 0.98f, 0.96f, 1f);
     private static readonly Color BlueEtiket = new Color(0.16f, 0.66f, 0.86f, 1f);
     private static readonly Color DarkInk = new Color(0.025f, 0.035f, 0.05f, 1f);
+    private static readonly Color HighlightYellow = new Color(1f, 0.92f, 0.02f, 1f);
+
+    private bool IsUiConfigured =>
+        panelRoot != null &&
+        choicePanel != null &&
+        formPanel != null &&
+        successPanel != null &&
+        whiteEtiketButton != null &&
+        blueEtiketButton != null &&
+        createLabelButton != null;
 
     public void Initialize(RectTransform unusedCanvasRoot, Transform bottleTarget)
     {
         bottle = bottleTarget;
         bottleRenderer = bottle != null ? bottle.GetComponentInChildren<Renderer>(true) : null;
-        ResolvePanelRig();
+        ResolveWorldAnchors();
         BindPanelEvents();
     }
 
@@ -66,47 +109,38 @@ public class EtiketWorkflow : MonoBehaviour
         labelWasGrabbed = false;
         labelIsAttached = false;
 
-        if (panelRig == null || !panelRig.IsConfigured)
+        if (!IsUiConfigured)
         {
-            Debug.LogError("[Etiket] World-space Etiket UI belum tersedia di VRLabSimulation.", this);
+            Debug.LogError("[Etiket] Referensi UI Etiket di VRLabSimulation belum lengkap.", this);
             return;
         }
 
-        panelRig.ConfigureFollowTarget(Camera.main != null ? Camera.main.transform : null);
+        if (numberInput != null)
+            numberInput.text = "001";
 
-        if (panelRig.NumberInput != null)
-            panelRig.NumberInput.text = "001";
+        if (nameInput != null)
+            nameInput.text = string.Empty;
 
-        if (panelRig.NameInput != null)
-            panelRig.NameInput.text = string.Empty;
+        if (usageInput != null)
+            usageInput.text = string.Empty;
 
-        if (panelRig.UsageInput != null)
-            panelRig.UsageInput.text = string.Empty;
+        if (dateInput != null)
+            dateInput.text = DateTime.Now.ToString("dd-MM-yyyy");
 
-        if (panelRig.DateInput != null)
-            panelRig.DateInput.text = DateTime.Now.ToString("dd-MM-yyyy");
-
-        panelRig.SetStatus("Arahkan ray controller ke salah satu etiket.", new Color(0.78f, 0.86f, 0.94f, 1f));
+        SetStatus("Arahkan ray controller ke salah satu etiket.", new Color(0.78f, 0.86f, 0.94f, 1f));
         RefreshFormPreview();
-        panelRig.ShowChoice();
+        ShowChoice();
     }
 
     public void ShowSuccess()
     {
-        ResolvePanelRig();
+        if (successTitle != null)
+            successTitle.text = completionTitle;
 
-        if (panelRig != null)
-        {
-            panelRig.ConfigureFollowTarget(Camera.main != null ? Camera.main.transform : null);
+        if (successDetail != null)
+            successDetail.text = completionDetail;
 
-            if (panelRig.SuccessTitle != null)
-                panelRig.SuccessTitle.text = completionTitle;
-
-            if (panelRig.SuccessDetail != null)
-                panelRig.SuccessDetail.text = completionDetail;
-
-            panelRig.ShowSuccess();
-        }
+        SetPanelState(false, false, true);
     }
 
     private void Update()
@@ -117,40 +151,29 @@ public class EtiketWorkflow : MonoBehaviour
         if (labelGrab != null && labelGrab.isSelected)
             return;
 
-        Vector3 target = GetBottleSnapPosition(out Quaternion rotation);
-        if (Vector3.Distance(labelObject.transform.position, target) > attachDistance)
-            return;
-
-        AttachLabelToBottle(target, rotation);
-    }
-
-    private void ResolvePanelRig()
-    {
-        if (panelRig == null)
-            panelRig = FindFirstObjectByType<EtiketPanelRig>(FindObjectsInactive.Include);
+        TryAttachLabel();
     }
 
     private void BindPanelEvents()
     {
-        if (eventsBound || panelRig == null || !panelRig.IsConfigured)
+        if (eventsBound || !IsUiConfigured)
             return;
 
-        panelRig.WhiteEtiketButton.onClick.AddListener(() => SelectEtiketColor(true));
-        panelRig.BlueEtiketButton.onClick.AddListener(() => SelectEtiketColor(false));
+        whiteEtiketButton.onClick.AddListener(() => SelectEtiketColor(true));
+        blueEtiketButton.onClick.AddListener(() => SelectEtiketColor(false));
 
-        if (panelRig.ChooseAgainButton != null)
-            panelRig.ChooseAgainButton.onClick.AddListener(panelRig.ShowChoice);
+        if (chooseAgainButton != null)
+            chooseAgainButton.onClick.AddListener(ShowChoice);
 
-        if (panelRig.CreateLabelButton != null)
-            panelRig.CreateLabelButton.onClick.AddListener(CreateWorldLabel);
+        createLabelButton.onClick.AddListener(CreateWorldLabel);
 
-        if (panelRig.BackButton != null)
-            panelRig.BackButton.onClick.AddListener(() => BackRequested?.Invoke());
+        if (backButton != null)
+            backButton.onClick.AddListener(() => BackRequested?.Invoke());
 
-        BindInput(panelRig.NumberInput);
-        BindInput(panelRig.NameInput);
-        BindInput(panelRig.UsageInput);
-        BindInput(panelRig.DateInput);
+        BindInput(numberInput);
+        BindInput(nameInput);
+        BindInput(usageInput);
+        BindInput(dateInput);
         eventsBound = true;
     }
 
@@ -159,7 +182,7 @@ public class EtiketWorkflow : MonoBehaviour
         if (input == null)
             return;
 
-        input.onSelect.AddListener(_ => panelRig.OpenKeyboard(input));
+        input.onSelect.AddListener(_ => OpenKeyboard(input));
         input.onValueChanged.AddListener(_ => RefreshFormPreview());
     }
 
@@ -167,81 +190,114 @@ public class EtiketWorkflow : MonoBehaviour
     {
         whiteEtiket = useWhite;
 
-        if (panelRig.FormTitle != null)
+        if (formTitle != null)
         {
-            panelRig.FormTitle.text = useWhite
+            formTitle.text = useWhite
                 ? "Isi Etiket Putih - Obat Dalam"
                 : "Isi Etiket Biru - Obat Luar";
-            panelRig.FormTitle.color = useWhite ? Color.white : BlueEtiket;
+            formTitle.color = useWhite ? Color.white : BlueEtiket;
         }
 
-        panelRig.SetStatus("Pilih kolom dengan ray controller untuk membuka keyboard VR.", new Color(0.78f, 0.86f, 0.94f, 1f));
+        SetStatus("Pilih kolom dengan ray controller untuk membuka keyboard VR.", new Color(0.78f, 0.86f, 0.94f, 1f));
         RefreshFormPreview();
-        panelRig.ShowForm();
+        SetPanelState(false, true, false);
     }
 
     private void RefreshFormPreview()
     {
-        if (panelRig == null)
-            return;
+        if (previewCard != null)
+            previewCard.color = whiteEtiket ? WhiteEtiket : BlueEtiket;
 
-        if (panelRig.PreviewCard != null)
-            panelRig.PreviewCard.color = whiteEtiket ? WhiteEtiket : BlueEtiket;
-
-        if (panelRig.PreviewHeader != null)
-            panelRig.PreviewHeader.text = whiteEtiket
+        if (previewHeader != null)
+            previewHeader.text = whiteEtiket
                 ? "ETIKET OBAT - OBAT DALAM"
                 : "ETIKET OBAT - OBAT LUAR";
 
-        if (panelRig.PreviewBody != null)
+        if (previewBody != null)
         {
-            panelRig.PreviewBody.text =
-                $"No: {SafeText(panelRig.NumberInput, "001")}      Tgl: {SafeText(panelRig.DateInput, "-")}\n" +
-                $"Nama: {SafeText(panelRig.NameInput, "-")}\n" +
-                $"Untuk: {SafeText(panelRig.UsageInput, "-")}";
+            previewBody.text =
+                $"No: {SafeText(numberInput, "001")}      Tgl: {SafeText(dateInput, "-")}\n" +
+                $"Nama: {SafeText(nameInput, "-")}\n" +
+                $"Untuk: {SafeText(usageInput, "-")}";
         }
     }
 
     private void CreateWorldLabel()
     {
-        if (panelRig == null)
-            return;
-
-        if (string.IsNullOrWhiteSpace(panelRig.NameInput != null ? panelRig.NameInput.text : null) ||
-            string.IsNullOrWhiteSpace(panelRig.UsageInput != null ? panelRig.UsageInput.text : null))
+        if (string.IsNullOrWhiteSpace(nameInput != null ? nameInput.text : null) ||
+            string.IsNullOrWhiteSpace(usageInput != null ? usageInput.text : null))
         {
-            panelRig.SetStatus("Nama dan kegunaan/aturan pakai harus diisi terlebih dahulu.", new Color(1f, 0.42f, 0.32f, 1f));
+            SetStatus("Nama dan kegunaan/aturan pakai harus diisi terlebih dahulu.", new Color(1f, 0.42f, 0.32f, 1f));
             return;
         }
 
         DestroyCurrentLabel();
 
         labelObject = new GameObject("Etiket_Grabbable");
-        labelObject.transform.position = GetLabelSpawnPosition();
-        labelObject.transform.rotation = GetFacingRotation(labelObject.transform.position);
+        Vector3 spawnPosition = GetLabelSpawnPosition();
+        labelObject.transform.SetPositionAndRotation(
+            spawnPosition,
+            GetFacingRotation(spawnPosition));
+        labelObject.transform.localScale = Vector3.one;
 
-        BoxCollider collider = labelObject.AddComponent<BoxCollider>();
-        collider.size = new Vector3(labelSizeMeters.x * 1.18f, labelSizeMeters.y * 1.18f, 0.012f);
+        BoxCollider physicalCollider = labelObject.AddComponent<BoxCollider>();
+        physicalCollider.size = new Vector3(labelSizeMeters.x, labelSizeMeters.y, 0.004f);
+
+        GameObject helperObject = new GameObject("GrabCollider");
+        helperObject.transform.SetParent(labelObject.transform, false);
+        BoxCollider helperCollider = helperObject.AddComponent<BoxCollider>();
+        helperCollider.isTrigger = true;
+        helperCollider.size = grabColliderSize;
+        labelColliders = new Collider[] { physicalCollider, helperCollider };
 
         labelRigidbody = labelObject.AddComponent<Rigidbody>();
         labelRigidbody.mass = 0.025f;
         labelRigidbody.useGravity = false;
+        labelRigidbody.isKinematic = true;
+        labelRigidbody.linearDamping = 8f;
+        labelRigidbody.angularDamping = 8f;
         labelRigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
         labelRigidbody.interpolation = RigidbodyInterpolation.Interpolate;
 
         labelGrab = labelObject.AddComponent<XRGrabInteractable>();
-        Transform grabPoint = CreateGrabPointHandle(labelObject.transform);
-        labelGrab.attachTransform = grabPoint;
+        labelGrab.selectMode = InteractableSelectMode.Single;
+        labelGrab.movementType = XRBaseInteractable.MovementType.Kinematic;
         labelGrab.useDynamicAttach = false;
         labelGrab.matchAttachPosition = true;
         labelGrab.matchAttachRotation = true;
-        labelGrab.selectEntered.AddListener(_ => labelWasGrabbed = true);
+        labelGrab.snapToColliderVolume = true;
+        labelGrab.trackPosition = true;
+        labelGrab.trackRotation = true;
+        labelGrab.trackScale = false;
+        labelGrab.throwOnDetach = false;
+        labelGrab.forceGravityOnDetach = false;
+        labelGrab.retainTransformParent = false;
+        labelGrab.addDefaultGrabTransformers = false;
+        labelGrab.colliders.Clear();
+        labelGrab.colliders.Add(physicalCollider);
+        labelGrab.colliders.Add(helperCollider);
+
+        Transform grabPoint = CreateGrabPointHandle(labelObject.transform);
+        labelGrab.attachTransform = grabPoint;
+
+        XRGeneralGrabTransformer transformer = labelObject.AddComponent<XRGeneralGrabTransformer>();
+        transformer.allowOneHandedScaling = false;
+        transformer.allowTwoHandedScaling = false;
+        labelGrab.AddSingleGrabTransformer(transformer);
+
+        labelGrab.selectEntered.AddListener(_ =>
+        {
+            labelWasGrabbed = true;
+            if (labelOutline != null)
+                labelOutline.enabled = false;
+        });
+        labelGrab.selectExited.AddListener(_ => TryAttachLabel());
 
         CreateLabelCardVisual();
 
         labelWasGrabbed = false;
         labelIsAttached = false;
-        panelRig.HideAll();
+        HideAllPanels();
         LabelCreated?.Invoke(labelObject);
     }
 
@@ -260,7 +316,18 @@ public class EtiketWorkflow : MonoBehaviour
         RectTransform canvasRect = canvasObject.GetComponent<RectTransform>();
         canvasRect.sizeDelta = new Vector2(1000f, 600f);
 
-        Image border = CreateSizedImage("IMG_EtiketBorder", canvasObject.transform, Vector2.zero, new Vector2(1000f, 600f), Color.black);
+        Image border = CreateSizedImage(
+            "IMG_EtiketBorder_Highlight",
+            canvasObject.transform,
+            Vector2.zero,
+            new Vector2(1000f, 600f),
+            Color.black);
+
+        labelOutline = border.gameObject.AddComponent<UnityEngine.UI.Outline>();
+        labelOutline.effectColor = HighlightYellow;
+        labelOutline.effectDistance = new Vector2(12f, -12f);
+        labelOutline.useGraphicAlpha = false;
+
         Image card = CreateSizedImage(
             whiteEtiket ? "IMG_EtiketPutih" : "IMG_EtiketBiru",
             border.transform,
@@ -286,9 +353,9 @@ public class EtiketWorkflow : MonoBehaviour
         TMP_Text details = CreateText(
             "TXT_EtiketDetail",
             card.transform,
-            $"No: {SafeText(panelRig.NumberInput, "001")}                 Tgl: {SafeText(panelRig.DateInput, DateTime.Now.ToString("dd-MM-yyyy"))}\n" +
-            $"Nama: {SafeText(panelRig.NameInput, "-")}\n" +
-            $"Untuk: {SafeText(panelRig.UsageInput, "-")}",
+            $"No: {SafeText(numberInput, "001")}                 Tgl: {SafeText(dateInput, DateTime.Now.ToString("dd-MM-yyyy"))}\n" +
+            $"Nama: {SafeText(nameInput, "-")}\n" +
+            $"Untuk: {SafeText(usageInput, "-")}",
             38f,
             FontStyles.Normal,
             new Vector2(0f, -20f),
@@ -310,22 +377,94 @@ public class EtiketWorkflow : MonoBehaviour
 
     private void AttachLabelToBottle(Vector3 position, Quaternion rotation)
     {
-        labelIsAttached = true;
-        labelObject.transform.SetPositionAndRotation(position, rotation);
-        labelObject.transform.SetParent(bottle, true);
-
-        if (labelRigidbody != null)
+        if (bottleSnapTarget != null)
         {
-            labelRigidbody.linearVelocity = Vector3.zero;
-            labelRigidbody.angularVelocity = Vector3.zero;
-            labelRigidbody.isKinematic = true;
-            labelRigidbody.useGravity = false;
+            if (!bottleSnapTarget.TrySnapLabel(
+                    labelObject.transform,
+                    labelGrab,
+                    labelRigidbody,
+                    labelColliders))
+            {
+                return;
+            }
+        }
+        else
+        {
+            if (requiredBottleLid != null && requiredBottleLid.IsOpen)
+            {
+                BottleNotClosed?.Invoke();
+                return;
+            }
+
+            labelObject.transform.SetPositionAndRotation(position, rotation);
+
+            Transform parent = labelSnapAnchor != null ? labelSnapAnchor : bottle;
+            labelObject.transform.SetParent(parent, true);
+            if (labelSnapAnchor != null)
+            {
+                labelObject.transform.localPosition = Vector3.zero;
+                labelObject.transform.localRotation = Quaternion.identity;
+            }
+
+            if (labelRigidbody != null)
+            {
+                labelRigidbody.linearVelocity = Vector3.zero;
+                labelRigidbody.angularVelocity = Vector3.zero;
+                labelRigidbody.isKinematic = true;
+                labelRigidbody.useGravity = false;
+                labelRigidbody.detectCollisions = false;
+            }
+
+            if (labelGrab != null)
+                labelGrab.enabled = false;
+
+            if (labelColliders != null)
+            {
+                foreach (Collider labelCollider in labelColliders)
+                {
+                    if (labelCollider != null)
+                        labelCollider.enabled = false;
+                }
+            }
         }
 
-        if (labelGrab != null)
-            labelGrab.enabled = false;
+        labelIsAttached = true;
+
+        if (labelOutline != null)
+            labelOutline.enabled = false;
 
         LabelAttached?.Invoke();
+    }
+
+    private void TryAttachLabel()
+    {
+        if (labelObject == null || labelIsAttached || !labelWasGrabbed || bottle == null)
+            return;
+
+        if (labelGrab != null && labelGrab.isSelected)
+            return;
+
+        if (bottleSnapTarget != null)
+        {
+            if (!bottleSnapTarget.IsLabelInsideSnapArea(labelObject.transform))
+                return;
+
+            if (!bottleSnapTarget.IsBottleClosed)
+            {
+                bottleSnapTarget.NotifyBottleNotClosed();
+                BottleNotClosed?.Invoke();
+                return;
+            }
+        }
+
+        Vector3 target = GetBottleSnapPosition(out Quaternion rotation);
+        if (bottleSnapTarget == null &&
+            Vector3.Distance(labelObject.transform.position, target) > attachDistance)
+        {
+            return;
+        }
+
+        AttachLabelToBottle(target, rotation);
     }
 
     private Vector3 GetLabelSpawnPosition()
@@ -335,16 +474,32 @@ public class EtiketWorkflow : MonoBehaviour
             : bottle != null ? bottle.position : transform.position;
 
         if (Camera.main == null)
-            return center + labelSpawnOffset;
+        {
+            if (labelSpawnAnchor != null)
+                return labelSpawnAnchor.position;
 
+            return center + labelSpawnOffset;
+        }
+
+        Vector3 towardViewer =
+            Vector3.ProjectOnPlane(Camera.main.transform.position - center, Vector3.up);
+        if (towardViewer.sqrMagnitude < 0.001f)
+            towardViewer = -Camera.main.transform.forward;
+
+        towardViewer.Normalize();
         return center +
-               Camera.main.transform.right * labelSpawnOffset.x +
-               Vector3.up * labelSpawnOffset.y +
-               Camera.main.transform.forward * labelSpawnOffset.z;
+               towardViewer * spawnDistanceInFrontOfBottle +
+               Vector3.up * spawnHeightAboveBottleCenter;
     }
 
     private Vector3 GetBottleSnapPosition(out Quaternion rotation)
     {
+        if (labelSnapAnchor != null)
+        {
+            rotation = labelSnapAnchor.rotation;
+            return labelSnapAnchor.position;
+        }
+
         Vector3 center = bottleRenderer != null ? bottleRenderer.bounds.center : bottle.position;
         Vector3 towardViewer = Camera.main != null
             ? Vector3.ProjectOnPlane(Camera.main.transform.position - center, Vector3.up)
@@ -360,8 +515,29 @@ public class EtiketWorkflow : MonoBehaviour
             radius = Mathf.Max(0.03f, Mathf.Min(bottleRenderer.bounds.extents.x, bottleRenderer.bounds.extents.z) * 0.93f);
 
         Vector3 position = center + towardViewer * (radius + 0.0015f);
-        rotation = Quaternion.LookRotation(towardViewer, Vector3.up);
+        rotation = Quaternion.LookRotation(-towardViewer, Vector3.up);
         return position;
+    }
+
+    private void ResolveWorldAnchors()
+    {
+        if (bottle == null)
+            return;
+
+        if (labelSpawnAnchor == null)
+            labelSpawnAnchor = FindDeepChild(bottle, "EtiketSpawnAnchor");
+
+        if (labelSnapAnchor == null)
+            labelSnapAnchor = FindDeepChild(bottle, "BottleLabelAnchor");
+
+        if (labelSnapAnchor == null)
+            labelSnapAnchor = FindDeepChild(bottle, "EtiketSnapAnchor");
+
+        if (bottleSnapTarget == null)
+            bottleSnapTarget = bottle.GetComponentInChildren<BottleLabelSnapTarget>(true);
+
+        if (requiredBottleLid == null)
+            requiredBottleLid = bottle.GetComponentInChildren<BottleLid>(true);
     }
 
     private Quaternion GetFacingRotation(Vector3 worldPosition)
@@ -371,18 +547,78 @@ public class EtiketWorkflow : MonoBehaviour
 
         Vector3 direction = Camera.main.transform.position - worldPosition;
         return direction.sqrMagnitude > 0.001f
-            ? Quaternion.LookRotation(direction.normalized, Vector3.up)
+            ? Quaternion.LookRotation(-direction.normalized, Vector3.up)
             : Quaternion.identity;
+    }
+
+    private void ShowChoice()
+    {
+        SetPanelState(true, false, false);
+    }
+
+    private void SetPanelState(bool showChoice, bool showForm, bool showSuccess)
+    {
+        if (panelRoot != null)
+            panelRoot.SetActive(showChoice || showForm || showSuccess);
+
+        if (choicePanel != null)
+            choicePanel.SetActive(showChoice);
+
+        if (formPanel != null)
+            formPanel.SetActive(showForm);
+
+        if (successPanel != null)
+            successPanel.SetActive(showSuccess);
+
+        CloseKeyboard();
+    }
+
+    private void HideAllPanels()
+    {
+        SetPanelState(false, false, false);
+    }
+
+    private void OpenKeyboard(TMP_InputField input)
+    {
+        if (input == null)
+            return;
+
+        if (keyboardManager != null)
+            keyboardManager.OpenKeybord(input);
+        else if (keyboardRoot != null)
+            keyboardRoot.SetActive(true);
+    }
+
+    private void CloseKeyboard()
+    {
+        if (keyboardManager != null)
+            keyboardManager.Done();
+        else if (keyboardRoot != null)
+            keyboardRoot.SetActive(false);
+    }
+
+    private void SetStatus(string message, Color color)
+    {
+        if (formStatus == null)
+            return;
+
+        formStatus.text = message ?? string.Empty;
+        formStatus.color = color;
     }
 
     private void DestroyCurrentLabel()
     {
         if (labelObject != null)
+        {
+            labelObject.SetActive(false);
             Destroy(labelObject);
+        }
 
         labelObject = null;
         labelGrab = null;
         labelRigidbody = null;
+        labelColliders = null;
+        labelOutline = null;
     }
 
     public void ResetWorkflow()
@@ -391,10 +627,7 @@ public class EtiketWorkflow : MonoBehaviour
         whiteEtiket = true;
         labelWasGrabbed = false;
         labelIsAttached = false;
-
-        ResolvePanelRig();
-        if (panelRig != null)
-            panelRig.HideAll();
+        HideAllPanels();
     }
 
     private static Transform CreateGrabPointHandle(Transform parent)
@@ -405,6 +638,24 @@ public class EtiketWorkflow : MonoBehaviour
         handle.transform.localRotation = Quaternion.identity;
         handle.transform.localScale = Vector3.one;
         return handle.transform;
+    }
+
+    private static Transform FindDeepChild(Transform root, string targetName)
+    {
+        if (root == null || string.IsNullOrWhiteSpace(targetName))
+            return null;
+
+        Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
+        foreach (Transform candidate in transforms)
+        {
+            if (candidate != null &&
+                string.Equals(candidate.name, targetName, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private static Image CreateSizedImage(string objectName, Transform parent, Vector2 position, Vector2 size, Color color)
@@ -457,7 +708,7 @@ public class EtiketWorkflow : MonoBehaviour
         text.fontStyle = style;
         text.color = color;
         text.alignment = TextAlignmentOptions.Center;
-        text.enableWordWrapping = true;
+        text.textWrappingMode = TextWrappingModes.Normal;
         text.raycastTarget = false;
         return text;
     }
@@ -472,9 +723,12 @@ public class EtiketWorkflow : MonoBehaviour
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        attachDistance = Mathf.Max(0.04f, attachDistance);
+        attachDistance = Mathf.Clamp(attachDistance, 0.05f, 0.25f);
         labelSizeMeters.x = Mathf.Max(0.03f, labelSizeMeters.x);
         labelSizeMeters.y = Mathf.Max(0.02f, labelSizeMeters.y);
+        spawnDistanceInFrontOfBottle = Mathf.Max(0.08f, spawnDistanceInFrontOfBottle);
+        spawnHeightAboveBottleCenter = Mathf.Clamp(spawnHeightAboveBottleCenter, -0.1f, 0.25f);
+        grabColliderSize = Vector3.Max(grabColliderSize, new Vector3(0.05f, 0.04f, 0.015f));
     }
 #endif
 }

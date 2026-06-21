@@ -9,13 +9,16 @@ public class SimulationStateResetter : MonoBehaviour
 {
     [Header("Capture")]
     [SerializeField] private bool includeAllSceneGrabInteractables = true;
+    [SerializeField] private bool includeAllSceneRigidbodies = true;
     [SerializeField] private XRGrabInteractable[] additionalInteractables;
+    [SerializeField] private Transform[] additionalTransforms;
 
     [Header("Runtime Objects")]
     [SerializeField] private bool destroyGrabInteractablesCreatedAfterCapture = true;
 
     private readonly List<TransformState> initialStates = new();
     private readonly HashSet<int> capturedInstanceIds = new();
+    private readonly HashSet<int> capturedGameObjectIds = new();
     private bool hasCaptured;
 
     private sealed class TransformState
@@ -32,6 +35,9 @@ public class SimulationStateResetter : MonoBehaviour
         public bool isKinematic;
         public bool useGravity;
         public bool detectCollisions;
+        public Collider[] colliders;
+        public bool[] colliderEnabled;
+        public bool[] colliderIsTrigger;
     }
 
     private void Awake()
@@ -44,8 +50,17 @@ public class SimulationStateResetter : MonoBehaviour
     {
         initialStates.Clear();
         capturedInstanceIds.Clear();
+        capturedGameObjectIds.Clear();
 
-        HashSet<XRGrabInteractable> unique = new();
+        Transform[] sceneTransforms =
+            FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Transform sceneTransform in sceneTransforms)
+        {
+            if (sceneTransform != null && sceneTransform.gameObject.scene.IsValid())
+                capturedGameObjectIds.Add(sceneTransform.gameObject.GetInstanceID());
+        }
+
+        Dictionary<Transform, XRGrabInteractable> unique = new();
 
         if (includeAllSceneGrabInteractables)
         {
@@ -55,7 +70,19 @@ public class SimulationStateResetter : MonoBehaviour
             foreach (XRGrabInteractable grab in sceneGrabs)
             {
                 if (IsSceneObject(grab))
-                    unique.Add(grab);
+                    unique[grab.transform] = grab;
+            }
+        }
+
+        if (includeAllSceneRigidbodies)
+        {
+            Rigidbody[] sceneBodies =
+                FindObjectsByType<Rigidbody>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+            foreach (Rigidbody body in sceneBodies)
+            {
+                if (IsSceneObject(body) && !unique.ContainsKey(body.transform))
+                    unique.Add(body.transform, body.GetComponent<XRGrabInteractable>());
             }
         }
 
@@ -64,14 +91,39 @@ public class SimulationStateResetter : MonoBehaviour
             foreach (XRGrabInteractable grab in additionalInteractables)
             {
                 if (IsSceneObject(grab))
-                    unique.Add(grab);
+                    unique[grab.transform] = grab;
             }
         }
 
-        foreach (XRGrabInteractable grab in unique)
+        if (additionalTransforms != null)
         {
-            Transform target = grab.transform;
-            Rigidbody body = grab.GetComponent<Rigidbody>();
+            foreach (Transform additionalTransform in additionalTransforms)
+            {
+                if (additionalTransform != null &&
+                    additionalTransform.gameObject.scene.IsValid() &&
+                    !unique.ContainsKey(additionalTransform))
+                {
+                    unique.Add(
+                        additionalTransform,
+                        additionalTransform.GetComponent<XRGrabInteractable>());
+                }
+            }
+        }
+
+        foreach (KeyValuePair<Transform, XRGrabInteractable> entry in unique)
+        {
+            Transform target = entry.Key;
+            XRGrabInteractable grab = entry.Value;
+            Rigidbody body = target.GetComponent<Rigidbody>();
+            Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
+            bool[] colliderEnabled = new bool[colliders.Length];
+            bool[] colliderIsTrigger = new bool[colliders.Length];
+
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                colliderEnabled[i] = colliders[i] != null && colliders[i].enabled;
+                colliderIsTrigger[i] = colliders[i] != null && colliders[i].isTrigger;
+            }
 
             initialStates.Add(new TransformState
             {
@@ -82,14 +134,18 @@ public class SimulationStateResetter : MonoBehaviour
                 worldRotation = target.rotation,
                 localScale = target.localScale,
                 activeSelf = target.gameObject.activeSelf,
-                grabEnabled = grab.enabled,
+                grabEnabled = grab == null || grab.enabled,
                 rigidbody = body,
                 isKinematic = body != null && body.isKinematic,
                 useGravity = body != null && body.useGravity,
-                detectCollisions = body == null || body.detectCollisions
+                detectCollisions = body == null || body.detectCollisions,
+                colliders = colliders,
+                colliderEnabled = colliderEnabled,
+                colliderIsTrigger = colliderIsTrigger
             });
 
-            capturedInstanceIds.Add(grab.GetInstanceID());
+            if (grab != null)
+                capturedInstanceIds.Add(grab.GetInstanceID());
         }
 
         hasCaptured = true;
@@ -105,10 +161,11 @@ public class SimulationStateResetter : MonoBehaviour
 
         foreach (TransformState state in initialStates)
         {
-            if (state.grab == null || state.transform == null)
+            if (state.transform == null)
                 continue;
 
-            ForceRelease(state.grab);
+            if (state.grab != null)
+                ForceRelease(state.grab);
 
             if (state.rigidbody != null)
             {
@@ -122,7 +179,21 @@ public class SimulationStateResetter : MonoBehaviour
             state.transform.SetPositionAndRotation(state.worldPosition, state.worldRotation);
             state.transform.localScale = state.localScale;
             state.transform.gameObject.SetActive(state.activeSelf);
-            state.grab.enabled = state.grabEnabled;
+            if (state.grab != null)
+                state.grab.enabled = state.grabEnabled;
+
+            if (state.colliders != null)
+            {
+                for (int i = 0; i < state.colliders.Length; i++)
+                {
+                    Collider collider = state.colliders[i];
+                    if (collider == null)
+                        continue;
+
+                    collider.isTrigger = state.colliderIsTrigger[i];
+                    collider.enabled = state.colliderEnabled[i];
+                }
+            }
 
             if (state.rigidbody != null)
             {
@@ -145,7 +216,9 @@ public class SimulationStateResetter : MonoBehaviour
 
         foreach (XRGrabInteractable grab in current)
         {
-            if (!IsSceneObject(grab) || capturedInstanceIds.Contains(grab.GetInstanceID()))
+            if (!IsSceneObject(grab) ||
+                capturedInstanceIds.Contains(grab.GetInstanceID()) ||
+                capturedGameObjectIds.Contains(grab.gameObject.GetInstanceID()))
                 continue;
 
             ForceRelease(grab);

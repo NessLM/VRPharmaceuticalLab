@@ -274,7 +274,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: b2222222222242228222222222222222, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1381,7 +1381,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36b78b45c24819e42ae09d84a489a5f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  materialName: Vaselin Album
+  materialName: Difenhidramin
   maxAmountMg: 2000
   currentAmountMg: 1000
   requiredOpenLid: {fileID: 570249935}
@@ -1392,7 +1392,7 @@ MonoBehaviour:
   emptyLocalPosition: {x: 0, y: 0.08, z: 0}
   fullLocalPosition: {x: 0, y: 0.08, z: 0}
   powderRenderer: {fileID: 0}
-  powderColor: {r: 0.95, g: 0.86, b: 0.66, a: 1}
+  powderColor: {r: 0.94, g: 0.93, b: 0.88, a: 1}
   onAmountChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -2124,11 +2124,11 @@ PrefabInstance:
     - target: {fileID: -2568225472645845365, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
-      objectReference: {fileID: 2100000, guid: d4444444444444448444444444444444, type: 2}
+      objectReference: {fileID: 2100000, guid: 5da4396ac10f19c43aa9f99bcfb4a84b, type: 2}
     - target: {fileID: -2568225472645845365, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: 'm_Materials.Array.data[2]'
       value: 
-      objectReference: {fileID: 2100000, guid: d4444444444444448444444444444444, type: 2}
+      objectReference: {fileID: 2100000, guid: c57e36231423a7843894444d1b82dab5, type: 2}
     - target: {fileID: 919132149155446097, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: m_Name
       value: Jar_AsamSalisilat
@@ -6757,14 +6757,15 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 253456842}
-  - {fileID: 1734426589}
-  - {fileID: 998570727}
-  - {fileID: 993449800}
+  - {fileID: 1184754175}
   - {fileID: 189542917}
   - {fileID: 1127603008}
   - {fileID: 1789119397}
+  - {fileID: 993449800}
   - {fileID: 1358706510}
+  - {fileID: 998570727}
+  - {fileID: 1734426589}
+  - {fileID: 253456842}
   m_Father: {fileID: 1825804966}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &184284720 stripped
@@ -7603,7 +7604,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "R/ Asam Salisilat 200 mg\n   Sulfur PP 400 mg\n   Vaselin Album ad 10 g\n\nM.f. Unguentum\nS. u.e."
+  m_text: "R/ Asam Salisilat 200 mg\n   Sulfur PP 400 mg\n   Vaselin Album ad 10
+    g\n\nM.f. Unguentum\nS. u.e."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -7696,7 +7698,7 @@ GameObject:
   - component: {fileID: 209365243}
   - component: {fileID: 209365242}
   m_Layer: 0
-  m_Name: VaselinCreamGrainSurface_Disabled
+  m_Name: PowderContainedGrainSurface
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7771,7 +7773,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a1111111111141118111111111111111, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -9848,7 +9850,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c3333333333343338333333333333333, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -13002,9 +13004,6 @@ MonoBehaviour:
   labelAnchor: {fileID: 990080011}
   snapZone: {fileID: 379556191}
   fallbackSnapDistance: 0.14
-  attachedLocalPosition: {x: 0, y: 0, z: 0}
-  attachedLocalEuler: {x: 0, y: -90, z: 0}
-  attachedLocalScale: {x: 0.1152386, y: 0.1152386, z: 0.1152386}
   onLabelSnapped:
     m_PersistentCalls:
       m_Calls: []
@@ -14108,7 +14107,6 @@ Transform:
   m_Children:
   - {fileID: 1773833784}
   - {fileID: 1752932938}
-  - {fileID: 1184754175}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &401595867
@@ -14236,12 +14234,12 @@ GameObject:
   - component: {fileID: 405938771}
   - component: {fileID: 405938770}
   m_Layer: 0
-  m_Name: VaselinCreamVolume
+  m_Name: PowderVolumeCore
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &405938769
 Transform:
   m_ObjectHideFlags: 0
@@ -14300,7 +14298,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: b2222222222242228222222222222222, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -20411,7 +20409,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a1111111111141118111111111111111, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -21688,7 +21686,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a1111111111141118111111111111111, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -34386,7 +34384,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: b2222222222242228222222222222222, type: 2}
+  - {fileID: 2100000, guid: 0675233d47f47e5488df2bd95559f8e2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -34659,11 +34657,11 @@ PrefabInstance:
     - target: {fileID: -2568225472645845365, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
-      objectReference: {fileID: 2100000, guid: f6666666666646668666666666666666, type: 2}
+      objectReference: {fileID: 2100000, guid: 5da4396ac10f19c43aa9f99bcfb4a84b, type: 2}
     - target: {fileID: -2568225472645845365, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: 'm_Materials.Array.data[2]'
       value: 
-      objectReference: {fileID: 2100000, guid: f6666666666646668666666666666666, type: 2}
+      objectReference: {fileID: 2100000, guid: c57e36231423a7843894444d1b82dab5, type: 2}
     - target: {fileID: 919132149155446097, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: m_Name
       value: Jar_VaselinAlbum
@@ -41196,7 +41194,16 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Arti Resep:\n\nSediaan dibuat dalam bentuk salep dengan bobot akhir 10 gram.\nAsam Salisilat dan Sulfur PP digunakan sebagai zat aktif.\nVaselin Album digunakan sebagai basis salep hingga mencapai 10 gram."
+  m_text: 'Arti Resep:
+
+
+    Sediaan dibuat dalam bentuk salep dengan bobot akhir
+    10 gram.
+
+    Asam Salisilat dan Sulfur PP digunakan sebagai zat aktif.
+
+    Vaselin
+    Album digunakan sebagai basis salep hingga mencapai 10 gram.'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -41928,7 +41935,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 658127413}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -41944,7 +41951,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c3333333333343338333333333333333, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -51464,7 +51471,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36b78b45c24819e42ae09d84a489a5f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  materialName: Sulfur PP
+  materialName: Difenhidramin
   maxAmountMg: 2000
   currentAmountMg: 1000
   requiredOpenLid: {fileID: 1586468934}
@@ -51475,7 +51482,7 @@ MonoBehaviour:
   emptyLocalPosition: {x: 0, y: 0.08, z: 0}
   fullLocalPosition: {x: 0, y: 0.08, z: 0}
   powderRenderer: {fileID: 0}
-  powderColor: {r: 1, g: 0.88, b: 0.38, a: 1}
+  powderColor: {r: 0.94, g: 0.93, b: 0.88, a: 1}
   onAmountChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -63782,12 +63789,12 @@ GameObject:
   m_Component:
   - component: {fileID: 990100011}
   m_Layer: 0
-  m_Name: '[OBJ] SalepIngredients'
+  m_Name: SalepMaterials
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &990100011
 Transform:
   m_ObjectHideFlags: 0
@@ -63796,8 +63803,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 990100010}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -2.631482, y: -0.81010413, z: -0.14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -63805,7 +63812,7 @@ Transform:
   - {fileID: 69385204}
   - {fileID: 570249928}
   - {fileID: 990100021}
-  m_Father: {fileID: 1752932938}
+  m_Father: {fileID: 1184754175}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &990100020
 GameObject:
@@ -63817,7 +63824,7 @@ GameObject:
   m_Component:
   - component: {fileID: 990100021}
   m_Layer: 0
-  m_Name: Pot_Salep
+  m_Name: PotSalep_Target
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -65451,7 +65458,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36b78b45c24819e42ae09d84a489a5f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  materialName: Asam Salisilat
+  materialName: Difenhidramin
   maxAmountMg: 2000
   currentAmountMg: 1000
   requiredOpenLid: {fileID: 69385211}
@@ -65462,7 +65469,7 @@ MonoBehaviour:
   emptyLocalPosition: {x: 0, y: 0.08, z: 0}
   fullLocalPosition: {x: 0, y: 0.08, z: 0}
   powderRenderer: {fileID: 0}
-  powderColor: {r: 0.96, g: 0.95, b: 0.9, a: 1}
+  powderColor: {r: 0.94, g: 0.93, b: 0.88, a: 1}
   onAmountChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -73571,12 +73578,12 @@ GameObject:
   m_Component:
   - component: {fileID: 1184754175}
   m_Layer: 0
-  m_Name: '[ARCHIVE] Duplicate Salep Tools'
+  m_Name: SalepObjects
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1184754175
 Transform:
   m_ObjectHideFlags: 0
@@ -73590,10 +73597,11 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 990100011}
   - {fileID: 939531309}
   - {fileID: 234305269}
   - {fileID: 533107736}
-  m_Father: {fileID: 398466897}
+  m_Father: {fileID: 183184342}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1185275941
 GameObject:
@@ -84562,7 +84570,7 @@ MonoBehaviour:
   infoToggleText: {fileID: 543154419}
   salepStepManager: {fileID: 1734426588}
   salepStepUI: {fileID: 998570723}
-  salepIngredientsRoot: {fileID: 990100010}
+  salepObjectsRoot: {fileID: 1184754174}
   resetManager: {fileID: 1825804967}
   startButtonAppearDelay: 1
 --- !u!4 &1395444352
@@ -94093,11 +94101,11 @@ PrefabInstance:
     - target: {fileID: -2568225472645845365, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
-      objectReference: {fileID: 2100000, guid: e5555555555545558555555555555555, type: 2}
+      objectReference: {fileID: 2100000, guid: 5da4396ac10f19c43aa9f99bcfb4a84b, type: 2}
     - target: {fileID: -2568225472645845365, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: 'm_Materials.Array.data[2]'
       value: 
-      objectReference: {fileID: 2100000, guid: e5555555555545558555555555555555, type: 2}
+      objectReference: {fileID: 2100000, guid: c57e36231423a7843894444d1b82dab5, type: 2}
     - target: {fileID: 919132149155446097, guid: 92a63ce88bf4f414b9a802645ece5fb3, type: 3}
       propertyPath: m_Name
       value: Jar_SulfurPP
@@ -95150,12 +95158,12 @@ GameObject:
   - component: {fileID: 1607533920}
   - component: {fileID: 1607533919}
   m_Layer: 0
-  m_Name: InternalPowderMesh_Disabled
+  m_Name: InternalPowderMesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1607533918
 Transform:
   m_ObjectHideFlags: 0
@@ -95237,7 +95245,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a1111111111141118111111111111111, type: 2}
+  - {fileID: 2100000, guid: 0675233d47f47e5488df2bd95559f8e2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -95404,7 +95412,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: MULAI SIMULASI!
+  m_text: MULAI SIMULASI SALEP!
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -96946,7 +96954,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: b2222222222242228222222222222222, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -98170,7 +98178,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c3333333333343338333333333333333, type: 2}
+  - {fileID: 2100000, guid: 0675233d47f47e5488df2bd95559f8e2, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -98281,17 +98289,7 @@ MonoBehaviour:
   - {fileID: 287838059}
   - {fileID: 1172183408}
   - {fileID: 1385161998}
-  salepIngredientsRoot: {fileID: 990100010}
-  jarAsamSalisilat: {fileID: 69385204}
-  jarSulfurPP: {fileID: 1586468927}
-  jarVaselinAlbum: {fileID: 570249928}
-  potSalep: {fileID: 990100021}
-  mortarSet: {fileID: 2045476843}
-  stamper: {fileID: 7328286255724238238}
-  sudip: {fileID: 1487653079}
-  balance: {fileID: 1690383266}
-  parchmentStack: {fileID: 1340145700}
-  hornSpoon: {fileID: 2261081121839760}
+  salepObjectsRoot: {fileID: 1184754174}
   resetManager: {fileID: 1825804967}
   currentStep: 0
 --- !u!1 &1735246179
@@ -98484,7 +98482,6 @@ Transform:
   - {fileID: 1495125572}
   - {fileID: 1340145700}
   - {fileID: 1487653079}
-  - {fileID: 990100011}
   m_Father: {fileID: 398466897}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1756274057
@@ -98631,7 +98628,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: RESEP OBAT SEMI PADAT
+  m_text: RESEP OBAT SEMI PADAT (Salep)
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -109733,12 +109730,12 @@ GameObject:
   - component: {fileID: 2017793138}
   - component: {fileID: 2017793137}
   m_Layer: 0
-  m_Name: VaselinCreamTop
+  m_Name: PowderTopSurface
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2017793136
 Transform:
   m_ObjectHideFlags: 0
@@ -109781,7 +109778,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2017793135}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -109797,7 +109794,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c3333333333343338333333333333333, type: 2}
+  - {fileID: 2100000, guid: ba6b3b5433894b4999d6b89143b0cf1c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -110282,7 +110279,17 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Komposisi:\n\nDalam 10 gram salep mengandung:\nAsam Salisilat 200 mg\nSulfur PP 400 mg\nVaselin Album ad 10 g"
+  m_text: 'Komposisi:
+
+
+    Dalam 10 gram salep mengandung:
+
+    Asam Salisilat 200
+    mg
+
+    Sulfur PP 400 mg
+
+    Vaselin Album ad 10 g'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -111270,7 +111277,7 @@ GameObject:
   - component: {fileID: 2084930792}
   - component: {fileID: 2084930791}
   m_Layer: 0
-  m_Name: CreamVisualRoot
+  m_Name: PowderVisualRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

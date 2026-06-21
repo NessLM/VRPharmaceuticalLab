@@ -215,6 +215,18 @@ public class WeightItem : MonoBehaviour
             ApplyReleasedPhysics();
     }
 
+    public void ResetInteractionState()
+    {
+        hasBeenPickedUp = false;
+
+        if (startsLockedInTray)
+            LockInTray();
+        else
+            ApplyReleasedPhysics();
+
+        SetGrabHelperEnabled(true);
+    }
+
     private void ConfigureGrabHelperCollider()
     {
         if (!useGrabHelperCollider || grabInteractable == null)

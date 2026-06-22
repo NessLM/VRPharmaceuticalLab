@@ -16,6 +16,8 @@ public class PowderDropTrigger : MonoBehaviour
     [SerializeField] private GameObject objectToHideAfterFinish;
     [SerializeField] private float hideDuration = 0.5f;
 
+    [SerializeField] private Step1ChecklistManager checklistManager;
+
     private int currentDrops = 0;
     private bool isFinished = false;
 
@@ -64,6 +66,9 @@ public class PowderDropTrigger : MonoBehaviour
             {
                 Debug.LogWarning("PerkamenResultMover tidak ditemukan di parent CTM_DropTrigger.");
             }
+
+            if (checklistManager != null)
+                checklistManager.CheckCTMDone();
 
             StartCoroutine(FinishRoutine());
         }

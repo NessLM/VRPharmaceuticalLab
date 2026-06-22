@@ -11,6 +11,8 @@ public class ParacetamolPowderDropTrigger : MonoBehaviour
     [SerializeField] private GameObject objectToHideAfterFinish;
     [SerializeField] private float hideDuration = 0.5f;
 
+[Header("Checklist")]
+[SerializeField] private Step1ChecklistManager checklistManager;
     private int currentDrops = 0;
     private bool isFinished = false;
 
@@ -57,6 +59,10 @@ public class ParacetamolPowderDropTrigger : MonoBehaviour
             {
                 Debug.LogWarning("ParacetamolResultMover tidak ditemukan di parent singleperkamen.");
             }
+
+            if (checklistManager != null)
+    checklistManager.CheckParaDone();
+
 
             StartCoroutine(FinishRoutine());
         }

@@ -7,6 +7,7 @@ public class ParacetamolWeightSnapTrigger : MonoBehaviour
     [SerializeField] private Transform target500mg;
     [SerializeField] private BalanceScaleVisual scaleVisual;
 
+[SerializeField] private Step1ChecklistManager checklistManager;
     private bool has3g = false;
     private bool has500mg = false;
 
@@ -44,6 +45,9 @@ public class ParacetamolWeightSnapTrigger : MonoBehaviour
         if (has3g && has500mg)
         {
             Debug.Log("Anak timbangan Paracetamol lengkap.");
+
+            if (checklistManager != null)
+    checklistManager.CheckParaWeight();
 
             if (scaleVisual != null)
                 scaleVisual.SetRightDown();

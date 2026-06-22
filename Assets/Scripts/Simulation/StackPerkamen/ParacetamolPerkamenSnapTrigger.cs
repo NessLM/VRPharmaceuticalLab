@@ -5,6 +5,7 @@ public class ParacetamolPerkamenSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
 
+[SerializeField] private Step1ChecklistManager checklistManager;
     private bool hasSnapped = false;
 
     private void OnTriggerEnter(Collider other)
@@ -52,5 +53,7 @@ public class ParacetamolPerkamenSnapTrigger : MonoBehaviour
         }
 
         Debug.Log("Kertas perkamen Paracetamol berhasil snap ke piring kiri.");
+        if (checklistManager != null)
+    checklistManager.CheckParaPerkamen();
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 public class PerkamenSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
-
+[SerializeField] private Step1ChecklistManager checklistManager;
     private bool hasSnapped = false;
 
     private void OnTriggerEnter(Collider other)
@@ -52,5 +52,7 @@ public class PerkamenSnapTrigger : MonoBehaviour
         }
 
         Debug.Log("Kertas perkamen berhasil snap ke piring kiri.");
+        if (checklistManager != null)
+    checklistManager.CheckCTMPerkamen();
     }
 }

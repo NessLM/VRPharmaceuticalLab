@@ -4,6 +4,15 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class BottleLidOpen : MonoBehaviour
 {
+    public enum BottleType
+    {
+        CTM,
+        Paracetamol
+    }
+
+    [Header("Jenis Botol")]
+    [SerializeField] private BottleType bottleType;
+
     [Header("Tutup Botol")]
     [SerializeField] private Transform lidObject;
 
@@ -16,6 +25,9 @@ public class BottleLidOpen : MonoBehaviour
     [Header("Gerakan Tutup")]
     [SerializeField] private Vector3 openLocalOffset = new Vector3(0f, 0.08f, 0f);
     [SerializeField] private float openDuration = 0.35f;
+
+    [Header("Checklist")]
+    [SerializeField] private Step1ChecklistManager checklistManager;
 
     private Vector3 closedLocalPosition;
     private bool isOpen = false;
@@ -81,6 +93,14 @@ public class BottleLidOpen : MonoBehaviour
 
         isOpen = true;
         isMoving = false;
+
+        if (checklistManager != null)
+        {
+            if (bottleType == BottleType.CTM)
+                checklistManager.CheckCTMBottle();
+            else if (bottleType == BottleType.Paracetamol)
+                checklistManager.CheckParaBottle();
+        }
 
         Debug.Log("Botol terbuka: tutup hilang, botol bisa digrab, trigger bubuk aktif.");
     }

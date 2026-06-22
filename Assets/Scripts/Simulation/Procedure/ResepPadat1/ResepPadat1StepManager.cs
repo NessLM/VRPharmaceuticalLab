@@ -18,9 +18,11 @@ public class ResepPadat1StepManager : MonoBehaviour
     [Header("Script Khusus")]
     [SerializeField] private MonoBehaviour stackPerkamenScript;
     [SerializeField] private MonoBehaviour botolKapsulScript;
-    [SerializeField] private MonoBehaviour tutupBotolKapsulInteractable;
 
+    [Header("Tutup Botol / Simple Interactable")]
     [SerializeField] private MonoBehaviour tutupCTMInteractable;
+    [SerializeField] private MonoBehaviour tutupParacetamolInteractable;
+    [SerializeField] private MonoBehaviour tutupBotolKapsulInteractable;
 
     [Header("Panels")]
     [SerializeField] private GameObject panelResep;
@@ -49,8 +51,10 @@ public class ResepPadat1StepManager : MonoBehaviour
 
         SetScript(stackPerkamenScript, false);
         SetScript(botolKapsulScript, false);
-        SetScript(tutupBotolKapsulInteractable, false);
+
         SetScript(tutupCTMInteractable, false);
+        SetScript(tutupParacetamolInteractable, false);
+        SetScript(tutupBotolKapsulInteractable, false);
 
         SetPanel(instruksiStep1, false);
         SetPanel(instruksiStep2, false);
@@ -78,6 +82,9 @@ public class ResepPadat1StepManager : MonoBehaviour
 
         SetScript(stackPerkamenScript, false);
         SetScript(botolKapsulScript, false);
+
+        SetScript(tutupCTMInteractable, false);
+        SetScript(tutupParacetamolInteractable, false);
         SetScript(tutupBotolKapsulInteractable, false);
 
         SetPanel(instruksiStep1, false);
@@ -90,11 +97,14 @@ public class ResepPadat1StepManager : MonoBehaviour
 
             SetScript(stackPerkamenScript, true);
 
+            // Step 1 mulai dari fase CTM dulu.
+            // Tutup Paracetamol tetap mati sampai CTM selesai.
+            SetScript(tutupCTMInteractable, true);
+            SetScript(tutupParacetamolInteractable, false);
+
             SetPanel(instruksiStep1, true);
 
-            SetScript(tutupCTMInteractable, true);
-
-            Debug.Log("Step 1 aktif.");
+            Debug.Log("Step 1 aktif: Fase CTM aktif, Paracetamol masih terkunci.");
         }
         else if (step == 2)
         {

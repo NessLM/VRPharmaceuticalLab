@@ -9,6 +9,8 @@ TagManager:
   - Weight
   - Perkamen
   - Weight_CTM
+  - Weight_Para_3g
+  - Weight_Para_500mg
   layers:
   - Default
   - TransparentFX

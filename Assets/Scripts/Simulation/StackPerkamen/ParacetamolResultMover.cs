@@ -2,12 +2,16 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-public class PerkamenResultMover : MonoBehaviour
+public class ParacetamolResultMover : MonoBehaviour
 {
     [SerializeField] private Transform resultPoint;
-    [SerializeField] private ReturnToStartPosition ctmWeightReturn;
+    [SerializeField] private ReturnToStartPosition weight3gReturn;
+    [SerializeField] private ReturnToStartPosition weight500mgReturn;
     [SerializeField] private float moveDuration = 0.5f;
-    [SerializeField] private Step1IngredientPhaseManager phaseManager;
+
+    [Header("Object yang hilang setelah Paracetamol selesai")]
+    [SerializeField] private GameObject[] objectsToHideAfterMove;
+    [SerializeField] private float hideDuration = 0.6f;
 
     private GameObject clickArea;
     private XRGrabInteractable grab;
@@ -18,7 +22,7 @@ public class PerkamenResultMover : MonoBehaviour
     {
         grab = GetComponent<XRGrabInteractable>();
 
-        Transform foundClickArea = transform.Find("ClickArea_Perkamen");
+        Transform foundClickArea = transform.Find("ClickArea_Paracetamol");
         if (foundClickArea != null)
         {
             clickArea = foundClickArea.gameObject;
@@ -26,7 +30,7 @@ public class PerkamenResultMover : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("ClickArea_Perkamen tidak ditemukan di child singleperkamen.");
+            Debug.LogWarning("ClickArea_Paracetamol tidak ditemukan.");
         }
     }
 
@@ -39,13 +43,13 @@ public class PerkamenResultMover : MonoBehaviour
         if (clickArea != null)
         {
             clickArea.SetActive(true);
-            Debug.Log("ClickArea_Perkamen aktif.");
+            Debug.Log("ClickArea_Paracetamol aktif.");
         }
     }
 
     public void MoveToResultPoint()
     {
-        Debug.Log("CLICK PERKAMEN MASUK");
+        Debug.Log("CLICK PARACETAMOL MASUK");
 
         if (!canMove || moved) return;
 
@@ -94,26 +98,37 @@ public class PerkamenResultMover : MonoBehaviour
         transform.rotation = resultPoint.rotation;
         transform.SetParent(resultPoint, true);
 
-        if (ctmWeightReturn != null)
+        if (weight3gReturn != null)
+            weight3gReturn.ReturnToStart();
+
+        if (weight500mgReturn != null)
+            weight500mgReturn.ReturnToStart();
+
+        foreach (GameObject obj in objectsToHideAfterMove)
         {
-            ctmWeightReturn.ReturnToStart();
-            Debug.Log("Anak timbangan CTM balik ke weight box.");
-        }
-        else
-        {
-            Debug.LogWarning("CTM Weight Return belum diisi di PerkamenResultMover.");
+            if (obj != null)
+                StartCoroutine(ShrinkAndHide(obj));
         }
 
-       Debug.Log("Perkamen CTM pindah ke CTM_ResultPoint.");
+        Debug.Log("Perkamen Paracetamol pindah dan anak timbangan kembali.");
+    }
 
-if (phaseManager != null)
-{
-    phaseManager.EnableParacetamolPhase();
-    Debug.Log("Fase Paracetamol aktif.");
-}
-else
-{
-    Debug.LogWarning("Phase Manager belum diisi di PerkamenResultMover.");
-}
+    private IEnumerator ShrinkAndHide(GameObject obj)
+    {
+        Vector3 startScale = obj.transform.localScale;
+        float timer = 0f;
+
+        while (timer < hideDuration)
+        {
+            timer += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, timer / hideDuration);
+
+            obj.transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t);
+
+            yield return null;
+        }
+
+        obj.transform.localScale = Vector3.zero;
+        obj.SetActive(false);
     }
 }

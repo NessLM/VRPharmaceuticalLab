@@ -20,6 +20,7 @@ public class SyrupProcedureManager : MonoBehaviour
         Step_06_PourIntoBottle,
         Step_07_CreateEtiket,
         Step_08_AttachEtiket,
+        Step_09_CloseBottle,
         Done
     }
 
@@ -50,7 +51,7 @@ public class SyrupProcedureManager : MonoBehaviour
         : "DIFENHIDRAMIN 250 mg / 100 ml";
     private string CompletionDetail => activeRecipe != null
         ? activeRecipe.completionDetail
-        : "Obat sudah selesai dibuat, dikemas, dan diberi etiket.";
+        : "Obat sudah selesai dibuat, dikemas, diberi etiket, dan ditutup.";
 
     [Header("Step 01 - Measure Water 100 ml")]
     [SerializeField] private LiquidContainer gelasUkurContainer;
@@ -143,11 +144,19 @@ public class SyrupProcedureManager : MonoBehaviour
     [Header("Step 7-8 - Etiket")]
     [SerializeField] private EtiketWorkflow etiketWorkflow;
 
+    [Header("Step 9 - Close Bottle")]
+    [SerializeField] private BottleLid bottleLid;
+    [SerializeField] private Outlinable bottleLidOutline;
+    [SerializeField] private WorldStepArrow bottleLidStepArrow;
+
     [Header("In-Scene Reset")]
     [SerializeField] private SimulationStateResetter stateResetter;
+    [SerializeField] private SimulationResetManager resetManager;
 
     private float step6BottleStartMl;
     private bool etiketEventsBound;
+    private bool bottleLidEventBound;
+    private bool labelAttached;
 
     private const string Step01Instruction = "Step 1: Isi gelas ukur sampai 100 ml";
     private const string Step01StartProgress = "Tekan tombol air merah, lalu arahkan gelas ukur ke aliran air.";
@@ -207,6 +216,8 @@ public class SyrupProcedureManager : MonoBehaviour
         ResolveSceneReferences();
         EnsureMortarWaterIntake();
         EnsureStateResetter();
+        ResolveResetManager();
+        BindBottleLidEvent();
         ForceDisableProcedureOutlines();
     }
 
@@ -217,6 +228,7 @@ public class SyrupProcedureManager : MonoBehaviour
         if (mortarMixturePourer != null)
             mortarMixturePourer.SetTransferEnabled(false);
 
+        UnbindBottleLidEvent();
         ForceDisableProcedureOutlines();
     }
     private void ForceDisableProcedureOutlines()
@@ -231,6 +243,7 @@ public class SyrupProcedureManager : MonoBehaviour
         SetProcedureOutlineOff(stamperOutline);
         SetProcedureOutlineOff(sudipOutline);
         SetProcedureOutlineOff(bottleOutline);
+        SetProcedureOutlineOff(bottleLidOutline);
 
         foreach (KeyValuePair<Outlinable, bool> entry in outlinePreviousStates)
             SetProcedureOutlineOff(entry.Key);
@@ -241,6 +254,9 @@ public class SyrupProcedureManager : MonoBehaviour
         SetStep4ArrowsActive(false);
         SetStep5ArrowsActive(false);
         SetStep6ArrowActive(false);
+
+        if (bottleLidStepArrow != null)
+            bottleLidStepArrow.gameObject.SetActive(false);
 
         if (mortarStirGuide != null)
             mortarStirGuide.SetVisible(false);
@@ -1400,12 +1416,15 @@ public class SyrupProcedureManager : MonoBehaviour
             instructionText.text = "Step 8: Tempelkan etiket ke botol";
 
         if (progressText != null)
-            progressText.text = "Grab etiket, dekatkan ke bagian depan botol, lalu lepaskan sampai etiket menempel.";
+            progressText.text = "Pastikan botol sudah tertutup. Grab etiket, arahkan ke bagian depan botol, lalu lepaskan sampai tersnap.";
 
         if (doneIcon != null)
             doneIcon.SetActive(false);
 
         SetProcedureOutlineActive(bottleOutline, true);
+        ResolveStep6References();
+        BindBottleLidEvent();
+        SetProcedureOutlineActive(bottleLidOutline, bottleLid != null && bottleLid.IsOpen);
         SetGuideArrow(
             ref bottleStepArrow,
             "ARW_Step6_Bottle",
@@ -1418,39 +1437,65 @@ public class SyrupProcedureManager : MonoBehaviour
 
     private void HandleEtiketAttached()
     {
-        if (stepDone)
+        if (stepDone || labelAttached)
             return;
 
-        stepDone = true;
-        currentStep = SyrupStep.Done;
+        labelAttached = true;
+        ResolveStep6References();
+        CompleteSyrupAfterBottleClosed();
+        Debug.Log("[SyrupProcedure] Etiket attached to a closed bottle.");
+    }
 
+    private void HandleEtiketBottleNotClosed()
+    {
+        if (stepDone || labelAttached)
+            return;
+
+        currentStep = SyrupStep.Step_09_CloseBottle;
         ClearProcedureOutlines();
         SetStep6ArrowActive(false);
 
         if (instructionText != null)
-            instructionText.text = "Pembuatan sirup selesai";
+            instructionText.text = "Step 9: Tutup botol terlebih dahulu";
 
         if (progressText != null)
-            progressText.text = "Etiket sudah menempel pada botol. Semua tahap simulasi berhasil diselesaikan.";
+            progressText.text = "Etiket belum ditempel. Pasang tutup botol sampai tersnap, kemudian tempelkan etiket ke bagian depan botol.";
 
         if (doneIcon != null)
-            doneIcon.SetActive(true);
+            doneIcon.SetActive(false);
 
-        if (etiketWorkflow != null)
-            etiketWorkflow.ShowSuccess();
-
-        Debug.Log("[SyrupProcedure] Etiket attached. Syrup simulation complete.");
+        ResolveStep6References();
+        BindBottleLidEvent();
+        SetProcedureOutlineActive(bottleLidOutline, true);
+        SetGuideArrow(
+            ref bottleLidStepArrow,
+            "ARW_Step9_BottleLid",
+            bottleLid != null ? bottleLid.transform : bottleTarget,
+            "\u2193\nTutup botol\ndahulu",
+            new Vector3(0f, 0.22f, 0f),
+            useStepArrowPointer
+        );
     }
 
     private void HandleEtiketBackRequested()
     {
-        ResetSimulationInPlace();
+        ResetSimulationInPlace(returnToMainSelection: true);
     }
 
-    public void ResetSimulationInPlace()
+    public void ResetSimulationInPlace(bool returnToMainSelection = false)
     {
+        ResolveResetManager();
+        if (returnToMainSelection && resetManager != null)
+        {
+            resetManager.ResetAllAndReturnToMainMenu();
+            return;
+        }
+
         StopAllCoroutines();
         ClearProcedureOutlines();
+        currentStep = SyrupStep.Step_01_MeasureWater100ml;
+        stepDone = false;
+        labelAttached = false;
         ResolveSceneReferences();
         EnsureStateResetter();
 
@@ -1467,11 +1512,10 @@ public class SyrupProcedureManager : MonoBehaviour
         foreach (StackPerkamenDispenser dispenser in dispensers)
             dispenser.ResetDispenser();
 
-        if (gelasUkurContainer != null)
-            gelasUkurContainer.ClearLiquid();
-
-        if (bottleContainer != null)
-            bottleContainer.ClearLiquid();
+        LiquidContainer[] liquidContainers =
+            FindObjectsByType<LiquidContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (LiquidContainer liquidContainer in liquidContainers)
+            liquidContainer.ClearLiquid();
 
         if (mortarController != null)
             mortarController.ResetMortar();
@@ -1501,6 +1545,11 @@ public class SyrupProcedureManager : MonoBehaviour
         foreach (HornSpoon spoon in spoons)
             spoon.ClearPowder();
 
+        PowderContainer[] powderContainers =
+            FindObjectsByType<PowderContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (PowderContainer powderContainer in powderContainers)
+            powderContainer.ResetAmount();
+
         BalanceWeightResetter[] weightResetters =
             FindObjectsByType<BalanceWeightResetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (BalanceWeightResetter resetter in weightResetters)
@@ -1519,19 +1568,140 @@ public class SyrupProcedureManager : MonoBehaviour
         if (stateResetter != null)
             stateResetter.ResetCapturedState();
 
-        currentStep = SyrupStep.Step_01_MeasureWater100ml;
+        BottleLid[] bottleLids =
+            FindObjectsByType<BottleLid>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (BottleLid lid in bottleLids)
+            lid.ForceClose();
+
         step5MixState = Step5MixState.AddFirstWater50;
-        stepDone = false;
         stableTimer = 0f;
         isAnimating = false;
         step6BottleStartMl = 0f;
 
         SyrupIntroPanelController intro =
             FindFirstObjectByType<SyrupIntroPanelController>(FindObjectsInactive.Include);
-        if (intro != null)
+        if (intro != null && !returnToMainSelection)
             intro.ReturnToInitialState();
 
-        Debug.Log("[SyrupProcedure] Simulation reset in-place without reloading the scene.");
+        if (returnToMainSelection)
+            ReturnToMainPreparationSelection(intro);
+
+        Debug.Log(returnToMainSelection
+            ? "[SyrupProcedure] Simulation reset and returned to PanelPilihJenisSediaan."
+            : "[SyrupProcedure] Simulation reset in-place without reloading the scene.");
+    }
+
+    private void HandleBottleLidClosed()
+    {
+        if (currentStep != SyrupStep.Step_09_CloseBottle)
+            return;
+
+        if (labelAttached)
+        {
+            CompleteSyrupAfterBottleClosed();
+            return;
+        }
+
+        currentStep = SyrupStep.Step_08_AttachEtiket;
+        ClearProcedureOutlines();
+
+        if (bottleLidStepArrow != null)
+            bottleLidStepArrow.gameObject.SetActive(false);
+
+        if (instructionText != null)
+            instructionText.text = "Step 8: Tempelkan etiket ke botol";
+
+        if (progressText != null)
+            progressText.text = "Botol sudah tertutup. Grab etiket, arahkan ke bagian depan botol, lalu lepaskan sampai tersnap.";
+
+        SetProcedureOutlineActive(bottleOutline, true);
+        SetGuideArrow(
+            ref bottleStepArrow,
+            "ARW_Step6_Bottle",
+            bottleTarget,
+            "\u2193\nTempel etiket\nke botol",
+            new Vector3(0f, 0.32f, 0f),
+            useStepArrowPointer
+        );
+    }
+
+    private void CompleteSyrupAfterBottleClosed()
+    {
+        if (stepDone || !labelAttached)
+            return;
+
+        if (bottleLid != null && bottleLid.IsOpen)
+            return;
+
+        stepDone = true;
+        currentStep = SyrupStep.Done;
+        ClearProcedureOutlines();
+
+        if (bottleLidStepArrow != null)
+            bottleLidStepArrow.gameObject.SetActive(false);
+
+        if (instructionText != null)
+            instructionText.text = "Pembuatan sirup selesai";
+
+        if (progressText != null)
+            progressText.text = "Etiket sudah menempel dan botol sudah tertutup. Semua tahap simulasi berhasil diselesaikan.";
+
+        if (doneIcon != null)
+            doneIcon.SetActive(true);
+
+        if (etiketWorkflow != null)
+            etiketWorkflow.ShowSuccess();
+
+        Debug.Log("[SyrupProcedure] Etiket attached and bottle closed. Simulation complete.");
+    }
+
+    private void ReturnToMainPreparationSelection(SyrupIntroPanelController intro)
+    {
+        if (intro != null)
+        {
+            intro.ReturnToInitialState();
+
+            Transform introPanel = intro.transform.parent;
+            if (introPanel != null)
+                introPanel.gameObject.SetActive(false);
+        }
+
+        PadatMenuPanelController menuController =
+            FindFirstObjectByType<PadatMenuPanelController>(FindObjectsInactive.Include);
+
+        SetSceneObjectActive("PanelMenu_CairSemiPadat", false);
+        SetSceneObjectActive("PanelSimulasi_CairSemiPadat", false);
+        SetSceneObjectActive("PanelMenu_Padat", false);
+        SetSceneObjectActive("PanelSimulasi_Padat", false);
+        SetSceneObjectActive("[UI] Etiket World Panel", false);
+        SetSceneObjectActive("[SYS] SalepProcedureSystem", false);
+        SetSceneObjectActive("SalepMaterials", false);
+
+        MenuTeleportPlayer[] teleporters =
+            FindObjectsByType<MenuTeleportPlayer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (MenuTeleportPlayer teleporter in teleporters)
+            teleporter.ResetPlayerToInitialPose();
+
+        if (menuController != null)
+        {
+            menuController.gameObject.SetActive(true);
+            menuController.ShowPanelPilihJenisSediaan();
+        }
+        else
+        {
+            SetSceneObjectActive("PanelPilihJenisSediaan", true);
+        }
+
+        GameObject syrupSystem = FindSceneObjectByName("[SYS] SyrupProcedureSystem");
+        if (syrupSystem != null)
+            syrupSystem.SetActive(false);
+    }
+
+    private void SetSceneObjectActive(string objectName, bool active)
+    {
+        GameObject sceneObject = FindSceneObjectByName(objectName);
+        if (sceneObject != null)
+            sceneObject.SetActive(active);
     }
 
     private void SetStep6ArrowActive(bool active)
@@ -1651,6 +1821,16 @@ public class SyrupProcedureManager : MonoBehaviour
                 bottleOutline = bottleTarget.gameObject.AddComponent<Outlinable>();
         }
 
+        if (bottleLid == null && bottleTarget != null)
+            bottleLid = bottleTarget.GetComponentInChildren<BottleLid>(true);
+
+        if (bottleLidOutline == null && bottleLid != null)
+        {
+            bottleLidOutline = bottleLid.GetComponent<Outlinable>();
+            if (bottleLidOutline == null)
+                bottleLidOutline = bottleLid.gameObject.AddComponent<Outlinable>();
+        }
+
         if (bottleStepArrow == null)
             bottleStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step6_Bottle");
 
@@ -1658,6 +1838,7 @@ public class SyrupProcedureManager : MonoBehaviour
             mortarMixturePourer.ConfigureTarget(bottleContainer, bottleReceiverTarget);
 
         ResolveEtiketWorkflow();
+        BindBottleLidEvent();
     }
 
     private void EnsureMortarWaterIntake()
@@ -1692,8 +1873,33 @@ public class SyrupProcedureManager : MonoBehaviour
 
         etiketWorkflow.LabelCreated += HandleEtiketCreated;
         etiketWorkflow.LabelAttached += HandleEtiketAttached;
+        etiketWorkflow.BottleNotClosed += HandleEtiketBottleNotClosed;
         etiketWorkflow.BackRequested += HandleEtiketBackRequested;
         etiketEventsBound = true;
+    }
+
+    private void BindBottleLidEvent()
+    {
+        if (bottleLidEventBound)
+            return;
+
+        if (bottleLid == null && bottleTarget != null)
+            bottleLid = bottleTarget.GetComponentInChildren<BottleLid>(true);
+
+        if (bottleLid == null)
+            return;
+
+        bottleLid.onClosed.AddListener(HandleBottleLidClosed);
+        bottleLidEventBound = true;
+    }
+
+    private void UnbindBottleLidEvent()
+    {
+        if (!bottleLidEventBound || bottleLid == null)
+            return;
+
+        bottleLid.onClosed.RemoveListener(HandleBottleLidClosed);
+        bottleLidEventBound = false;
     }
 
     private void EnsureStateResetter()
@@ -1703,6 +1909,49 @@ public class SyrupProcedureManager : MonoBehaviour
 
         if (stateResetter == null)
             stateResetter = gameObject.AddComponent<SimulationStateResetter>();
+    }
+
+    private void ResolveResetManager()
+    {
+        if (resetManager == null)
+            resetManager = GetComponentInParent<SimulationResetManager>(true);
+    }
+
+    public void ResetProcedureStateFromGlobal()
+    {
+        StopAllCoroutines();
+        ClearProcedureOutlines();
+
+        if (bottleLidStepArrow != null)
+            bottleLidStepArrow.gameObject.SetActive(false);
+
+        if (mortarMixturePourer != null)
+            mortarMixturePourer.SetTransferEnabled(false);
+
+        if (spoonPowderPlateTransfer != null)
+            spoonPowderPlateTransfer.SetTransferEnabled(false);
+
+        if (powderDepositZone != null)
+        {
+            powderDepositZone.ResetDeposit();
+            powderDepositZone.SetAcceptingDeposits(false);
+        }
+
+        if (etiketWorkflow != null)
+            etiketWorkflow.ResetWorkflow();
+
+        currentStep = SyrupStep.Step_01_MeasureWater100ml;
+        stepDone = false;
+        labelAttached = false;
+        stableTimer = 0f;
+        isAnimating = false;
+        step6BottleStartMl = 0f;
+        step5MixState = Step5MixState.AddFirstWater50;
+
+        if (doneIcon != null)
+            doneIcon.SetActive(false);
+
+        // Global reset owns menu/panel transitions. Do not reopen the Syrup intro here.
     }
 
     private void SetMortarLocked(bool locked)

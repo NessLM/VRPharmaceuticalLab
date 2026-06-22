@@ -28,5 +28,5 @@ public class SyrupRecipeDefinition : ScriptableObject
 
     [TextArea(2, 4)]
     public string completionDetail =
-        "Sirup Difenhidramin 250 mg / 100 ml sudah dibuat, dimasukkan ke botol, dan diberi etiket.";
+        "Sirup Difenhidramin 250 mg / 100 ml sudah dibuat, dimasukkan ke botol, diberi etiket, dan ditutup.";
 }

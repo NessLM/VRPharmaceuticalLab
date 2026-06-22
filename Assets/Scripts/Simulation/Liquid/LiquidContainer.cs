@@ -201,6 +201,9 @@ public class LiquidContainer : MonoBehaviour
     private Vector3 fakeSloshOffsetLocal = Vector3.zero;
     private Quaternion lastLiquidSpaceRotation;
     private bool surfaceStateInitialized;
+    private LiquidData initialLiquid;
+    private float initialMl;
+    private bool initialStateCaptured;
 
     private void Reset()
     {
@@ -214,6 +217,8 @@ public class LiquidContainer : MonoBehaviour
 
     private void Awake()
     {
+        CaptureInitialLiquidState();
+
         if (autoDetectFillAxisOnAwake)
             AutoDetectFillAxisFromCurrentPose();
 
@@ -555,6 +560,23 @@ public class LiquidContainer : MonoBehaviour
     public void ClearLiquid()
     {
         EmptyLiquid();
+    }
+
+    public void ResetLiquidState()
+    {
+        CaptureInitialLiquidState();
+        currentLiquid = initialLiquid;
+        SetLiquidAmountInternal(initialMl);
+    }
+
+    private void CaptureInitialLiquidState()
+    {
+        if (initialStateCaptured)
+            return;
+
+        initialLiquid = currentLiquid;
+        initialMl = currentMl;
+        initialStateCaptured = true;
     }
 
     public void SetLiquidAmount(float amountMl)

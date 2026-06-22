@@ -38,6 +38,10 @@ public class PowderDepositZone : MonoBehaviour
     public UnityEvent<float> onDepositChanged;
     public UnityEvent onTargetNotAccepted;
 
+    [Tooltip("Dipanggil tiap deposit sukses dengan jumlah (mg) yang baru ditambahkan. " +
+             "Dipakai untuk floating amount text Salep.")]
+    public UnityEvent<float> onPowderDeposited;
+
     private float warningTimer;
 
     private readonly Dictionary<HornSpoon, int> spoonContactCounts = new Dictionary<HornSpoon, int>();
@@ -58,6 +62,15 @@ public class PowderDepositZone : MonoBehaviour
             spoonContactCounts.Clear();
             depositedDuringCurrentContact.Clear();
         }
+    }
+
+    /// <summary>
+    /// Salep memakai target resep tetap, jadi tidak wajib menaruh anak timbangan di pan
+    /// kanan. Difenhidramin tetap pakai default (true) lewat restore di SalepBench.ResetAll.
+    /// </summary>
+    public void SetRequireRightPanTarget(bool require)
+    {
+        allowPhysicalRightPanTarget = require;
     }
 
     private void Awake()
@@ -175,6 +188,7 @@ public class PowderDepositZone : MonoBehaviour
         depositedDuringCurrentContact.Add(spoon);
 
         UpdateVisualAndNotify();
+        onPowderDeposited?.Invoke(removedMg);
 
         if (debugLogs)
             Debug.Log($"[PowderDepositZone] Deposit +{removedMg:0.###} mg. Total = {depositedMg:0.###} mg", this);

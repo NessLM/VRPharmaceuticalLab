@@ -28,12 +28,37 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
             Rebuild();
     }
 
+    public void Configure(
+        float newRadiusX,
+        float newRadiusZ,
+        float newBaseHeight,
+        float newMoundHeight,
+        float newNoiseAmount,
+        Material newMaterial)
+    {
+        radiusX = Mathf.Max(0.001f, newRadiusX);
+        radiusZ = Mathf.Max(0.001f, newRadiusZ);
+        baseHeight = Mathf.Max(0.0001f, newBaseHeight);
+        moundHeight = Mathf.Max(0.001f, newMoundHeight);
+        noiseAmount = Mathf.Max(0f, newNoiseAmount);
+        powderMaterial = newMaterial;
+        Rebuild();
+    }
+
     public void Rebuild()
     {
         MeshFilter meshFilter = GetComponent<MeshFilter>();
         MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
 
+        Mesh oldMesh = meshFilter.sharedMesh;
         meshFilter.sharedMesh = BuildMoundMesh();
+        if (oldMesh != null && oldMesh.name.StartsWith("Generated_SpoonPowderMound"))
+        {
+            if (Application.isPlaying)
+                Destroy(oldMesh);
+            else
+                DestroyImmediate(oldMesh);
+        }
         if (powderMaterial != null)
             meshRenderer.sharedMaterial = powderMaterial;
 

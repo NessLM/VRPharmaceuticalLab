@@ -50,6 +50,19 @@ public class HornSpoon : MonoBehaviour
     [SerializeField] private Material powderMaterial;
     [SerializeField] private Color powderColor = new Color(0.96f, 0.96f, 0.92f, 1f);
 
+    [Header("Cream Visual on Spoon")]
+    [SerializeField] private Transform creamMesh;
+    [SerializeField] private Renderer creamRenderer;
+    [SerializeField] private bool createCreamVisualIfMissing = true;
+
+    [Header("Held Ingredient")]
+    [SerializeField] private string currentIngredientId;
+    [SerializeField] private string currentIngredientName;
+    [SerializeField] private IngredientVisualType currentVisualType = IngredientVisualType.PowderWhiteCrystal;
+    [SerializeField] private Material currentIngredientMaterial;
+    [SerializeField] private Color currentIngredientColor = new Color(0.96f, 0.96f, 0.92f, 1f);
+    [SerializeField] private bool requireIngredientProfileForDirectScoop = true;
+
     [Header("Dump By Rotation")]
     [SerializeField] private bool enableDumpByRotation = true;
     [SerializeField] private bool requireHeldToDump = true;
@@ -80,6 +93,9 @@ public class HornSpoon : MonoBehaviour
 
     private XRGrabInteractable grabInteractable;
     private float nextAllowedDumpTime;
+    private Material defaultPowderMaterial;
+    private Color defaultPowderColor;
+    private float defaultCapacityMg;
 
     public float MaxCapacityMg => maxCapacityMg;
     public float CurrentAmountMg => currentAmountMg;
@@ -88,11 +104,18 @@ public class HornSpoon : MonoBehaviour
     public bool IsEmpty => currentAmountMg <= 0.001f;
     public bool IsFull => currentAmountMg >= maxCapacityMg - 0.001f;
     public bool CanReceivePowder => !IsFull;
+    public string CurrentIngredientId => currentIngredientId;
+    public string CurrentIngredientName => currentIngredientName;
+    public IngredientVisualType CurrentVisualType => currentVisualType;
+    public bool IsHoldingCream => !IsEmpty && currentVisualType == IngredientVisualType.CreamOintment;
 
     public Transform TipTransform => tipTransform != null ? tipTransform : transform;
 
     private void Awake()
     {
+        defaultPowderMaterial = powderMaterial;
+        defaultPowderColor = powderColor;
+        defaultCapacityMg = maxCapacityMg;
         grabInteractable = GetComponent<XRGrabInteractable>();
 
         if (tipTransform == null)
@@ -103,6 +126,9 @@ public class HornSpoon : MonoBehaviour
 
         if (powderMesh == null)
             powderMesh = FindChildByName("PowderOnSpoonVisual");
+
+        if (creamMesh == null)
+            creamMesh = FindChildByName("CreamOnSpoonVisual");
 
         if (dumpOrientationReference == null)
         {
@@ -120,8 +146,14 @@ public class HornSpoon : MonoBehaviour
         if (powderMesh == null && createDefaultVisualIfMissing)
             CreateDefaultPowderVisual();
 
+        if (creamMesh == null && createCreamVisualIfMissing)
+            CreateDefaultCreamVisual();
+
         if (powderRenderer == null && powderMesh != null)
             powderRenderer = powderMesh.GetComponentInChildren<Renderer>(true);
+
+        if (creamRenderer == null && creamMesh != null)
+            creamRenderer = creamMesh.GetComponentInChildren<Renderer>(true);
 
         ApplyPowderMaterial();
         UpdateVisual();
@@ -150,26 +182,38 @@ public class HornSpoon : MonoBehaviour
         Collider[] hits = Physics.OverlapSphere(TipTransform.position, detectionRadius, detectionLayerMask);
 
         PowderContainer nearestPowder = null;
+        IngredientVisualProfile nearestProfile = null;
 
         foreach (Collider hit in hits)
         {
             if (hit == null)
                 continue;
 
+            IngredientVisualProfile profile = hit.GetComponentInParent<IngredientVisualProfile>();
+            if (requireIngredientProfileForDirectScoop && profile == null)
+                continue;
+
             nearestPowder = hit.GetComponentInParent<PowderContainer>();
 
             if (nearestPowder != null)
+            {
+                nearestProfile = profile;
                 break;
+            }
         }
 
-        if (nearestPowder == null || nearestPowder.IsEmpty)
+        if (nearestPowder == null ||
+            !nearestPowder.IsAccessible ||
+            nearestPowder.IsEmpty ||
+            !CanAcceptIngredient(nearestProfile))
             return;
 
         float availableSpace = Mathf.Max(0f, maxCapacityMg - currentAmountMg);
         float requestMg = Mathf.Min(scoopRateMgPerSecond * Time.deltaTime, availableSpace);
         float takenMg = nearestPowder.TakePowder(requestMg);
-
-        AddPowder(takenMg);
+        float acceptedMg = AddIngredient(takenMg, nearestProfile);
+        if (acceptedMg < takenMg)
+            nearestPowder.AddPowder(takenMg - acceptedMg);
 
         if (debugLogs && takenMg > 0.001f)
             Debug.Log($"[HornSpoon] Direct scoop {takenMg:0.###} mg from {nearestPowder.name}", this);
@@ -226,6 +270,9 @@ public class HornSpoon : MonoBehaviour
         if (safeAmount <= 0.001f)
             return 0f;
 
+        if (IsEmpty && string.IsNullOrEmpty(currentIngredientId))
+            ApplyIngredientProfile(null);
+
         float before = currentAmountMg;
         float availableSpace = Mathf.Max(0f, maxCapacityMg - currentAmountMg);
         float acceptedMg = Mathf.Min(safeAmount, availableSpace);
@@ -242,6 +289,26 @@ public class HornSpoon : MonoBehaviour
         }
 
         return acceptedMg;
+    }
+
+    public bool CanAcceptIngredient(IngredientVisualProfile profile)
+    {
+        if (IsEmpty)
+            return true;
+
+        string sourceId = profile != null ? profile.IngredientId : "Difenhidramin";
+        return string.Equals(currentIngredientId, sourceId, System.StringComparison.Ordinal);
+    }
+
+    public float AddIngredient(float amountMg, IngredientVisualProfile profile)
+    {
+        if (!CanAcceptIngredient(profile))
+            return 0f;
+
+        if (IsEmpty)
+            ApplyIngredientProfile(profile);
+
+        return AddPowder(amountMg);
     }
 
     public float AddPowderMg(float amountMg)
@@ -282,6 +349,9 @@ public class HornSpoon : MonoBehaviour
     {
         float before = currentAmountMg;
         currentAmountMg = Mathf.Clamp(amountMg, 0f, maxCapacityMg);
+
+        if (currentAmountMg <= 0.001f)
+            ResetIngredientSelection();
 
         if (!Mathf.Approximately(before, currentAmountMg))
         {
@@ -325,28 +395,62 @@ public class HornSpoon : MonoBehaviour
 
     public void UpdateVisual()
     {
-        if (powderMesh == null)
+        if (powderMesh == null && creamMesh == null)
             return;
 
-        bool hasPowder = !IsEmpty;
-        powderMesh.gameObject.SetActive(hasPowder);
+        bool hasSubstance = !IsEmpty;
+        bool showCream = hasSubstance && currentVisualType == IngredientVisualType.CreamOintment;
+        bool showPowder = hasSubstance && !showCream;
 
-        if (!hasPowder)
+        if (powderMesh != null)
+            powderMesh.gameObject.SetActive(showPowder);
+        if (creamMesh != null)
+            creamMesh.gameObject.SetActive(showCream);
+
+        if (!hasSubstance)
             return;
 
-        if (!preserveAuthoredPowderVisualTransform)
+        if (showPowder && powderMesh != null && !preserveAuthoredPowderVisualTransform)
         {
             float t = FillRatio;
             powderMesh.localScale = Vector3.Lerp(emptyLocalScale, fullLocalScale, t);
             powderMesh.localPosition = Vector3.Lerp(emptyLocalPosition, fullLocalPosition, t);
         }
 
-        ApplyPowderMaterial();
+        ApplyHeldIngredientMaterial();
     }
 
     public void RefreshVisual()
     {
         UpdateVisual();
+    }
+
+    public void ConfigureIngredientScoopSupport(bool enableDirectProfileScoop, float newDetectionRadius)
+    {
+        allowDirectPowderContainerScoop = enableDirectProfileScoop;
+        requireIngredientProfileForDirectScoop = true;
+        detectionRadius = Mathf.Max(0.01f, newDetectionRadius);
+    }
+
+    public void EnsureCreamVisual(Material creamMaterial)
+    {
+        if (creamMesh == null)
+            creamMesh = FindChildByName("CreamOnSpoonVisual");
+
+        if (creamMesh == null)
+            CreateDefaultCreamVisual();
+
+        if (creamRenderer == null && creamMesh != null)
+            creamRenderer = creamMesh.GetComponentInChildren<Renderer>(true);
+
+        if (creamMesh != null)
+        {
+            CreamMoundVisual visual = creamMesh.GetComponent<CreamMoundVisual>();
+            if (visual == null)
+                visual = creamMesh.gameObject.AddComponent<CreamMoundVisual>();
+            visual.Configure(0.04f, 0.026f, 0.004f, 0.018f, 0.024f, 0.0024f, creamMaterial);
+            creamMesh.gameObject.SetActive(false);
+        }
     }
 
     private bool CanTransfer()
@@ -426,6 +530,78 @@ public class HornSpoon : MonoBehaviour
             material.SetColor("_Color", powderColor);
     }
 
+    private void ApplyHeldIngredientMaterial()
+    {
+        Renderer targetRenderer = currentVisualType == IngredientVisualType.CreamOintment
+            ? creamRenderer
+            : powderRenderer;
+
+        if (targetRenderer == null)
+            return;
+
+        Material selectedMaterial = currentIngredientMaterial;
+        if (selectedMaterial == null && currentVisualType != IngredientVisualType.CreamOintment)
+            selectedMaterial = defaultPowderMaterial != null ? defaultPowderMaterial : powderMaterial;
+
+        if (selectedMaterial != null)
+        {
+            targetRenderer.sharedMaterial = selectedMaterial;
+            return;
+        }
+
+        Material runtimeMaterial = targetRenderer.material;
+        if (runtimeMaterial == null)
+            return;
+
+        if (runtimeMaterial.HasProperty("_BaseColor"))
+            runtimeMaterial.SetColor("_BaseColor", currentIngredientColor);
+        if (runtimeMaterial.HasProperty("_Color"))
+            runtimeMaterial.SetColor("_Color", currentIngredientColor);
+    }
+
+    private void ApplyIngredientProfile(IngredientVisualProfile profile)
+    {
+        if (profile == null)
+        {
+            currentIngredientId = "Difenhidramin";
+            currentIngredientName = "Difenhidramin";
+            currentVisualType = IngredientVisualType.PowderWhiteCrystal;
+            currentIngredientMaterial = defaultPowderMaterial != null ? defaultPowderMaterial : powderMaterial;
+            currentIngredientColor = defaultPowderColor;
+            // Difenhidramin/legacy: keep the authored default capacity untouched.
+            maxCapacityMg = defaultCapacityMg;
+            return;
+        }
+
+        currentIngredientId = profile.IngredientId;
+        currentIngredientName = profile.DisplayName;
+        currentVisualType = profile.VisualType;
+        currentIngredientMaterial = profile.SpoonMaterial;
+        currentIngredientColor = profile.FallbackColor;
+        // Salep ingredients: one scoop fills the spoon to "full" using the ingredient's
+        // per-scoop amount, so the visual fill ratio reads correctly per ingredient.
+        maxCapacityMg = Mathf.Max(1f, profile.AmountPerScoopMg);
+    }
+
+    /// <summary>Override the spoon capacity (mg). Used by Salep per-ingredient scoop sizing.</summary>
+    public void SetCapacityMg(float capacityMg)
+    {
+        maxCapacityMg = Mathf.Max(1f, capacityMg);
+        currentAmountMg = Mathf.Clamp(currentAmountMg, 0f, maxCapacityMg);
+        UpdateVisual();
+    }
+
+    private void ResetIngredientSelection()
+    {
+        currentIngredientId = string.Empty;
+        currentIngredientName = string.Empty;
+        currentVisualType = IngredientVisualType.PowderWhiteCrystal;
+        currentIngredientMaterial = null;
+        currentIngredientColor = defaultPowderColor;
+        // Restore the authored default so the empty spoon returns to its neutral state.
+        maxCapacityMg = defaultCapacityMg;
+    }
+
     private void CreateDefaultPowderVisual()
     {
         GameObject powderObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -444,6 +620,23 @@ public class HornSpoon : MonoBehaviour
 
         if (powderRenderer != null)
             ApplyPowderMaterial();
+    }
+
+    private void CreateDefaultCreamVisual()
+    {
+        GameObject creamObject = new GameObject("CreamOnSpoonVisual");
+        creamObject.transform.SetParent(powderHoldPoint != null ? powderHoldPoint : transform, false);
+        creamObject.transform.localPosition = Vector3.zero;
+        creamObject.transform.localRotation = Quaternion.identity;
+        creamObject.transform.localScale = Vector3.one * 0.6f;
+
+        creamObject.AddComponent<MeshFilter>();
+        creamRenderer = creamObject.AddComponent<MeshRenderer>();
+        CreamMoundVisual visual = creamObject.AddComponent<CreamMoundVisual>();
+        visual.Configure(0.04f, 0.026f, 0.004f, 0.018f, 0.022f, 0.0025f, currentIngredientMaterial);
+
+        creamMesh = creamObject.transform;
+        creamObject.SetActive(false);
     }
 
     private Transform FindChildByName(string childName)

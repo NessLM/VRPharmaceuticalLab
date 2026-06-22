@@ -8,6 +8,7 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private PowderContainer powderContainer;
+    [SerializeField] private IngredientVisualProfile ingredientProfile;
     [SerializeField] private BottleLid requiredOpenLid;
     [SerializeField] private Collider scoopAccessZone;
     [SerializeField] private Transform entryAnchor;
@@ -27,6 +28,10 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 
     [Header("Amount")]
     [SerializeField] private float scoopAmountMg = 120f;
+
+    [Tooltip("Jika ON dan IngredientVisualProfile tersedia, scoopAmountMg diambil dari " +
+             "profile.AmountPerScoopMg (Asam 50, Sulfur 100, Vaselin 2000).")]
+    [SerializeField] private bool useProfileScoopAmount = true;
 
     [Header("Tip Detection Fallback")]
     [SerializeField] private float tipEligibilityRadius = 0.38f;
@@ -85,6 +90,54 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 
         SetPrompt(canAnySpoonScoop);
         FacePromptToCamera();
+
+        ReconcileSpoonPrompts();
+    }
+
+    // Gating tooltip sendok: spoon prompt hanya muncul saat bahan ini benar-benar
+    // bisa diambil (tutup terbuka + step sesuai + ada isi). Mencegah tooltip
+    // "Ambil" muncul saat toples tertutup atau bukan target step.
+    private void ReconcileSpoonPrompts()
+    {
+        foreach (HornSpoon spoon in eligibleSpoons.Keys)
+            ReconcileSpoonPrompt(spoon);
+
+        foreach (HornSpoon spoon in proximitySpoons)
+        {
+            if (!eligibleSpoons.ContainsKey(spoon))
+                ReconcileSpoonPrompt(spoon);
+        }
+    }
+
+    private void ReconcileSpoonPrompt(HornSpoon spoon)
+    {
+        if (spoon == null)
+            return;
+
+        SpoonScoopActivator activator = GetActivator(spoon);
+        if (activator == null)
+            return;
+
+        if (IsAvailableForPrompt(spoon))
+            activator.SetCurrentTarget(this);
+        else
+            activator.ClearCurrentTarget(this);
+    }
+
+    // Lebih longgar dari CanScoop (abaikan cooldown/isScooping/spoon-empty) tapi tetap
+    // menghormati gating tutup + step, agar prompt tidak berkedip saat animasi scoop.
+    private bool IsAvailableForPrompt(HornSpoon spoon)
+    {
+        if (spoon == null)
+            return false;
+
+        if (!IsLidOpenEnough() || !PassesSalepStepGate())
+            return false;
+
+        if (powderContainer == null || !powderContainer.IsAccessible || powderContainer.IsEmpty)
+            return false;
+
+        return true;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -128,6 +181,16 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         Log($"Spoon exited zone: {spoon.name}");
     }
 
+    /// <summary>Ambil ulang scoopAmountMg dari IngredientVisualProfile (dipanggil setup runtime).</summary>
+    public void ApplyProfileScoopAmount()
+    {
+        if (ingredientProfile == null)
+            ingredientProfile = GetComponentInParent<IngredientVisualProfile>();
+
+        if (useProfileScoopAmount && ingredientProfile != null)
+            scoopAmountMg = ingredientProfile.AmountPerScoopMg;
+    }
+
     public bool CanScoop(HornSpoon spoon)
     {
         if (isScooping || Time.time < nextReadyTime)
@@ -139,10 +202,30 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         if (!IsLidOpenEnough())
             return false;
 
+        if (!PassesSalepStepGate())
+            return false;
+
         if (powderContainer == null || !powderContainer.IsAccessible || powderContainer.IsEmpty)
             return false;
 
         return spoon.IsEmpty;
+    }
+
+    /// <summary>
+    /// Step-gating Salep: jika bahan ini dikelola SalepBench, hanya boleh di-scoop saat
+    /// menjadi target step penimbangan yang aktif. Difenhidramin (profile null / tidak
+    /// dikelola bench) tidak terpengaruh.
+    /// </summary>
+    private bool PassesSalepStepGate()
+    {
+        if (ingredientProfile == null)
+            return true;
+
+        SalepBench bench = SalepBench.Instance;
+        if (bench == null || !bench.ManagesIngredient(ingredientProfile.IngredientId))
+            return true;
+
+        return bench.IsIngredientScoopable(ingredientProfile.IngredientId);
     }
 
     public bool TryScoop(HornSpoon spoon)
@@ -172,7 +255,7 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         Quaternion spoonStartRot = spoon.transform.rotation;
 
         // Hide the real spoon so only the ghost is visible during animation
-        Renderer[] spoonRenderers = spoon.GetComponentsInChildren<Renderer>();
+        Renderer[] spoonRenderers = spoon.GetComponentsInChildren<Renderer>(true);
         SetRenderersEnabled(spoonRenderers, false);
 
         // Show ghost positioned exactly where the real spoon is
@@ -266,9 +349,21 @@ public sealed class ScoopBottleTarget : MonoBehaviour
             return;
 
         float taken = powderContainer.TakePowder(scoopAmountMg);
-        float accepted = spoon.AddPowder(taken);
+        float accepted = spoon.AddIngredient(taken, ingredientProfile);
         if (accepted < taken)
             powderContainer.AddPowder(taken - accepted);
+
+        // Floating amount text gaya Salep (+50 mg / +2 g) saat scoop berhasil.
+        // Hanya untuk bahan Salep yang punya IngredientVisualProfile; Difenhidramin (null) tidak.
+        if (ingredientProfile != null && accepted > 0.001f)
+        {
+            Transform anchor = entryAnchor != null ? entryAnchor : transform;
+            Color color = Color.Lerp(ingredientProfile.FallbackColor, Color.white, 0.35f);
+            SalepFloatingAmountText.Spawn(
+                anchor.position + Vector3.up * 0.07f,
+                ingredientProfile.FormatAmount(accepted, true),
+                color);
+        }
     }
 
     private void RefreshNearbySpoonsByTip(bool force = false)
@@ -422,6 +517,12 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         if (powderContainer == null)
             powderContainer = GetComponentInParent<PowderContainer>();
 
+        if (ingredientProfile == null)
+            ingredientProfile = GetComponentInParent<IngredientVisualProfile>();
+
+        if (useProfileScoopAmount && ingredientProfile != null)
+            scoopAmountMg = ingredientProfile.AmountPerScoopMg;
+
         if (requiredOpenLid == null)
             requiredOpenLid = GetComponentInParent<BottleLid>();
 
@@ -448,7 +549,10 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.32f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.015f, 0.045f);
         main.startSize = new ParticleSystem.MinMaxCurve(0.0025f, 0.006f);
-        main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.94f, 0.92f, 0.82f, 0.42f));
+        Color fxColor = ingredientProfile != null
+            ? ingredientProfile.ScoopFxColor
+            : new Color(0.94f, 0.92f, 0.82f, 0.42f);
+        main.startColor = new ParticleSystem.MinMaxGradient(fxColor);
         main.maxParticles = 36;
         main.gravityModifier = 0.05f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
@@ -474,7 +578,7 @@ public sealed class ScoopBottleTarget : MonoBehaviour
 
     private void EmitDust()
     {
-        if (scoopDustFX == null)
+        if (scoopDustFX == null || (ingredientProfile != null && ingredientProfile.IsCream))
             return;
 
         if (insideAnchor != null)
@@ -616,7 +720,9 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         if (textMesh == null)
             textMesh = scoopPrompt.AddComponent<TextMesh>();
 
-        textMesh.text = "Ambil bubuk";
+        textMesh.text = ingredientProfile != null && ingredientProfile.IsCream
+            ? "Ambil krim"
+            : "Ambil bubuk";
         textMesh.anchor = TextAnchor.MiddleCenter;
         textMesh.alignment = TextAlignment.Center;
         textMesh.characterSize = 0.03f;

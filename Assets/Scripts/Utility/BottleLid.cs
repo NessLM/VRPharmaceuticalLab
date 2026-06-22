@@ -49,20 +49,27 @@ public class BottleLid : MonoBehaviour
 
     private void Awake()
     {
-        _grab = GetComponent<XRGrabInteractable>();
-        _rb = GetComponent<Rigidbody>();
+        ResolveComponents();
     }
 
     private void OnEnable()
     {
-        _grab.selectEntered.AddListener(OnGrabbed);
-        _grab.selectExited.AddListener(OnReleased);
+        ResolveComponents();
+
+        if (_grab != null)
+        {
+            _grab.selectEntered.AddListener(OnGrabbed);
+            _grab.selectExited.AddListener(OnReleased);
+        }
     }
 
     private void OnDisable()
     {
-        _grab.selectEntered.RemoveListener(OnGrabbed);
-        _grab.selectExited.RemoveListener(OnReleased);
+        if (_grab != null)
+        {
+            _grab.selectEntered.RemoveListener(OnGrabbed);
+            _grab.selectExited.RemoveListener(OnReleased);
+        }
     }
 
     private void Start()
@@ -73,10 +80,12 @@ public class BottleLid : MonoBehaviour
 
     private void OnGrabbed(SelectEnterEventArgs args)
     {
+        ResolveComponents();
         // Detach from bottle so it can be freely moved
         transform.SetParent(null, true);
         IsOpen = true;
-        _rb.useGravity = false; // XRI controls position while held
+        if (_rb != null)
+            _rb.useGravity = false; // XRI controls position while held
         onOpened?.Invoke();
         Log($"{gameObject.name} opened");
     }
@@ -98,12 +107,16 @@ public class BottleLid : MonoBehaviour
 
     private void SnapToClosed(bool fireEvent)
     {
+        ResolveComponents();
         IsOpen = false;
 
-        _rb.linearVelocity = Vector3.zero;
-        _rb.angularVelocity = Vector3.zero;
-        _rb.isKinematic = true;
-        _rb.useGravity = false;
+        if (_rb != null)
+        {
+            _rb.linearVelocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+            _rb.isKinematic = true;
+            _rb.useGravity = false;
+        }
 
         if (bottleRoot != null)
             transform.SetParent(bottleRoot, true);
@@ -122,6 +135,10 @@ public class BottleLid : MonoBehaviour
 
     private void DropLid()
     {
+        ResolveComponents();
+        if (_rb == null)
+            return;
+
         _rb.linearVelocity = Vector3.zero;
         _rb.angularVelocity = Vector3.zero;
 
@@ -136,14 +153,32 @@ public class BottleLid : MonoBehaviour
         SnapToClosed(fireEvent: true);
     }
 
+    public void ResetToClosed()
+    {
+        SnapToClosed(fireEvent: false);
+    }
+
     /// <summary>Programmatically force-opens the lid (detaches without grab).</summary>
     public void ForceOpen()
     {
+        ResolveComponents();
         transform.SetParent(null, true);
         IsOpen = true;
-        _rb.isKinematic = false;
-        _rb.useGravity = useGravityWhenDropped;
+        if (_rb != null)
+        {
+            _rb.isKinematic = false;
+            _rb.useGravity = useGravityWhenDropped;
+        }
         onOpened?.Invoke();
+    }
+
+    private void ResolveComponents()
+    {
+        if (_grab == null)
+            _grab = GetComponent<XRGrabInteractable>();
+
+        if (_rb == null)
+            _rb = GetComponent<Rigidbody>();
     }
 
     private void Log(string message)

@@ -5,6 +5,7 @@ public class WeightSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
     [SerializeField] private BalanceScaleVisual scaleVisual;
+    [SerializeField] private Step1ChecklistManager checklistManager;
 
     private bool hasSnapped = false;
 
@@ -47,6 +48,10 @@ public class WeightSnapTrigger : MonoBehaviour
             scaleVisual.SetRightDown();
 
         Debug.Log("Anak timbangan CTM berhasil snap ke Plate_Right_Target.");
+        if (checklistManager != null)
+{
+    checklistManager.CheckCTMWeight();
+}
     }
 
     private void ReturnWrongWeight(XRGrabInteractable grab)

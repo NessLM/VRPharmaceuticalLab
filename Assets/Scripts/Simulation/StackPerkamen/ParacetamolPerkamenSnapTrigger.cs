@@ -1,9 +1,10 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-public class PerkamenSnapTrigger : MonoBehaviour
+public class ParacetamolPerkamenSnapTrigger : MonoBehaviour
 {
     [SerializeField] private Transform snapPoint;
+
 [SerializeField] private Step1ChecklistManager checklistManager;
     private bool hasSnapped = false;
 
@@ -39,20 +40,20 @@ public class PerkamenSnapTrigger : MonoBehaviour
         perkamen.localPosition = Vector3.zero;
         perkamen.localRotation = Quaternion.identity;
 
-        PowderDropTrigger dropTrigger = perkamen.GetComponentInChildren<PowderDropTrigger>(true);
+        Transform paraDropTrigger = perkamen.Find("Paracetamol_DropTrigger");
 
-        if (dropTrigger != null)
+        if (paraDropTrigger != null)
         {
-            dropTrigger.gameObject.SetActive(true);
-            Debug.Log("CTM_DropTrigger aktif setelah perkamen snap.");
+            paraDropTrigger.gameObject.SetActive(true);
+            Debug.Log("Paracetamol_DropTrigger aktif setelah perkamen snap.");
         }
         else
         {
-            Debug.LogWarning("PowderDropTrigger tidak ditemukan di child singleperkamen.");
+            Debug.LogWarning("Paracetamol_DropTrigger tidak ditemukan di singleperkamen.");
         }
 
-        Debug.Log("Kertas perkamen berhasil snap ke piring kiri.");
+        Debug.Log("Kertas perkamen Paracetamol berhasil snap ke piring kiri.");
         if (checklistManager != null)
-    checklistManager.CheckCTMPerkamen();
+    checklistManager.CheckParaPerkamen();
     }
 }

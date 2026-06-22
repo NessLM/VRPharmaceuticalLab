@@ -1,0 +1,94 @@
+{
+  "questions": [
+    {
+      "question": "Sediaan obat berbentuk setengah padat yang digunakan untuk pemakaian luar pada kulit disebut...",
+      "answers": [
+        { "text": "Salep (unguentum)", "isCorrect": true },
+        { "text": "Sirup", "isCorrect": false },
+        { "text": "Tablet", "isCorrect": false },
+        { "text": "Kapsul", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada resep salep, singkatan 'm.f. unguentum' berarti...",
+      "answers": [
+        { "text": "Campur dan buatlah salep", "isCorrect": true },
+        { "text": "Minum sebelum makan", "isCorrect": false },
+        { "text": "Gunakan untuk mata", "isCorrect": false },
+        { "text": "Larutkan dalam air", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada resep salep, 'Vaselin Album ad 10 g' artinya Vaselin Album ditambahkan...",
+      "answers": [
+        { "text": "Hingga bobot total sediaan menjadi 10 g", "isCorrect": true },
+        { "text": "Sebanyak 10 g murni", "isCorrect": false },
+        { "text": "Sebanyak 10 tetes", "isCorrect": false },
+        { "text": "Dikurangi 10 g", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Dalam resep salep 10 g dengan Asam Salisilat 200 mg dan Sulfur PP 400 mg, berapa Vaselin Album yang dibutuhkan?",
+      "answers": [
+        { "text": "9,4 g", "isCorrect": true },
+        { "text": "10 g", "isCorrect": false },
+        { "text": "6 g", "isCorrect": false },
+        { "text": "0,6 g", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Vaselin Album pada sediaan salep berfungsi sebagai...",
+      "answers": [
+        { "text": "Basis salep (pembawa)", "isCorrect": true },
+        { "text": "Zat aktif utama", "isCorrect": false },
+        { "text": "Pengawet", "isCorrect": false },
+        { "text": "Pewarna", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat yang digunakan untuk menggerus dan mencampur bahan salep hingga homogen adalah...",
+      "answers": [
+        { "text": "Mortar dan stamper", "isCorrect": true },
+        { "text": "Gelas ukur", "isCorrect": false },
+        { "text": "Buret", "isCorrect": false },
+        { "text": "Tabung reaksi", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada pembuatan sirup, gula berfungsi terutama sebagai...",
+      "answers": [
+        { "text": "Pemanis sekaligus pengawet", "isCorrect": true },
+        { "text": "Zat aktif", "isCorrect": false },
+        { "text": "Basis salep", "isCorrect": false },
+        { "text": "Pelarut nonpolar", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Sediaan cair berupa larutan dengan kadar gula tinggi yang diminum disebut...",
+      "answers": [
+        { "text": "Sirup", "isCorrect": true },
+        { "text": "Salep", "isCorrect": false },
+        { "text": "Suppositoria", "isCorrect": false },
+        { "text": "Krim mata", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Asam Salisilat dan Sulfur PP dalam resep salep tersebut berperan sebagai...",
+      "answers": [
+        { "text": "Zat aktif (bahan berkhasiat)", "isCorrect": true },
+        { "text": "Basis salep", "isCorrect": false },
+        { "text": "Pelarut", "isCorrect": false },
+        { "text": "Perasa", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Penimbangan bahan padat dalam jumlah kecil seperti 200 mg sebaiknya dilakukan dengan...",
+      "answers": [
+        { "text": "Timbangan gram halus / neraca dengan kertas perkamen", "isCorrect": true },
+        { "text": "Tangan langsung", "isCorrect": false },
+        { "text": "Gelas ukur", "isCorrect": false },
+        { "text": "Sendok makan", "isCorrect": false }
+      ]
+    }
+  ]
+}

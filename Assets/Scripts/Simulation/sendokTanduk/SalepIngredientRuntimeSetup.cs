@@ -35,14 +35,19 @@ public static class SalepIngredientRuntimeSetup
 
     public static void ConfigureScene()
     {
+        // Resep editable (jika ada) jadi sumber takaran. Fallback ke konstanta.
+        SalepRecipeDefinition recipe = ResolveRecipe();
+        SalepRecipeDefinition.Ingredient asam = recipe != null ? recipe.asamSalisilat : null;
+        SalepRecipeDefinition.Ingredient sulfur = recipe != null ? recipe.sulfurPP : null;
+
         Material asamMaterial = ConfigurePowderJar(
             "Jar_AsamSalisilat",
             "AsamSalisilat",
             "Asam Salisilat",
             IngredientVisualType.PowderWhiteCrystal,
-            new Color(0.97f, 0.975f, 0.96f, 1f),
-            AsamScoopMg,
-            AsamTargetMg,
+            asam != null ? asam.color : new Color(0.97f, 0.975f, 0.96f, 1f),
+            asam != null ? asam.AmountPerScoopMg : AsamScoopMg,
+            asam != null ? asam.TargetTotalMg : AsamTargetMg,
             false);
 
         ConfigurePowderJar(
@@ -50,12 +55,12 @@ public static class SalepIngredientRuntimeSetup
             "SulfurPP",
             "Sulfur PP",
             IngredientVisualType.PowderYellow,
-            new Color(1f, 0.9f, 0.46f, 1f),
-            SulfurScoopMg,
-            SulfurTargetMg,
+            sulfur != null ? sulfur.color : new Color(1f, 0.9f, 0.46f, 1f),
+            sulfur != null ? sulfur.AmountPerScoopMg : SulfurScoopMg,
+            sulfur != null ? sulfur.TargetTotalMg : SulfurTargetMg,
             false);
 
-        Material creamMaterial = ConfigureCreamJar();
+        Material creamMaterial = ConfigureCreamJar(recipe);
 
         HornSpoon spoon = Object.FindFirstObjectByType<HornSpoon>(
             FindObjectsInactive.Include);
@@ -166,11 +171,24 @@ public static class SalepIngredientRuntimeSetup
         return material;
     }
 
-    private static Material ConfigureCreamJar()
+    private static SalepRecipeDefinition ResolveRecipe()
+    {
+        SalepBench bench = Object.FindFirstObjectByType<SalepBench>(FindObjectsInactive.Include);
+        if (bench != null && bench.Recipe != null)
+            return bench.Recipe;
+
+        return Resources.Load<SalepRecipeDefinition>("SalepRecipe_Default");
+    }
+
+    private static Material ConfigureCreamJar(SalepRecipeDefinition recipe)
     {
         GameObject jar = FindObjectByName("Jar_VaselinAlbum");
         if (jar == null)
             return null;
+
+        SalepRecipeDefinition.Ingredient vaselin = recipe != null ? recipe.vaselinAlbum : null;
+        float vaselinScoopMg = vaselin != null ? vaselin.AmountPerScoopMg : VaselinScoopMg;
+        float vaselinTargetMg = vaselin != null ? vaselin.TargetTotalMg : VaselinTargetMg;
 
         Transform root = FindChild(jar.transform, "CreamVisualRoot");
         Transform top = root != null ? FindChild(root, "CreamTopSurface") : null;
@@ -190,7 +208,7 @@ public static class SalepIngredientRuntimeSetup
 
         DisableChildrenByPrefix(root, "CreamFold_");
 
-        Color color = new Color(0.97f, 0.935f, 0.84f, 1f);
+        Color color = vaselin != null ? vaselin.color : new Color(0.97f, 0.935f, 0.84f, 1f);
         IngredientVisualProfile profile = jar.GetComponent<IngredientVisualProfile>();
         if (profile == null)
             profile = jar.AddComponent<IngredientVisualProfile>();
@@ -201,11 +219,11 @@ public static class SalepIngredientRuntimeSetup
             material,
             color,
             new Color(color.r, color.g, color.b, 0.18f));
-        profile.ConfigureScoop(VaselinScoopMg, VaselinTargetMg, true);
+        profile.ConfigureScoop(vaselinScoopMg, vaselinTargetMg, true);
 
         PowderContainer container = jar.GetComponent<PowderContainer>();
         if (container != null)
-            container.EnsureStock(VaselinTargetMg);
+            container.EnsureStock(vaselinTargetMg);
 
         ScoopBottleTarget scoopTarget = jar.GetComponentInChildren<ScoopBottleTarget>(true);
         if (scoopTarget != null)

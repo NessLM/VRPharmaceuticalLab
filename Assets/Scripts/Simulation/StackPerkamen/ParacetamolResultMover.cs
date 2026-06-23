@@ -13,6 +13,9 @@ public class ParacetamolResultMover : MonoBehaviour
     [SerializeField] private GameObject[] objectsToHideAfterMove;
     [SerializeField] private float hideDuration = 0.6f;
 
+    [Header("Step Manager")]
+    [SerializeField] private ResepPadat1StepManager stepManager;
+
     private GameObject clickArea;
     private XRGrabInteractable grab;
     private bool canMove = false;
@@ -98,6 +101,9 @@ public class ParacetamolResultMover : MonoBehaviour
         transform.rotation = resultPoint.rotation;
         transform.SetParent(resultPoint, true);
 
+        if (grab != null)
+    grab.enabled = true;
+
         if (weight3gReturn != null)
             weight3gReturn.ReturnToStart();
 
@@ -111,6 +117,16 @@ public class ParacetamolResultMover : MonoBehaviour
         }
 
         Debug.Log("Perkamen Paracetamol pindah dan anak timbangan kembali.");
+
+        if (stepManager != null)
+        {
+            stepManager.SetStep(2);
+            Debug.Log("Pindah ke Step 2.");
+        }
+        else
+        {
+            Debug.LogWarning("Step Manager belum diisi di ParacetamolResultMover.");
+        }
     }
 
     private IEnumerator ShrinkAndHide(GameObject obj)

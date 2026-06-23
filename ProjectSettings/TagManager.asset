@@ -11,6 +11,8 @@ TagManager:
   - Weight_CTM
   - Weight_Para_3g
   - Weight_Para_500mg
+  - penumbuk
+  - Penumbuk
   layers:
   - Default
   - TransparentFX

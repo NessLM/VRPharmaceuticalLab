@@ -94,6 +94,9 @@ public class PerkamenResultMover : MonoBehaviour
         transform.rotation = resultPoint.rotation;
         transform.SetParent(resultPoint, true);
 
+        if (grab != null)
+    grab.enabled = true; 
+
         if (ctmWeightReturn != null)
         {
             ctmWeightReturn.ReturnToStart();

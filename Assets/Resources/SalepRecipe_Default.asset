@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a018cf8d9c46b4eae4f0ea133ccc2f, type: 3}
+  m_Name: SalepRecipe_Default
+  m_EditorClassIdentifier: 
+  asamSalisilat:
+    ingredientId: AsamSalisilat
+    displayName: Asam Salisilat
+    amountPerScoopMg: 50
+    targetTotalMg: 200
+    displayInGrams: 0
+    visualType: 0
+    color: {r: 0.97, g: 0.975, b: 0.96, a: 1}
+  sulfurPP:
+    ingredientId: SulfurPP
+    displayName: Sulfur PP
+    amountPerScoopMg: 100
+    targetTotalMg: 400
+    displayInGrams: 0
+    visualType: 1
+    color: {r: 1, g: 0.9, b: 0.46, a: 1}
+  vaselinAlbum:
+    ingredientId: VaselinAlbum
+    displayName: Vaselin Album
+    amountPerScoopMg: 2000
+    targetTotalMg: 9400
+    displayInGrams: 1
+    visualType: 2
+    color: {r: 0.97, g: 0.935, b: 0.84, a: 1}
+  toleranceMg: 1
+  mixProgressRequired: 1
+  etiketProductLine: SALEP 2-4 (As. Salisilat 2% + Sulfur 4%)
+  etiketCompletionTitle: SIMULASI SALEP SELESAI
+  etiketCompletionDetail: Salep sudah selesai dibuat, dipindahkan ke pot, dan diberi
+    etiket.

@@ -20,6 +20,9 @@ public sealed class SalepBench : MonoBehaviour
     [SerializeField] private SalepPanDepositVisual panVisual;
     [SerializeField] private SalepMortarVisual mortarVisual;
 
+    [Header("Resep (sumber data editable)")]
+    [SerializeField] private SalepRecipeDefinition recipe;
+
     [Header("Profil bahan")]
     [SerializeField] private IngredientVisualProfile asamProfile;
     [SerializeField] private IngredientVisualProfile sulfurProfile;
@@ -27,6 +30,8 @@ public sealed class SalepBench : MonoBehaviour
 
     [Header("Toleransi target (mg)")]
     [SerializeField] private float toleranceMg = 1f;
+
+    public SalepRecipeDefinition Recipe => recipe;
 
     [Header("Events")]
     public UnityEvent<string> onWeighingTargetReached;
@@ -177,8 +182,9 @@ public sealed class SalepBench : MonoBehaviour
             activeProfile.TargetTotalMg,
             activeProfile.TargetTotalMg);
         depositZone.SetAcceptingDeposits(true);
-        // Salep: target dari resep, tak perlu anak timbangan di pan kanan.
-        depositZone.SetRequireRightPanTarget(false);
+        // Salep neraca realistis: WAJIB taruh anak timbangan di piring kanan dulu
+        // sebelum bubuk bisa masuk ke piring kiri. Target selesai tetap dari resep.
+        depositZone.SetRequireRightPanTarget(true);
 
         if (panVisual != null)
             panVisual.ConfigureForIngredient(activeProfile, activeProfile.SpoonMaterial);
@@ -230,8 +236,9 @@ public sealed class SalepBench : MonoBehaviour
             panVisual.SetAmountMg(depositZone.DepositedMg);
 
         // Deteksi target tercapai → feedback "Tepat!" sekali.
+        float effectiveTolerance = recipe != null ? Mathf.Max(0.001f, recipe.toleranceMg) : toleranceMg;
         if (!targetAnnounced &&
-            depositZone.IsAtTargetMg(activeProfile.TargetTotalMg, toleranceMg))
+            depositZone.IsAtTargetMg(activeProfile.TargetTotalMg, effectiveTolerance))
         {
             targetAnnounced = true;
             Vector3 anchor = depositZone.transform.position + Vector3.up * 0.16f;

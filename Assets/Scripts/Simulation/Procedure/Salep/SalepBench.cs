@@ -127,16 +127,16 @@ public sealed class SalepBench : MonoBehaviour
 
     private void EnsureVisuals()
     {
-        if (panVisual == null && depositZone != null)
+        // Visual bubuk di piring neraca memakai PowderVisualLevelSwitcher bawaan
+        // (PowderDepositVisual pada Plate_Left_Target) yang SUDAH di-drive PowderDepositZone.
+        // Procedural mound (SalepPanDepositVisual) dimatikan supaya tidak berantakan/dobel.
+        if (depositZone != null)
         {
-            panVisual = depositZone.GetComponentInChildren<SalepPanDepositVisual>(true);
-            if (panVisual == null)
-            {
-                GameObject go = new GameObject("SalepPanDepositVisual");
-                go.transform.SetParent(depositZone.transform, false);
-                panVisual = go.AddComponent<SalepPanDepositVisual>();
-            }
+            SalepPanDepositVisual stray = depositZone.GetComponentInChildren<SalepPanDepositVisual>(true);
+            if (stray != null)
+                stray.gameObject.SetActive(false);
         }
+        panVisual = null;
 
         if (mortarVisual == null && mortar != null)
         {
@@ -144,6 +144,11 @@ public sealed class SalepBench : MonoBehaviour
             if (mortarVisual == null)
                 mortarVisual = mortar.gameObject.AddComponent<SalepMortarVisual>();
         }
+
+        // Matikan visual bubuk bawaan MortarController supaya tidak menutup visual
+        // dua-warna Salep (Asam putih + Sulfur kuning).
+        if (mortar != null)
+            mortar.SetPowderVisualSuppressed(true);
     }
 
     private void Subscribe()
@@ -182,6 +187,10 @@ public sealed class SalepBench : MonoBehaviour
             activeProfile.TargetTotalMg,
             activeProfile.TargetTotalMg);
         depositZone.SetAcceptingDeposits(true);
+
+        // Visual bubuk di piring kiri ikut warna bahan (Asam putih, Sulfur kuning,
+        // Vaselin ivory). Memakai PowderVisualLevelSwitcher bawaan pada Plate_Left_Target.
+        depositZone.SetDepositVisualTint(activeProfile.FallbackColor);
         // Salep neraca realistis: WAJIB taruh anak timbangan di piring kanan dulu
         // sebelum bubuk bisa masuk ke piring kiri. Target selesai tetap dari resep.
         depositZone.SetRequireRightPanTarget(true);
@@ -219,7 +228,12 @@ public sealed class SalepBench : MonoBehaviour
         {
             depositZone.ConfigureForRecipe(50f, 500f, 250f);
             depositZone.SetRequireRightPanTarget(true);
+            depositZone.ClearDepositVisualTint();
         }
+
+        // Kembalikan visual bubuk MortarController untuk workflow Syrup/Difenhidramin.
+        if (mortar != null)
+            mortar.SetPowderVisualSuppressed(false);
 
         activeProfile = null;
         targetAnnounced = false;

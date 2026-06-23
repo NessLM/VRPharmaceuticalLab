@@ -106,6 +106,7 @@ public class HornSpoon : MonoBehaviour
     public bool CanReceivePowder => !IsFull;
     public string CurrentIngredientId => currentIngredientId;
     public string CurrentIngredientName => currentIngredientName;
+    public Color CurrentIngredientColor => currentIngredientColor;
     public IngredientVisualType CurrentVisualType => currentVisualType;
     public bool IsHoldingCream => !IsEmpty && currentVisualType == IngredientVisualType.CreamOintment;
 
@@ -475,6 +476,12 @@ public class HornSpoon : MonoBehaviour
 
         dumpFx.transform.position = source.position;
         dumpFx.transform.rotation = source.rotation;
+
+        // FX bubuk yang ditumpahkan ikut warna bahan yang sedang dipegang (Sulfur kuning, dll).
+        ParticleSystem.MainModule main = dumpFx.main;
+        Color fxColor = currentIngredientColor;
+        fxColor.a = main.startColor.color.a;
+        main.startColor = fxColor;
 
         dumpFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         dumpFx.Play(true);

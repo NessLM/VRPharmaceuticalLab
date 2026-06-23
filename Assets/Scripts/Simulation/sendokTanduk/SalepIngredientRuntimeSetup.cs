@@ -13,8 +13,8 @@ public static class SalepIngredientRuntimeSetup
     private const float AsamTargetMg = 200f;
     private const float SulfurScoopMg = 100f;
     private const float SulfurTargetMg = 400f;
-    private const float VaselinScoopMg = 2000f;   // 2 g
-    private const float VaselinTargetMg = 9400f;  // 9.4 g
+    private const float VaselinScoopMg = 2000f;    // 2 g per scoop
+    private const float VaselinTargetMg = 10000f;  // 10 g sesuai resep
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoConfigureOnPlay()

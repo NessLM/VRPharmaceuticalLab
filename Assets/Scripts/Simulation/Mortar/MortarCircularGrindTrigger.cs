@@ -10,13 +10,16 @@ public class MortarCircularGrindTrigger : MonoBehaviour
 
     [Header("Visual")]
     [SerializeField] private GameObject homogenPowder;
+    [SerializeField] private GameObject[] powdersToHideWhenFinished;
 
     [Header("UI Progress")]
     [SerializeField] private GameObject progressPanel;
     [SerializeField] private TMP_Text progressText;
     [SerializeField] private Image progressFill;
 
-[SerializeField] private GameObject[] powdersToHideWhenFinished;
+    [Header("Checklist Step 2")]
+    [SerializeField] private Step2ChecklistManager checklistManager;
+
     private Transform pestle;
     private bool isGrinding = false;
     private bool isFinished = false;
@@ -78,7 +81,6 @@ public class MortarCircularGrindTrigger : MonoBehaviour
 
         float delta = Mathf.DeltaAngle(lastAngle, currentAngle);
 
-        // Kalau arah kebalik, nanti ganti < 0 jadi > 0
         if (delta < 0f)
             accumulatedAngle += Mathf.Abs(delta);
 
@@ -107,17 +109,21 @@ public class MortarCircularGrindTrigger : MonoBehaviour
         isFinished = true;
         isGrinding = false;
 
-foreach (GameObject powder in powdersToHideWhenFinished)
-{
-    if (powder != null)
-        powder.SetActive(false);
-}
+        foreach (GameObject powder in powdersToHideWhenFinished)
+        {
+            if (powder != null)
+                powder.SetActive(false);
+        }
+
         if (homogenPowder != null)
             homogenPowder.SetActive(true);
 
         if (progressPanel != null)
             progressPanel.SetActive(false);
 
+        if (checklistManager != null)
+            checklistManager.CheckGrinding();
+
         Debug.Log("Penggerusan selesai. Bubuk homogen muncul.");
     }
-}
+} 

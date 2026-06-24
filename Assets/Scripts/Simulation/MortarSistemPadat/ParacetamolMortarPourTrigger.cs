@@ -9,7 +9,7 @@ public class ParacetamolMortarPourTrigger : MonoBehaviour
     [SerializeField] private ParticleSystem pourParticle;
     [SerializeField] private float moveDuration = 0.8f;
     [SerializeField] private float pourDuration = 1.8f;
-
+[SerializeField] private Step2ChecklistManager checklistManager;
     private bool hasPoured = false;
 
     private void Start()
@@ -89,5 +89,7 @@ public class ParacetamolMortarPourTrigger : MonoBehaviour
         paper.gameObject.SetActive(false);
 
         Debug.Log("Paracetamol berhasil dituangkan ke mortar.");
+        if (checklistManager != null)
+    checklistManager.CheckParacetamol();
     }
 }

@@ -74,6 +74,14 @@ public sealed class SalepProcedureManager : MonoBehaviour
     [SerializeField] private SalepMortarMixZone mortarMixZone;
     [SerializeField] private SalepTransferZone potTransferZone;
 
+    [Header("Plate -> Mortar Pickup (pola Sirup, trigger)")]
+    [Tooltip("Komponen trigger di sendokTanduk (sama seperti Sirup): L Mouse di editor / trigger controller di VR. Auto-resolve jika kosong.")]
+    [SerializeField] private SpoonPowderPlateTransfer spoonPlateTransfer;
+
+    [Header("Mixing Guide (panduan memutar, pola Sirup)")]
+    [Tooltip("VIS_MortarStirGuide — lingkaran + indikator memutar saat menggerus/mengaduk. Auto-resolve jika kosong.")]
+    [SerializeField] private MortarStirGuide mortarStirGuide;
+
     [Header("Etiket (Step 10)")]
     [SerializeField] private EtiketWorkflow etiketWorkflow;
     [SerializeField] private RectTransform etiketCanvasRoot;
@@ -98,34 +106,73 @@ public sealed class SalepProcedureManager : MonoBehaviour
     private bool isAnimating;
     private bool etiketBound;
     private bool etiketAttached;
+    private float mortarBaselineMg;
 
-    private static readonly string[] StepTitles =
+    private const int StepCount = 10;
+
+    [Header("Step Text (editable dari Inspector)")]
+    [Tooltip("Judul singkat tiap step (index 0..9). Kosongkan satu item untuk pakai default.")]
+    [SerializeField]
+    private string[] stepTitles =
     {
-        "Siapkan perkamen di timbangan",
+        "Pasang perkamen pada neraca",
         "Timbang Asam Salisilat 200 mg",
-        "Pindahkan Asam Salisilat ke mortar",
+        "Masukkan Asam Salisilat ke Mortar",
         "Timbang Sulfur PP 400 mg",
-        "Pindahkan Sulfur PP ke mortar",
-        "Gerus campuran serbuk di mortar",
-        "Timbang & tambahkan Vaselin Album",
-        "Aduk sampai jadi salep homogen",
-        "Pindahkan salep ke pot",
+        "Masukkan Sulfur PP ke Mortar",
+        "Gerus serbuk hingga homogen",
+        "Timbang Vaselin Album 9,4 g",
+        "Aduk hingga jadi salep homogen",
+        "Pindahkan salep ke Pot Salep",
         "Pasang etiket pada pot"
     };
 
-    private static readonly string[] StepInstructions =
+    [Tooltip("Instruksi singkat tiap step (index 0..9).")]
+    [TextArea]
+    [SerializeField]
+    private string[] stepInstructions =
     {
-        "Ambil kertas perkamen dan letakkan pada piring timbangan sampai posisinya stabil.",
-        "Letakkan anak timbangan 200 mg di piring kanan, lalu isi Asam Salisilat ke piring kiri per 50 mg sampai seimbang.",
-        "Dekatkan sendok ke mortar untuk memindahkan Asam Salisilat, lalu tekan tombol reset timbangan.",
-        "Letakkan anak timbangan 400 mg di piring kanan, lalu isi Sulfur PP ke piring kiri per 100 mg sampai seimbang.",
-        "Dekatkan sendok ke mortar untuk memindahkan Sulfur PP, lalu tekan tombol reset timbangan.",
-        "Gerus dua serbuk di mortar dengan stamper memutar sampai campuran homogen.",
-        "Letakkan anak timbangan sesuai target di piring kanan, lalu ambil Vaselin Album per 2 g sampai 9,4 g (scoop terakhir otomatis 1,4 g).",
-        "Aduk Vaselin dengan serbuk pakai stamper sampai terbentuk salep ivory homogen.",
-        "Tahan sendok/mortar berisi salep di atas pot sampai seluruh salep berpindah.",
-        "Pilih & isi etiket, lalu tempelkan ke pot salep sampai tersnap."
+        "Ambil perkamen, letakkan di piring timbangan sampai stabil.",
+        "Anak timbangan 200 mg di piring kanan, isi Asam Salisilat sampai seimbang.",
+        "Ambil Asam Salisilat dari piring (trigger), tuang ke mortar, lalu reset timbangan.",
+        "Anak timbangan 400 mg di piring kanan, isi Sulfur PP sampai seimbang.",
+        "Ambil Sulfur PP dari piring (trigger), tuang ke mortar, lalu reset timbangan.",
+        "Gerus serbuk dengan stamper sampai homogen.",
+        "Anak timbangan di piring kanan, ambil Vaselin per 2 g sampai 9,4 g.",
+        "Aduk Vaselin dengan serbuk sampai jadi salep homogen.",
+        "Tahan alat berisi salep di atas pot sampai berpindah.",
+        "Pilih etiket lalu tempel ke pot salep."
     };
+
+    private static readonly string[] DefaultTitles =
+    {
+        "Pasang perkamen pada neraca",
+        "Timbang Asam Salisilat 200 mg",
+        "Masukkan Asam Salisilat ke Mortar",
+        "Timbang Sulfur PP 400 mg",
+        "Masukkan Sulfur PP ke Mortar",
+        "Gerus serbuk hingga homogen",
+        "Timbang Vaselin Album 9,4 g",
+        "Aduk hingga jadi salep homogen",
+        "Pindahkan salep ke Pot Salep",
+        "Pasang etiket pada pot"
+    };
+
+    private string GetStepTitle(int index)
+    {
+        if (stepTitles != null && index >= 0 && index < stepTitles.Length && !string.IsNullOrEmpty(stepTitles[index]))
+            return stepTitles[index];
+        if (index >= 0 && index < DefaultTitles.Length)
+            return DefaultTitles[index];
+        return $"Step {index + 1}";
+    }
+
+    private string GetStepInstruction(int index)
+    {
+        if (stepInstructions != null && index >= 0 && index < stepInstructions.Length && !string.IsNullOrEmpty(stepInstructions[index]))
+            return stepInstructions[index];
+        return GetStepTitle(index);
+    }
 
     public SalepStep CurrentStep => currentStep;
 
@@ -225,10 +272,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
         if (stepIndex >= 0)
         {
             if (instructionText != null)
-                instructionText.text = $"Step {stepIndex + 1}: {StepTitles[stepIndex]}";
+                instructionText.text = $"Step {stepIndex + 1}: {GetStepTitle(stepIndex)}";
 
             if (progressText != null)
-                progressText.text = StepInstructions[stepIndex];
+                progressText.text = GetStepInstruction(stepIndex);
 
             SetGuidanceForStep(stepIndex, true);
 
@@ -266,7 +313,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
                     if (progressText != null)
                         progressText.text = ready
                             ? "Perkamen sudah pada piring timbangan."
-                            : StepInstructions[0];
+                            : GetStepInstruction(0);
                     return ready;
                 }
 
@@ -274,13 +321,13 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 return EvaluateWeighing(2);
 
             case SalepStep.Step_03_MoveAsamToMortar:
-                return EvaluateTransferToMortar(AsamTargetMg, recipe != null ? recipe.asamSalisilat.displayName : "Asam Salisilat");
+                return EvaluateTransferToMortar(AsamTargetMg, recipe != null ? recipe.asamSalisilat.displayName : "Asam Salisilat", false);
 
             case SalepStep.Step_04_WeighSulfurPP:
                 return EvaluateWeighing(4);
 
             case SalepStep.Step_05_MoveSulfurToMortar:
-                return EvaluateTransferToMortar(SulfurTargetMg, recipe != null ? recipe.sulfurPP.displayName : "Sulfur PP");
+                return EvaluateTransferToMortar(SulfurTargetMg, recipe != null ? recipe.sulfurPP.displayName : "Sulfur PP", true);
 
             case SalepStep.Step_06_GrindPowders:
                 return EvaluateMix(false);
@@ -296,7 +343,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
             case SalepStep.Step_10_AttachEtiket:
                 if (progressText != null && !etiketAttached)
-                    progressText.text = StepInstructions[9];
+                    progressText.text = GetStepInstruction(9);
                 return etiketAttached;
         }
 
@@ -318,20 +365,26 @@ public sealed class SalepProcedureManager : MonoBehaviour
         return bench.WeighingTargetReached;
     }
 
-    private bool EvaluateTransferToMortar(float targetMg, string displayName)
+    private bool EvaluateTransferToMortar(float targetMg, string displayName, bool isSecondPowder)
     {
-        if (mortarTransferZone == null)
-            return false;
-
-        float moved = mortarTransferZone.ReceivedMg;
+        // Sumber kemajuan = jumlah bubuk yang benar-benar masuk mortar (pola Sirup),
+        // dihitung sebagai delta dari isi mortar saat step dimulai (aman kumulatif).
+        float moved = mortarController != null
+            ? Mathf.Max(0f, mortarController.CurrentPowderMg - mortarBaselineMg)
+            : 0f;
         bool movedDone = moved >= targetMg - Tolerance;
+
+        // Saat Sulfur mulai masuk, tampilkan dua serbuk terpisah di mortar
+        // (Asam putih kiri, Sulfur kuning kanan), belum homogen.
+        if (isSecondPowder && bench != null)
+            bench.SetMortarPhase(moved > 0.5f ? SalepMortarPhase.PowderMix : SalepMortarPhase.AsamPowder, 0f);
 
         if (!movedDone)
         {
             // Fase 1: pindahkan bubuk ke mortar (sorot mortar).
             SetMortarMoveResetGuidance(false);
             if (progressText != null)
-                progressText.text = $"{displayName} ke mortar: {moved:0} / {targetMg:0} mg.\nDekatkan sendok ke mortar.";
+                progressText.text = $"{displayName} ke mortar: {moved:0} / {targetMg:0} mg.\nAmbil bubuk dari piring (trigger), lalu tuang ke mortar.";
             return false;
         }
 
@@ -428,10 +481,12 @@ public sealed class SalepProcedureManager : MonoBehaviour
         }
         else
         {
+            // fill01 = tingkat homogen: 0 (terpisah) → 1 (menyatu). Saat menggerus,
+            // mound putih & kuning saling mendekat lalu warnanya berbaur bertahap.
             SalepMortarPhase phase = progress < 0.95f
                 ? SalepMortarPhase.PowderMix
                 : SalepMortarPhase.PowdersHomogeneous;
-            bench.SetMortarPhase(phase, Mathf.Lerp(0.5f, 0.6f, progress));
+            bench.SetMortarPhase(phase, progress);
         }
     }
 
@@ -476,7 +531,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         UpdateChecklist();
 
-        SalepStep next = stepIndex >= StepTitles.Length - 1
+        SalepStep next = stepIndex >= StepCount - 1
             ? SalepStep.Done
             : (SalepStep)((int)SalepStep.Step_01_PrepareParchmentOnBalance + stepIndex + 1);
 
@@ -559,7 +614,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
             bool complete = currentStep == SalepStep.Done || (activeIndex >= 0 && index < activeIndex);
             bool active = activeIndex == index;
             string mark = complete ? "\u2713" : active ? "\u25b6" : "\u25a1";
-            string title = index < StepTitles.Length ? StepTitles[index] : $"Step {index + 1}";
+            string title = index < StepCount ? GetStepTitle(index) : $"Step {index + 1}";
             item.text = $"{mark} {index + 1}. {title}";
 
             if (complete)
@@ -596,7 +651,9 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 break;
 
             case SalepStep.Step_05_MoveSulfurToMortar:
-                bench?.SetMortarPhase(SalepMortarPhase.PowderMix, 0.5f);
+                // Awal Step 5: hanya Asam (putih) yang sudah ada di mortar. Sulfur (kuning)
+                // muncul terpisah saat dituang (lihat EvaluateTransferToMortar).
+                bench?.SetMortarPhase(SalepMortarPhase.AsamPowder, 0.5f);
                 ActivateMortarTransfer(SulfurId);
                 break;
 
@@ -628,14 +685,53 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
     private void ActivateMortarTransfer(string ingredientId)
     {
-        if (mortarTransferZone == null)
-            return;
+        // Catat isi mortar saat ini → progres step dihitung dari delta (kumulatif aman
+        // untuk Step 3 Asam lalu Step 5 Sulfur yang menumpuk di mortar yang sama).
+        mortarBaselineMg = mortarController != null ? mortarController.CurrentPowderMg : 0f;
 
-        mortarTransferZone.ResetZone();
-        mortarTransferZone.ConfigureMortar(mortarController);
-        mortarTransferZone.ConfigureSource(depositZone);
-        mortarTransferZone.SetRequiredIngredient(ingredientId, false);
-        mortarTransferZone.SetActive(true);
+        // Saat memindahkan ke mortar, piring TIDAK menerima deposit baru (cegah dobel mass).
+        if (depositZone != null)
+            depositZone.SetAcceptingDeposits(false);
+
+        // Pola Sirup: pengambilan bubuk dari piring pakai TRIGGER di sendok
+        // (L Mouse di editor / trigger controller di VR), bukan dwell.
+        if (spoonPlateTransfer != null)
+        {
+            spoonPlateTransfer.ConfigurePlateSource(depositZone, null);
+            if (mortarController != null)
+                spoonPlateTransfer.ConfigureMortarReceiver(mortarController, mortarController.transform);
+            spoonPlateTransfer.SetTransferStepMg(GetScoopStepMg(ingredientId));
+            spoonPlateTransfer.SetFxColor(GetIngredientColor(ingredientId));
+            spoonPlateTransfer.SetTransferEnabled(true);
+        }
+
+        // Dwell zone lama dinonaktifkan: collider-nya ikut skala mortar (~45x) sehingga
+        // jadi kotak raksasa yang offset dari mangkuk dan tidak andal.
+        if (mortarTransferZone != null)
+            mortarTransferZone.SetActive(false);
+    }
+
+    // Jumlah bubuk per trigger dari piring sesuai bahan (Asam 50 mg, Sulfur 100 mg).
+    private float GetScoopStepMg(string ingredientId)
+    {
+        if (!string.IsNullOrEmpty(ingredientId) && ingredientId == SulfurId)
+            return 100f;
+        return 50f;
+    }
+
+    // Warna FX/visual per bahan (Asam putih, Sulfur kuning, Vaselin ivory).
+    private Color GetIngredientColor(string ingredientId)
+    {
+        if (recipe != null)
+        {
+            SalepRecipeDefinition.Ingredient ing = recipe.GetById(ingredientId);
+            if (ing != null)
+                return ing.color;
+        }
+
+        if (!string.IsNullOrEmpty(ingredientId) && ingredientId == SulfurId)
+            return new Color(1f, 0.9f, 0.46f, 1f);
+        return new Color(0.97f, 0.975f, 0.96f, 1f);
     }
 
     private void ActivateMixZone()
@@ -647,6 +743,14 @@ public sealed class SalepProcedureManager : MonoBehaviour
         if (stamper != null)
             mortarMixZone.ConfigureStamper(stamper);
         mortarMixZone.SetActive(true);
+
+        // Panduan memutar (pola Sirup): lingkaran + indikator berputar di atas mortar.
+        if (mortarStirGuide != null)
+        {
+            if (mortarController != null)
+                mortarStirGuide.SetTarget(mortarController.transform);
+            mortarStirGuide.SetVisible(true);
+        }
     }
 
     private void ActivatePotTransfer()
@@ -698,6 +802,13 @@ public sealed class SalepProcedureManager : MonoBehaviour
             mortarMixZone.SetActive(false);
         if (potTransferZone != null)
             potTransferZone.SetActive(false);
+        if (spoonPlateTransfer != null)
+        {
+            spoonPlateTransfer.SetTransferEnabled(false);
+            spoonPlateTransfer.ClearFxColor();
+        }
+        if (mortarStirGuide != null)
+            mortarStirGuide.SetVisible(false);
     }
 
     private void ResetZones()
@@ -798,6 +909,31 @@ public sealed class SalepProcedureManager : MonoBehaviour
         if (mortarMixZone == null)
             mortarMixZone = FindFirstObjectByType<SalepMortarMixZone>(FindObjectsInactive.Include);
 
+        if (spoonPlateTransfer == null)
+        {
+            if (hornSpoon != null)
+                spoonPlateTransfer = hornSpoon.GetComponent<SpoonPowderPlateTransfer>();
+            if (spoonPlateTransfer == null)
+                spoonPlateTransfer = FindFirstObjectByType<SpoonPowderPlateTransfer>(FindObjectsInactive.Include);
+        }
+
+        if (mortarStirGuide == null)
+        {
+            MortarStirGuide[] guides = FindObjectsByType<MortarStirGuide>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (MortarStirGuide guide in guides)
+            {
+                if (guide == null)
+                    continue;
+                if (guide.name == "VIS_MortarStirGuide")
+                {
+                    mortarStirGuide = guide;
+                    break;
+                }
+                if (mortarStirGuide == null)
+                    mortarStirGuide = guide;
+            }
+        }
+
         if (etiketWorkflow == null)
             etiketWorkflow = GetComponent<EtiketWorkflow>();
     }
@@ -805,6 +941,6 @@ public sealed class SalepProcedureManager : MonoBehaviour
     private static int GetStepIndex(SalepStep step)
     {
         int index = (int)step - (int)SalepStep.Step_01_PrepareParchmentOnBalance;
-        return index >= 0 && index < StepTitles.Length ? index : -1;
+        return index >= 0 && index < StepCount ? index : -1;
     }
 }

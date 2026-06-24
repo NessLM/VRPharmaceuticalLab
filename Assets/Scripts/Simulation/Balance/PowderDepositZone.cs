@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using TMPro;
@@ -220,6 +220,20 @@ public class PowderDepositZone : MonoBehaviour
     public bool IsAtTargetMg(float targetMg, float toleranceMg)
     {
         return Mathf.Abs(depositedMg - targetMg) <= Mathf.Max(0f, toleranceMg);
+    }
+
+    /// <summary>Warnai visual bubuk di piring kiri sesuai bahan (Salep). Aman untuk Sirup.</summary>
+    public void SetDepositVisualTint(Color color)
+    {
+        if (depositVisual != null)
+            depositVisual.SetTint(color);
+    }
+
+    /// <summary>Kembalikan warna visual bubuk ke default material.</summary>
+    public void ClearDepositVisualTint()
+    {
+        if (depositVisual != null)
+            depositVisual.ClearTint();
     }
 
     public void ConfigureForRecipe(float stepMg, float maxMg, float visualMaxMg)

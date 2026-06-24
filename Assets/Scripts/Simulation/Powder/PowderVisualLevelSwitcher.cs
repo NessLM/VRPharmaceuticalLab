@@ -15,9 +15,64 @@ public class PowderVisualLevelSwitcher : MonoBehaviour
 
     public float CurrentMg { get; private set; }
 
+    private bool hasTint;
+    private Color tint = Color.white;
+    private MaterialPropertyBlock mpb;
+    private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    private static readonly int ColorId = Shader.PropertyToID("_Color");
+
     private void Awake()
     {
         ApplyVisual(0f);
+    }
+
+    /// <summary>
+    /// Warnai semua mesh level (Asam putih, Sulfur kuning, Vaselin ivory) tanpa mengubah
+    /// material aslinya — pakai MaterialPropertyBlock supaya aman untuk workflow lain (Sirup).
+    /// </summary>
+    public void SetTint(Color color)
+    {
+        hasTint = true;
+        tint = color;
+        ApplyTintToAll();
+    }
+
+    /// <summary>Hapus pewarnaan, kembalikan ke warna material asli (mis. saat reset / Sirup).</summary>
+    public void ClearTint()
+    {
+        hasTint = false;
+        tint = Color.white;
+        ApplyTintToAll();
+    }
+
+    private void ApplyTintToAll()
+    {
+        if (levelObjects == null)
+            return;
+
+        for (int i = 0; i < levelObjects.Length; i++)
+            ApplyTint(levelObjects[i]);
+    }
+
+    private void ApplyTint(GameObject go)
+    {
+        if (go == null)
+            return;
+
+        Renderer[] renderers = go.GetComponentsInChildren<Renderer>(true);
+        if (renderers == null || renderers.Length == 0)
+            return;
+
+        mpb ??= new MaterialPropertyBlock();
+        foreach (Renderer r in renderers)
+        {
+            if (r == null)
+                continue;
+            r.GetPropertyBlock(mpb);
+            mpb.SetColor(BaseColorId, hasTint ? tint : Color.white);
+            mpb.SetColor(ColorId, hasTint ? tint : Color.white);
+            r.SetPropertyBlock(mpb);
+        }
     }
 
     public void SetAmountMg(float amountMg)
@@ -52,7 +107,11 @@ public class PowderVisualLevelSwitcher : MonoBehaviour
         index = Mathf.Clamp(index, 0, levelObjects.Length - 1);
 
         if (levelObjects[index] != null)
+        {
             levelObjects[index].SetActive(true);
+            if (hasTint)
+                ApplyTint(levelObjects[index]);
+        }
     }
 
     public void SetMaxVisualMg(float value)

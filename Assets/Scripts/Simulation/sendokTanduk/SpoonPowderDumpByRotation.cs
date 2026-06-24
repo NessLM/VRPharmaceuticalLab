@@ -144,6 +144,15 @@ public class SpoonPowderDumpByRotation : MonoBehaviour
             dumpFx.transform.rotation = orientationReference.rotation;
         }
 
+        // Warna FX ikut bahan yang dipegang sendok (Sulfur kuning, Asam putih, dll).
+        if (hornSpoon != null)
+        {
+            ParticleSystem.MainModule main = dumpFx.main;
+            Color fxColor = hornSpoon.CurrentIngredientColor;
+            fxColor.a = main.startColor.color.a;
+            main.startColor = fxColor;
+        }
+
         dumpFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         dumpFx.Play(true);
     }

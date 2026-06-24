@@ -4,12 +4,12 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 /// <summary>
 /// Validasi gerus/aduk di mortar berbasis GERAKAN nyata (bukan timer).
 ///
-/// Saat aktif, jika stamper yang dipegang bergerak di dalam zona mortar, Progress01
-/// naik sebanding jarak gerakan. SalepProcedureManager menganggap step mixing selesai
-/// saat Progress01 mencapai 1. Ini memenuhi syarat "user benar-benar melakukan mixing,
-/// bukan sekadar menyentuh".
+/// CATATAN: versi lama mengandalkan trigger collider zona ini, tetapi collider tersebut
+/// ikut skala mortar (~45x) sehingga posisinya MELESET dari mangkuk (stamper tidak pernah
+/// masuk trigger → progress mandek). Versi ini meniru StamperController: deteksi kedekatan
+/// ujung stamper ke mortar via OverlapSphere, lalu akumulasi jarak gerak ujung stamper
+/// saat berada di dalam mortar dan sedang dipegang. Tidak bergantung pada collider zona.
 /// </summary>
-[RequireComponent(typeof(Collider))]
 [DisallowMultipleComponent]
 public sealed class SalepMortarMixZone : MonoBehaviour
 {
@@ -17,15 +17,23 @@ public sealed class SalepMortarMixZone : MonoBehaviour
     [Tooltip("Transform stamper. Kosong = auto cari object bernama 'Stamper'.")]
     [SerializeField] private Transform stamperTransform;
 
+    [Tooltip("Ujung stamper (child 'StamperTip'). Kosong = auto-resolve.")]
+    [SerializeField] private Transform stamperTip;
+
     [Tooltip("Wajib stamper sedang dipegang.")]
     [SerializeField] private bool requireHeld = true;
 
+    [Header("Deteksi kedekatan ke mortar (meniru StamperController)")]
+    [Tooltip("Radius OverlapSphere dari ujung stamper untuk mendeteksi MortarController.")]
+    [SerializeField] private float detectionRadius = 0.09f;
+    [SerializeField] private LayerMask mortarLayerMask = ~0;
+
     [Header("Tuning")]
-    [Tooltip("Total jarak gerakan stamper (meter) untuk menyelesaikan satu fase mixing.")]
-    [SerializeField] private float requiredTravelMeters = 1.2f;
+    [Tooltip("Total jarak gerakan ujung stamper (meter) untuk menyelesaikan satu fase mixing.")]
+    [SerializeField] private float requiredTravelMeters = 0.9f;
 
     [Tooltip("Gerakan di bawah ini (meter/frame) diabaikan sebagai noise.")]
-    [SerializeField] private float minMovePerFrame = 0.0005f;
+    [SerializeField] private float minMovePerFrame = 0.0008f;
 
     [Header("Debug (read-only)")]
     [SerializeField] private float accumulatedTravel;
@@ -33,23 +41,37 @@ public sealed class SalepMortarMixZone : MonoBehaviour
     [SerializeField] private bool active;
     [SerializeField] private bool stamperInside;
 
-    private Vector3 lastStamperPos;
+    private Vector3 lastTipPos;
     private bool hasLastPos;
 
     public float Progress01 => Mathf.Clamp01(progress01);
     public bool IsActive => active;
+    public bool StamperInside => stamperInside;
 
     private void Awake()
     {
+        // Collider zona lama (kalau ada) tidak lagi dipakai untuk deteksi; matikan agar
+        // tidak memicu trigger tak terduga pada sistem lain.
         Collider col = GetComponent<Collider>();
         if (col != null)
-            col.isTrigger = true;
+            col.enabled = false;
 
+        ResolveStamper();
+    }
+
+    private void ResolveStamper()
+    {
         if (stamperTransform == null)
         {
             GameObject stamper = GameObject.Find("Stamper");
             if (stamper != null)
                 stamperTransform = stamper.transform;
+        }
+
+        if (stamperTip == null && stamperTransform != null)
+        {
+            Transform tip = FindChildByName(stamperTransform, "StamperTip");
+            stamperTip = tip != null ? tip : stamperTransform;
         }
     }
 
@@ -71,35 +93,50 @@ public sealed class SalepMortarMixZone : MonoBehaviour
     public void ConfigureStamper(Transform stamper)
     {
         if (stamper != null)
+        {
             stamperTransform = stamper;
+            stamperTip = null;
+        }
+        ResolveStamper();
     }
 
-    private void OnTriggerStay(Collider other)
+    private void Update()
     {
-        if (!active || stamperTransform == null)
+        if (!active)
             return;
 
-        if (!IsStamper(other))
+        if (stamperTip == null)
+            ResolveStamper();
+
+        Transform tip = stamperTip != null ? stamperTip : stamperTransform;
+        if (tip == null)
             return;
 
-        if (requireHeld && !IsHeld(stamperTransform.gameObject))
+        if (requireHeld && !IsHeld(stamperTransform != null ? stamperTransform.gameObject : tip.gameObject))
+        {
+            hasLastPos = false;
+            stamperInside = false;
+            return;
+        }
+
+        // Apakah ujung stamper berada di dalam mortar? (sama seperti StamperController)
+        stamperInside = IsInsideMortar(tip.position);
+        if (!stamperInside)
         {
             hasLastPos = false;
             return;
         }
 
-        stamperInside = true;
-
-        Vector3 currentPos = stamperTransform.position;
+        Vector3 currentPos = tip.position;
         if (!hasLastPos)
         {
-            lastStamperPos = currentPos;
+            lastTipPos = currentPos;
             hasLastPos = true;
             return;
         }
 
-        float moved = Vector3.Distance(currentPos, lastStamperPos);
-        lastStamperPos = currentPos;
+        float moved = Vector3.Distance(currentPos, lastTipPos);
+        lastTipPos = currentPos;
 
         if (moved < minMovePerFrame)
             return;
@@ -108,28 +145,28 @@ public sealed class SalepMortarMixZone : MonoBehaviour
         progress01 = Mathf.Clamp01(accumulatedTravel / Mathf.Max(0.05f, requiredTravelMeters));
     }
 
-    private void OnTriggerExit(Collider other)
+    private bool IsInsideMortar(Vector3 tipPosition)
     {
-        if (IsStamper(other))
+        Collider[] hits = Physics.OverlapSphere(tipPosition, detectionRadius, mortarLayerMask);
+        foreach (Collider hit in hits)
         {
-            stamperInside = false;
-            hasLastPos = false;
-        }
-    }
-
-    private bool IsStamper(Collider other)
-    {
-        if (stamperTransform == null || other == null)
-            return false;
-
-        Transform t = other.transform;
-        while (t != null)
-        {
-            if (t == stamperTransform)
+            if (hit == null)
+                continue;
+            if (hit.GetComponentInParent<MortarController>() != null)
                 return true;
-            t = t.parent;
         }
         return false;
+    }
+
+    private static Transform FindChildByName(Transform root, string childName)
+    {
+        if (root == null)
+            return null;
+        Transform[] all = root.GetComponentsInChildren<Transform>(true);
+        foreach (Transform t in all)
+            if (t != null && t.name == childName)
+                return t;
+        return null;
     }
 
     private static bool IsHeld(GameObject go)

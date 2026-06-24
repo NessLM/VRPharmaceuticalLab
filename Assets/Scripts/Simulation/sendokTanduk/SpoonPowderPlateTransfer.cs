@@ -114,6 +114,68 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
             actionPrompt.ClearExternalPrompt();
     }
 
+    /// <summary>Atur jumlah (mg) yang diambil per trigger dari piring. Dipakai Salep per bahan.</summary>
+    public void SetTransferStepMg(float value)
+    {
+        transferStepMg = Mathf.Max(1f, value);
+    }
+
+    /// <summary>Set sumber bubuk (piring kiri) yang akan diambil. Aman dipanggil ulang.</summary>
+    public void ConfigurePlateSource(PowderDepositZone zone, Transform sourcePoint = null)
+    {
+        if (zone != null)
+            powderDepositZone = zone;
+        if (sourcePoint != null)
+            powderSourcePoint = sourcePoint;
+    }
+
+    /// <summary>Set penerima bubuk (mortar). Aman dipanggil ulang.</summary>
+    public void ConfigureMortarReceiver(Component receiver, Transform targetPoint = null)
+    {
+        if (receiver != null)
+            mortarReceiver = receiver;
+        if (targetPoint != null)
+            mortarTargetPoint = targetPoint;
+    }
+
+    private bool _fxOriginalCaptured;
+    private Color _scoopFxOriginal = Color.white;
+    private Color _pourFxOriginal = Color.white;
+
+    /// <summary>Warnai FX scoop/pour sesuai bahan (Salep). Menyimpan warna asli untuk dipulihkan.</summary>
+    public void SetFxColor(Color color)
+    {
+        CaptureFxOriginals();
+        ApplyFxColor(scoopFx, color);
+        ApplyFxColor(pourFx, color);
+    }
+
+    /// <summary>Kembalikan warna FX ke aslinya (mis. supaya Sirup tidak terpengaruh).</summary>
+    public void ClearFxColor()
+    {
+        if (!_fxOriginalCaptured)
+            return;
+        ApplyFxColor(scoopFx, _scoopFxOriginal);
+        ApplyFxColor(pourFx, _pourFxOriginal);
+    }
+
+    private void CaptureFxOriginals()
+    {
+        if (_fxOriginalCaptured)
+            return;
+        if (scoopFx != null) _scoopFxOriginal = scoopFx.main.startColor.color;
+        if (pourFx != null) _pourFxOriginal = pourFx.main.startColor.color;
+        _fxOriginalCaptured = true;
+    }
+
+    private static void ApplyFxColor(ParticleSystem fx, Color color)
+    {
+        if (fx == null)
+            return;
+        ParticleSystem.MainModule main = fx.main;
+        main.startColor = color;
+    }
+
     private void OnActivated(ActivateEventArgs args)
     {
         if (!transferEnabled)

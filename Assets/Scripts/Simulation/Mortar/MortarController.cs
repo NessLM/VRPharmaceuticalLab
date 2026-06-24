@@ -114,6 +114,18 @@ public class MortarController : MonoBehaviour
 
     private Vector3[] powderOriginalScales;
     private float lastStirMotionTime = float.NegativeInfinity;
+    private bool powderVisualSuppressed;
+
+    /// <summary>
+    /// Saat true, visual bubuk bawaan MortarController (Bubuk_Level_*) dimatikan total.
+    /// Dipakai workflow Salep agar visual dua-warna (SalepMortarVisual) tidak tertutup
+    /// blob cream MortarController. Tidak memengaruhi data/mixing, hanya rendering powder.
+    /// </summary>
+    public void SetPowderVisualSuppressed(bool suppressed)
+    {
+        powderVisualSuppressed = suppressed;
+        RefreshVisuals();
+    }
 
     private void Awake()
     {
@@ -451,6 +463,10 @@ public class MortarController : MonoBehaviour
             if (powderLevelObjects[i] != null)
                 powderLevelObjects[i].SetActive(false);
         }
+
+        // Salep: visual bubuk bawaan dimatikan, biar SalepMortarVisual yang tampil.
+        if (powderVisualSuppressed)
+            return;
 
         if (IsEmpty && hideWhenEmpty)
             return;

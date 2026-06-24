@@ -16,6 +16,7 @@ public class PowderVisualLevelSwitcher : MonoBehaviour
     public float CurrentMg { get; private set; }
 
     private bool hasTint;
+    private bool suppressed;
     private Color tint = Color.white;
     private MaterialPropertyBlock mpb;
     private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -82,6 +83,17 @@ public class PowderVisualLevelSwitcher : MonoBehaviour
         ApplyVisual(CurrentMg);
     }
 
+    /// <summary>
+    /// Sembunyikan total visual bubuk (dipakai saat menampilkan visual krim Vaselin di
+    /// piring agar tidak menumpuk dengan mound bubuk). Saat true, ApplyVisual menyembunyikan
+    /// semua level dan mengabaikan SetAmountMg sampai di-set false lagi.
+    /// </summary>
+    public void SetSuppressed(bool value)
+    {
+        suppressed = value;
+        ApplyVisual(CurrentMg);
+    }
+
     public void Clear()
     {
         SetAmountMg(0f);
@@ -97,6 +109,9 @@ public class PowderVisualLevelSwitcher : MonoBehaviour
             if (levelObjects[i] != null)
                 levelObjects[i].SetActive(false);
         }
+
+        if (suppressed)
+            return;
 
         if (amountMg <= 0.001f && hideWhenZero)
             return;
@@ -118,6 +133,24 @@ public class PowderVisualLevelSwitcher : MonoBehaviour
     {
         maxVisualMg = Mathf.Max(1f, value);
         ApplyVisual(CurrentMg);
+    }
+
+    /// <summary>Mesh granul bubuk paling representatif (level terbesar) untuk dipakai ulang
+    /// di tempat lain, mis. visual bubuk mortar Salep.</summary>
+    public Mesh GetRepresentativeGranuleMesh()
+    {
+        if (levelObjects == null)
+            return null;
+
+        for (int i = levelObjects.Length - 1; i >= 0; i--)
+        {
+            if (levelObjects[i] == null)
+                continue;
+            MeshFilter mf = levelObjects[i].GetComponentInChildren<MeshFilter>(true);
+            if (mf != null && mf.sharedMesh != null)
+                return mf.sharedMesh;
+        }
+        return null;
     }
 
 #if UNITY_EDITOR

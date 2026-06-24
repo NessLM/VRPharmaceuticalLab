@@ -43,6 +43,7 @@ public class PowderDepositZone : MonoBehaviour
     public UnityEvent<float> onPowderDeposited;
 
     private float warningTimer;
+    private WorldWarningLabel autoWarningLabel;
 
     private readonly Dictionary<HornSpoon, int> spoonContactCounts = new Dictionary<HornSpoon, int>();
     private readonly HashSet<HornSpoon> depositedDuringCurrentContact = new HashSet<HornSpoon>();
@@ -50,6 +51,16 @@ public class PowderDepositZone : MonoBehaviour
     public float DepositedMg => depositedMg;
     public float DepositedGrams => depositedMg / 1000f;
     public bool HasPowder => depositedMg > 0.001f;
+
+    /// <summary>Kapasitas/target maksimum pan saat ini (mg). Dipakai visual krim untuk skala.</summary>
+    public float MaxDepositMg => maxDepositMg;
+
+    /// <summary>Switcher visual bubuk pada piring kiri (untuk di-suppress saat menampilkan krim).</summary>
+    public PowderVisualLevelSwitcher DepositVisual => depositVisual;
+
+    /// <summary>Jumlah (mg) yang dideposit per kontak sendok. Dipakai Salep untuk
+    /// override target batch tanpa kehilangan per-scoop yang sudah dikonfigurasi.</summary>
+    public float DepositStepMg => depositStepMg;
 
     public bool AcceptDeposits => acceptDeposits;
 
@@ -109,7 +120,7 @@ public class PowderDepositZone : MonoBehaviour
 
         if (!HasAcceptedTarget())
         {
-            ShowWarning("Taruh anak timbangan kanan dulu!");
+            ShowWarning("Taruh anak timbangan di piring kanan dulu ya, baru bisa menimbang.");
             onTargetNotAccepted?.Invoke();
             return;
         }
@@ -236,6 +247,12 @@ public class PowderDepositZone : MonoBehaviour
             depositVisual.ClearTint();
     }
 
+    /// <summary>Mesh granul bubuk dari plate (untuk dipakai ulang di visual mortar Salep).</summary>
+    public Mesh GetDepositGranuleMesh()
+    {
+        return depositVisual != null ? depositVisual.GetRepresentativeGranuleMesh() : null;
+    }
+
     public void ConfigureForRecipe(float stepMg, float maxMg, float visualMaxMg)
     {
         depositStepMg = Mathf.Max(1f, stepMg);
@@ -288,8 +305,21 @@ public class PowderDepositZone : MonoBehaviour
 
     private void ShowWarning(string message)
     {
+        // Jika warningText tidak di-wire di scene, buat label peringatan world-space yang
+        // ramah (panel amber + ikon "!") secara otomatis di atas piring kiri.
         if (warningText == null)
+        {
+            if (autoWarningLabel == null)
+            {
+                Collider col = GetComponent<Collider>();
+                Vector3 pos = col != null ? col.bounds.center + Vector3.up * 0.18f
+                                          : transform.position + Vector3.up * 0.18f;
+                autoWarningLabel = WorldWarningLabel.Create(transform, pos);
+            }
+            autoWarningLabel.Show(message, warningDuration);
+            warningTimer = warningDuration;
             return;
+        }
 
         warningText.text = message;
         warningText.gameObject.SetActive(true);

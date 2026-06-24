@@ -1,0 +1,23 @@
+{
+    "asset": "6c9575b5388780544b7979bd4e4d4b11",
+    "fileName": "019ef41f-02c4-765b-9428-aebd9b14ff00.glb",
+    "prompt": "A single dollop of white petroleum jelly (Vaseline / Vaselin Album), a glossy semi-solid ointment blob with soft rounded creamy peaks, pristine ivory-white, smooth wet shiny surface, like a thick scoop of cream.",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "517ab769364c99c4ba4452bef5ef6f7c",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

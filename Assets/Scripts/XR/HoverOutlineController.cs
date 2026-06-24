@@ -14,6 +14,7 @@ public class HoverOutlineController : MonoBehaviour
 {
     private Outlinable _outlinable;
     private XRGrabInteractable _grabInteractable;
+    private bool _procedureHold;
 
     private void Awake()
     {
@@ -24,7 +25,20 @@ public class HoverOutlineController : MonoBehaviour
         if (_outlinable.OutlineTargetsCount == 0)
             _outlinable.AddAllChildRenderersToRenderingList(RenderersAddingMode.MeshRenderer);
 
-        _outlinable.enabled = false;
+        if (!_procedureHold)
+            _outlinable.enabled = false;
+    }
+
+    /// <summary>
+    /// Saat aktif, outline dikunci ON oleh prosedur (penanda step) dan event hover/grab
+    /// TIDAK akan mematikannya. Dipakai SalepProcedureManager agar outline step tetap
+    /// terlihat sebagai penanda walau toples di-hover atau digenggam.
+    /// </summary>
+    public void SetProcedureHold(bool hold)
+    {
+        _procedureHold = hold;
+        if (_outlinable != null)
+            _outlinable.enabled = hold || (_grabInteractable != null && _grabInteractable.isHovered);
     }
 
     private void OnEnable()
@@ -42,6 +56,6 @@ public class HoverOutlineController : MonoBehaviour
     }
 
     private void OnHoverEnter(HoverEnterEventArgs args) => _outlinable.enabled = true;
-    private void OnHoverExit(HoverExitEventArgs args) => _outlinable.enabled = false;
-    private void OnSelect(SelectEnterEventArgs args) => _outlinable.enabled = false;
+    private void OnHoverExit(HoverExitEventArgs args) => _outlinable.enabled = _procedureHold;
+    private void OnSelect(SelectEnterEventArgs args) => _outlinable.enabled = _procedureHold;
 }

@@ -88,6 +88,16 @@ public sealed class SalepProcedureManager : MonoBehaviour
     [SerializeField] private GameObject potContentVisual;
     [SerializeField] private Vector3 potContentFullScale = new Vector3(0.04f, 0.02f, 0.04f);
 
+    [Header("Step 9 - Sudip -> Pot Workflow")]
+    [Tooltip("StamperResidueController di Stamper (sisa salep di ujung). Auto-resolve jika kosong.")]
+    [SerializeField] private StamperResidueController stamperResidue;
+    [Tooltip("Visual salep menempel di ujung Sudip. Auto-dibuat jika kosong.")]
+    [SerializeField] private SudipSalepVisual sudipSalepVisual;
+    [Tooltip("Ujung Sudip (SudipTip) untuk menempelkan visual salep & deteksi. Auto-resolve.")]
+    [SerializeField] private Transform sudipTip;
+    [Tooltip("Tutup Pot Salep (BottleLid pada JarLidVisual). Wajib dibuka sebelum menuang. Auto-resolve.")]
+    [SerializeField] private BottleLid potLid;
+
     [Header("Reset")]
     [SerializeField] private SimulationResetManager resetManager;
 
@@ -108,6 +118,19 @@ public sealed class SalepProcedureManager : MonoBehaviour
     private bool etiketAttached;
     private float mortarBaselineMg;
 
+    // --- Step 9 (salep -> pot) mini state machine ---
+    private enum PotPhase { CleanStamper, OpenPot, DepositToPot }
+    private PotPhase potPhase;
+
+    // --- Per-step "timbang lalu tuang ke mortar" mini state machine (Sulfur & Vaselin) ---
+    private enum WeighPourPhase { Weighing, Pouring }
+    private WeighPourPhase weighPourPhase;
+    private int batchesDoneInStep;
+    private int batchesNeededInStep;
+    private float batchTargetMg;
+    private string currentIngredientId;
+    private float pourBaselineMortarMg;
+
     private const int StepCount = 10;
 
     [Header("Step Text (editable dari Inspector)")]
@@ -118,10 +141,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
         "Pasang perkamen pada neraca",
         "Timbang Asam Salisilat 200 mg",
         "Masukkan Asam Salisilat ke Mortar",
-        "Timbang Sulfur PP 400 mg",
-        "Masukkan Sulfur PP ke Mortar",
+        "Sulfur PP Batch 1/2: timbang 200 mg + tuang",
+        "Sulfur PP Batch 2/2: timbang 200 mg + tuang",
         "Gerus serbuk hingga homogen",
-        "Timbang Vaselin Album 9,4 g",
+        "Timbang Vaselin Album 10 g (2\u00d75 g)",
         "Aduk hingga jadi salep homogen",
         "Pindahkan salep ke Pot Salep",
         "Pasang etiket pada pot"
@@ -135,10 +158,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
         "Ambil perkamen, letakkan di piring timbangan sampai stabil.",
         "Anak timbangan 200 mg di piring kanan, isi Asam Salisilat sampai seimbang.",
         "Ambil Asam Salisilat dari piring (trigger), tuang ke mortar, lalu reset timbangan.",
-        "Anak timbangan 400 mg di piring kanan, isi Sulfur PP sampai seimbang.",
-        "Ambil Sulfur PP dari piring (trigger), tuang ke mortar, lalu reset timbangan.",
+        "Batch 1/2: timbang Sulfur PP 200 mg di piring, lalu tuang ke mortar (trigger).",
+        "Batch 2/2: timbang Sulfur PP 200 mg lagi, tuang ke mortar, lalu reset timbangan.",
         "Gerus serbuk dengan stamper sampai homogen.",
-        "Anak timbangan di piring kanan, ambil Vaselin per 2 g sampai 9,4 g.",
+        "Timbang Vaselin Album 2\u00d7 5 g; tiap batch tuang ke mortar sebelum batch berikutnya, lalu reset timbangan.",
         "Aduk Vaselin dengan serbuk sampai jadi salep homogen.",
         "Tahan alat berisi salep di atas pot sampai berpindah.",
         "Pilih etiket lalu tempel ke pot salep."
@@ -149,10 +172,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
         "Pasang perkamen pada neraca",
         "Timbang Asam Salisilat 200 mg",
         "Masukkan Asam Salisilat ke Mortar",
-        "Timbang Sulfur PP 400 mg",
-        "Masukkan Sulfur PP ke Mortar",
+        "Sulfur PP Batch 1/2: timbang 200 mg + tuang",
+        "Sulfur PP Batch 2/2: timbang 200 mg + tuang",
         "Gerus serbuk hingga homogen",
-        "Timbang Vaselin Album 9,4 g",
+        "Timbang Vaselin Album 10 g (2\u00d75 g)",
         "Aduk hingga jadi salep homogen",
         "Pindahkan salep ke Pot Salep",
         "Pasang etiket pada pot"
@@ -180,6 +203,27 @@ public sealed class SalepProcedureManager : MonoBehaviour
     private float MixRequired => recipe != null ? Mathf.Clamp01(recipe.mixProgressRequired) : 1f;
     private float AsamTargetMg => recipe != null ? recipe.asamSalisilat.TargetTotalMg : 200f;
     private float SulfurTargetMg => recipe != null ? recipe.sulfurPP.TargetTotalMg : 400f;
+    private float VaselinTargetMg => recipe != null ? recipe.vaselinAlbum.TargetTotalMg : 10000f;
+
+    // Ukuran gundukan serbuk keseluruhan (0..1) berbasis isi mortar — MONOTONIK: tumbuh
+    // dari Asam lalu Sulfur tanpa menyusut antar batch.
+    private float PowderAmount01()
+    {
+        if (mortarController == null)
+            return 1f;
+        float total = AsamTargetMg + SulfurTargetMg;
+        return total > 0f ? Mathf.Clamp01(mortarController.CurrentPowderMg / total) : 1f;
+    }
+
+    // Ukuran krim Vaselin (0..1) berbasis Vaselin yang sudah masuk mortar (di atas serbuk).
+    private float CreamAmount01()
+    {
+        if (mortarController == null)
+            return 1f;
+        float vaselinIn = mortarController.CurrentPowderMg - (AsamTargetMg + SulfurTargetMg);
+        return VaselinTargetMg > 0f ? Mathf.Clamp01(vaselinIn / VaselinTargetMg) : 1f;
+    }
+
     private string AsamId => recipe != null ? recipe.asamSalisilat.ingredientId : "AsamSalisilat";
     private string SulfurId => recipe != null ? recipe.sulfurPP.ingredientId : "SulfurPP";
     private string VaselinId => recipe != null ? recipe.vaselinAlbum.ingredientId : "VaselinAlbum";
@@ -324,16 +368,23 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 return EvaluateTransferToMortar(AsamTargetMg, recipe != null ? recipe.asamSalisilat.displayName : "Asam Salisilat", false);
 
             case SalepStep.Step_04_WeighSulfurPP:
-                return EvaluateWeighing(4);
+                // Batch 1/2 Sulfur: timbang 200 mg lalu tuang ke mortar. Bobot tidak direset
+                // (anak timbangan 200 mg dipakai lagi untuk batch 2 di Step 5).
+                return EvaluateWeighAndPour(SulfurId, SulfurTargetMg * 0.5f, 1, 100f,
+                    GetIngredientColor(SulfurId), SalepMortarPhase.PowderMix, false);
 
             case SalepStep.Step_05_MoveSulfurToMortar:
-                return EvaluateTransferToMortar(SulfurTargetMg, recipe != null ? recipe.sulfurPP.displayName : "Sulfur PP", true);
+                // Batch 2/2 Sulfur: timbang 200 mg lalu tuang; di akhir wajib reset timbangan.
+                return EvaluateWeighAndPour(SulfurId, SulfurTargetMg * 0.5f, 1, 100f,
+                    GetIngredientColor(SulfurId), SalepMortarPhase.PowderMix, true);
 
             case SalepStep.Step_06_GrindPowders:
                 return EvaluateMix(false);
 
             case SalepStep.Step_07_WeighVaselinAlbum:
-                return EvaluateWeighing(7);
+                // Dua batch 5 g (pan maks 5 g): tiap batch ditimbang lalu dituang ke mortar.
+                return EvaluateWeighAndPour(VaselinId, VaselinTargetMg * 0.5f, 2, 1000f,
+                    GetIngredientColor(VaselinId), SalepMortarPhase.CreamAdded, true);
 
             case SalepStep.Step_08_MixOintment:
                 return EvaluateMix(true);
@@ -365,6 +416,205 @@ public sealed class SalepProcedureManager : MonoBehaviour
         return bench.WeighingTargetReached;
     }
 
+    // Mini state machine reusable: untuk satu step, timbang 'batchTargetMg' di piring lalu
+    // tuang ke mortar, ulangi 'batchesNeeded' kali. Mengembalikan true saat seluruh batch
+    // pada step ini selesai. Tidak mengandalkan bench.WeighingTargetReached (pakai sub-target).
+    private bool EvaluateWeighAndPour(
+        string ingredientId,
+        float batchTargetMg,
+        int batchesNeeded,
+        float pourStepMg,
+        Color fxColor,
+        SalepMortarPhase enterPhase,
+        bool requireWeightResetAtEnd)
+    {
+        if (depositZone == null || mortarController == null)
+            return false;
+
+        string displayName = GetIngredientDisplayName(ingredientId);
+        int batchNumber = batchesDoneInStep + 1; // 1-based batch yang sedang dikerjakan
+
+        // ---------- FASE A: TIMBANG ----------
+        if (weighPourPhase == WeighPourPhase.Weighing)
+        {
+            float cur = depositZone.DepositedMg;
+            bool atTarget = depositZone.IsAtTargetMg(batchTargetMg, Tolerance) || cur >= batchTargetMg - Tolerance;
+
+            if (!atTarget)
+            {
+                if (progressText != null)
+                    progressText.text =
+                        $"{displayName} \u2014 Batch {batchNumber}/{batchesNeeded}: timbang {FormatAmount(ingredientId, batchTargetMg)} " +
+                        $"({FormatAmount(ingredientId, cur)}/{FormatAmount(ingredientId, batchTargetMg)})";
+                return false;
+            }
+
+            // Sub-target tercapai → cue lalu beralih ke fase tuang.
+            if (progressText != null)
+                progressText.text = $"{displayName} \u2014 Batch {batchNumber}/{batchesNeeded} tepat! Tuang ke mortar.";
+
+            EnterPourPhase(pourStepMg, fxColor, enterPhase);
+            return false;
+        }
+
+        // ---------- FASE B: TUANG KE MORTAR ----------
+        float moved = Mathf.Max(0f, mortarController.CurrentPowderMg - pourBaselineMortarMg);
+        bool movedDone = moved >= batchTargetMg - Tolerance;
+        bool panEmpty = depositZone.DepositedMg <= 0.1f;
+
+        // Visual mortar: serbuk/cream bahan ini muncul & TUMBUH saat dituang.
+        if (bench != null && moved > 0.5f)
+        {
+            float amt = enterPhase == SalepMortarPhase.CreamAdded ? CreamAmount01() : PowderAmount01();
+            bench.SetMortarPhase(enterPhase, GetEnterPhaseFill(enterPhase), amt);
+        }
+
+        if (!(movedDone && panEmpty))
+        {
+            // Fase tuang: sorot mortar + arahkan arrow ke mortar.
+            SetMortarMoveResetGuidance(false);
+            if (progressText != null)
+                progressText.text =
+                    $"{displayName} \u2014 Batch {batchNumber}/{batchesNeeded}: tuang ke mortar " +
+                    $"({FormatAmount(ingredientId, moved)}/{FormatAmount(ingredientId, batchTargetMg)}).\n" +
+                    "Ambil bubuk dari piring (trigger), lalu tuang ke mortar.";
+            return false;
+        }
+
+        bool isLastBatch = batchesDoneInStep + 1 >= batchesNeeded;
+
+        // Reset anak timbangan hanya di akhir step (batch terakhir) jika diminta.
+        if (isLastBatch && requireWeightResetAtEnd)
+        {
+            bool panCleared = IsRightPanCleared();
+            SetMortarMoveResetGuidance(!panCleared);
+            if (progressText != null)
+                progressText.text = panCleared
+                    ? $"{displayName} sudah masuk ke mortar dan timbangan sudah direset."
+                    : $"{displayName} sudah masuk ke mortar.\nAnak timbangan masih di piring kanan \u2014 tekan tombol RESET timbangan.";
+            if (!panCleared)
+                return false;
+        }
+
+        // Batch ini selesai.
+        batchesDoneInStep++;
+
+        if (batchesDoneInStep >= batchesNeeded)
+            return true; // seluruh step selesai
+
+        // Masih ada batch berikutnya → kembali ke fase timbang dengan cue jelas.
+        if (progressText != null)
+            progressText.text =
+                $"{displayName} \u2014 Batch {batchesDoneInStep + 1}/{batchesNeeded}: timbang {FormatAmount(ingredientId, batchTargetMg)} lagi.";
+
+        BeginBatchWeighPhase(ingredientId, batchTargetMg);
+        return false;
+    }
+
+    // Siapkan step untuk pola timbang-lalu-tuang: reset counter batch lalu mulai fase timbang.
+    private void SetupWeighAndPour(string ingredientId, float perBatchTargetMg, int batchesNeeded)
+    {
+        currentIngredientId = ingredientId;
+        batchTargetMg = perBatchTargetMg;
+        batchesNeededInStep = Mathf.Max(1, batchesNeeded);
+        batchesDoneInStep = 0;
+        BeginBatchWeighPhase(ingredientId, perBatchTargetMg);
+    }
+
+    // Mulai (atau ulang) fase TIMBANG satu batch: piring menerima deposit dengan target
+    // sub-batch, bahan ini boleh di-scoop dari jar, transfer pan→mortar dimatikan.
+    private void BeginBatchWeighPhase(string ingredientId, float perBatchTargetMg)
+    {
+        weighPourPhase = WeighPourPhase.Weighing;
+
+        // BeginWeighing menyiapkan tint, gating scoop, dan wajib anak timbangan kanan.
+        // Lalu kita override MAX deposit ke sub-target batch (per-scoop dipertahankan).
+        if (bench != null)
+            bench.BeginWeighing(ingredientId);
+
+        if (depositZone != null)
+        {
+            depositZone.SetDepositMg(0f);
+            depositZone.ConfigureForRecipe(depositZone.DepositStepMg, perBatchTargetMg, perBatchTargetMg);
+            depositZone.SetAcceptingDeposits(true);
+        }
+
+        // Pan→mortar OFF selama menimbang.
+        if (spoonPlateTransfer != null)
+            spoonPlateTransfer.SetTransferEnabled(false);
+    }
+
+    // Beralih ke fase TUANG: kunci deposit, aktifkan transfer pan→mortar, catat baseline mortar.
+    private void EnterPourPhase(float pourStepMg, Color fxColor, SalepMortarPhase enterPhase)
+    {
+        weighPourPhase = WeighPourPhase.Pouring;
+
+        pourBaselineMortarMg = mortarController != null ? mortarController.CurrentPowderMg : 0f;
+
+        if (depositZone != null)
+            depositZone.SetAcceptingDeposits(false);
+
+        if (bench != null)
+            bench.SetScoopableIngredient(null);
+
+        if (spoonPlateTransfer != null)
+        {
+            spoonPlateTransfer.ConfigurePlateSource(depositZone, null);
+            if (mortarController != null)
+                spoonPlateTransfer.ConfigureMortarReceiver(mortarController, mortarController.transform);
+            spoonPlateTransfer.SetTransferStepMg(pourStepMg);
+            spoonPlateTransfer.SetFxColor(fxColor);
+            // Vaselin = krim (gumpalan jatuh), bahan lain = debu serbuk.
+            bool isVaselin = currentIngredientId == VaselinId;
+            spoonPlateTransfer.SetCreamPourMode(isVaselin, fxColor);
+            spoonPlateTransfer.SetTransferEnabled(true);
+        }
+
+        if (mortarTransferZone != null)
+            mortarTransferZone.SetActive(false);
+
+        // JANGAN tampilkan enterPhase di sini — itu membuat serbuk/krim bahan baru muncul
+        // di mortar SEBELUM benar-benar dituang. Mortar tetap menampilkan isi sebelumnya
+        // (di-set di ApplyStepSetup). enterPhase baru dipakai di FASE B saat moved > 0.5.
+    }
+
+    private static float GetEnterPhaseFill(SalepMortarPhase phase)
+    {
+        switch (phase)
+        {
+            case SalepMortarPhase.PowderMix:
+                return 0f;   // serbuk masih terpisah (belum digerus)
+            case SalepMortarPhase.CreamAdded:
+                return 0.7f; // cream/vaselin masuk di atas serbuk
+            default:
+                return 0.5f;
+        }
+    }
+
+    private string GetIngredientDisplayName(string ingredientId)
+    {
+        if (recipe != null)
+        {
+            SalepRecipeDefinition.Ingredient ing = recipe.GetById(ingredientId);
+            if (ing != null && !string.IsNullOrEmpty(ing.displayName))
+                return ing.displayName;
+        }
+
+        if (!string.IsNullOrEmpty(ingredientId))
+        {
+            if (ingredientId == SulfurId) return "Sulfur PP";
+            if (ingredientId == VaselinId) return "Vaselin Album";
+        }
+        return "Asam Salisilat";
+    }
+
+    // Format jumlah sesuai bahan (Vaselin dalam gram, lainnya mg).
+    private string FormatAmount(string ingredientId, float mg)
+    {
+        bool grams = !string.IsNullOrEmpty(ingredientId) && ingredientId == VaselinId;
+        return grams ? $"{mg / 1000f:0.#} g" : $"{mg:0} mg";
+    }
+
     private bool EvaluateTransferToMortar(float targetMg, string displayName, bool isSecondPowder)
     {
         // Sumber kemajuan = jumlah bubuk yang benar-benar masuk mortar (pola Sirup),
@@ -374,10 +624,31 @@ public sealed class SalepProcedureManager : MonoBehaviour
             : 0f;
         bool movedDone = moved >= targetMg - Tolerance;
 
-        // Saat Sulfur mulai masuk, tampilkan dua serbuk terpisah di mortar
-        // (Asam putih kiri, Sulfur kuning kanan), belum homogen.
-        if (isSecondPowder && bench != null)
-            bench.SetMortarPhase(moved > 0.5f ? SalepMortarPhase.PowderMix : SalepMortarPhase.AsamPowder, 0f);
+        // Visual mortar tumbuh sesuai bubuk yang BENAR-BENAR sudah dituang — mulai KOSONG.
+        // (Bug lama: serbuk langsung muncul saat masuk step walau 0 mg dituang.)
+        if (bench != null)
+        {
+            float poured01 = targetMg > 0f ? Mathf.Clamp01(moved / targetMg) : 0f;
+            if (moved <= 0.5f)
+            {
+                // Belum ada yang dituang. Bahan pertama (Asam) → mortar kosong. Bahan kedua
+                // → mortar sudah berisi Asam dari step sebelumnya (jangan dikosongkan).
+                bench.SetMortarPhase(
+                    isSecondPowder ? SalepMortarPhase.AsamPowder : SalepMortarPhase.Empty,
+                    isSecondPowder ? 0.5f : 0f);
+            }
+            else if (isSecondPowder)
+            {
+                // Serbuk kedua masuk → dua serbuk terpisah (Asam putih + Sulfur kuning).
+                bench.SetMortarPhase(SalepMortarPhase.PowderMix, 0f);
+            }
+            else
+            {
+                // Serbuk pertama (Asam) masuk → mound putih tumbuh dari kecil ke penuh
+                // mengikuti jumlah yang sudah benar-benar dituang.
+                bench.SetMortarPhase(SalepMortarPhase.AsamPowder, Mathf.Clamp01(poured01));
+            }
+        }
 
         if (!movedDone)
         {
@@ -414,7 +685,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
         int index = GetStepIndex(currentStep);
 
         if (stepHighlights != null && index >= 0 && index < stepHighlights.Length && stepHighlights[index] != null)
-            stepHighlights[index].enabled = !resetPhase;
+            SetHighlight(stepHighlights[index], !resetPhase);
 
         if (balanceResetHighlight != null)
             balanceResetHighlight.enabled = resetPhase;
@@ -433,7 +704,11 @@ public sealed class SalepProcedureManager : MonoBehaviour
         }
         else if (mortarController != null)
         {
-            string ingredient = currentStep == SalepStep.Step_03_MoveAsamToMortar ? "Asam" : "Sulfur";
+            string ingredient = currentStep == SalepStep.Step_03_MoveAsamToMortar
+                ? "Asam"
+                : currentStep == SalepStep.Step_07_WeighVaselinAlbum
+                    ? "Vaselin"
+                    : "Sulfur";
             arrow.Configure(mortarController.transform, $"\u2193\nMortar\nMasukkan {ingredient}", new Vector3(0f, 0.42f, 0f));
             arrow.SetVisible(true);
         }
@@ -455,6 +730,47 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
     private bool EvaluatePotTransfer()
     {
+        // FASE 1: Bersihkan ujung stamper pakai sudip.
+        if (potPhase == PotPhase.CleanStamper)
+        {
+            bool cleaned = stamperResidue == null || stamperResidue.IsCleaned;
+            if (!cleaned)
+            {
+                if (progressText != null)
+                    progressText.text = "Stamper penuh salep di ujungnya.\nBersihkan dengan Sudip (pegang sudip, gosok ujung stamper).";
+                return false;
+            }
+
+            // Sudah bersih → salep berpindah ke sudip (muncul visual di ujung sudip).
+            if (sudipSalepVisual != null && !sudipSalepVisual.IsLoaded)
+                sudipSalepVisual.Load();
+
+            potPhase = PotPhase.OpenPot;
+        }
+
+        // FASE 2: Buka tutup Pot Salep.
+        if (potPhase == PotPhase.OpenPot)
+        {
+            bool potOpen = potLid == null || potLid.IsOpen;
+            if (!potOpen)
+            {
+                if (progressText != null)
+                    progressText.text = "Salep sudah di Sudip.\nAmbil & dekatkan Pot Salep, lalu BUKA tutupnya.";
+                return false;
+            }
+
+            // Pot terbuka → aktifkan zona dwell pot untuk menerima sudip.
+            if (potTransferZone != null && !potTransferZone.IsActive)
+            {
+                potTransferZone.ResetZone();
+                potTransferZone.SetRequiredIngredient(VaselinId, true);
+                potTransferZone.SetActive(true);
+            }
+
+            potPhase = PotPhase.DepositToPot;
+        }
+
+        // FASE 3: Tuang salep dari sudip ke pot (dwell).
         if (potTransferZone == null)
             return false;
 
@@ -462,9 +778,16 @@ public sealed class SalepProcedureManager : MonoBehaviour
         UpdatePotVisual(p);
 
         if (progressText != null)
-            progressText.text = $"Memindahkan salep ke pot: {p * 100f:0}%.\nTahan sendok/mortar berisi salep di atas pot.";
+            progressText.text = $"Masukkan salep ke pot pakai Sudip: {p * 100f:0}%.\nTahan Sudip berisi salep di atas Pot.";
 
-        return p >= 0.999f;
+        if (p >= 0.999f)
+        {
+            if (sudipSalepVisual != null)
+                sudipSalepVisual.Unload();
+            return true;
+        }
+
+        return false;
     }
 
     private void UpdateMixVisual(bool isVaselinPhase, float progress)
@@ -584,6 +907,12 @@ public sealed class SalepProcedureManager : MonoBehaviour
         if (potContentVisual != null)
             potContentVisual.SetActive(false);
 
+        if (sudipSalepVisual != null)
+            sudipSalepVisual.Unload();
+
+        if (stamperResidue != null)
+            stamperResidue.ClearResidue();
+
         if (doneIcon != null)
             doneIcon.SetActive(false);
 
@@ -642,19 +971,22 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 break;
 
             case SalepStep.Step_03_MoveAsamToMortar:
-                bench?.SetMortarPhase(SalepMortarPhase.AsamPowder, 0.35f);
+                // Mortar KOSONG saat masuk step. Serbuk baru muncul saat benar-benar dituang
+                // (lihat EvaluateTransferToMortar — visual tumbuh sesuai jumlah yang masuk).
+                bench?.SetMortarPhase(SalepMortarPhase.Empty, 0f);
                 ActivateMortarTransfer(AsamId);
                 break;
 
             case SalepStep.Step_04_WeighSulfurPP:
-                bench?.BeginWeighing(SulfurId);
+                // Batch 1/2 Sulfur. Mortar masih berisi Asam (putih) dari Step 3.
+                bench?.SetMortarPhase(SalepMortarPhase.AsamPowder, 0.5f);
+                SetupWeighAndPour(SulfurId, SulfurTargetMg * 0.5f, 1);
                 break;
 
             case SalepStep.Step_05_MoveSulfurToMortar:
-                // Awal Step 5: hanya Asam (putih) yang sudah ada di mortar. Sulfur (kuning)
-                // muncul terpisah saat dituang (lihat EvaluateTransferToMortar).
-                bench?.SetMortarPhase(SalepMortarPhase.AsamPowder, 0.5f);
-                ActivateMortarTransfer(SulfurId);
+                // Batch 2/2 Sulfur. Mortar sudah berisi Asam + 200 mg Sulfur dari batch 1.
+                bench?.SetMortarPhase(SalepMortarPhase.PowderMix, 0f);
+                SetupWeighAndPour(SulfurId, SulfurTargetMg * 0.5f, 1);
                 break;
 
             case SalepStep.Step_06_GrindPowders:
@@ -663,7 +995,9 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 break;
 
             case SalepStep.Step_07_WeighVaselinAlbum:
-                bench?.BeginWeighing(VaselinId);
+                // Dua batch 5 g (pan maks 5 g). Mortar berisi serbuk homogen dari Step 6.
+                bench?.SetMortarPhase(SalepMortarPhase.PowdersHomogeneous, 1f);
+                SetupWeighAndPour(VaselinId, VaselinTargetMg * 0.5f, 2);
                 break;
 
             case SalepStep.Step_08_MixOintment:
@@ -755,12 +1089,33 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
     private void ActivatePotTransfer()
     {
-        if (potTransferZone == null)
-            return;
+        // Mulai dari fase bersihkan stamper. Salep jadi masih ada di mortar/ujung stamper.
+        potPhase = PotPhase.CleanStamper;
 
-        potTransferZone.ResetZone();
-        potTransferZone.SetRequiredIngredient(VaselinId, true);
-        potTransferZone.SetActive(true);
+        if (bench != null)
+            bench.SetMortarPhase(SalepMortarPhase.SalepHomogeneous, 1f);
+
+        // Tampilkan sisa salep di ujung stamper untuk dibersihkan pakai sudip.
+        // Warnai jadi salep (kuning) + sedikit perbesar — bukan putih Difenhidramin.
+        if (stamperResidue != null)
+        {
+            stamperResidue.ApplySalepAppearance(new Color(0.80f, 0.60f, 0.22f), 1.6f);
+            stamperResidue.ShowResidue();
+        }
+
+        // Sudip masih kosong; pot belum perlu zona dwell sampai fase deposit.
+        if (sudipSalepVisual != null)
+            sudipSalepVisual.Unload();
+
+        if (potTransferZone != null)
+        {
+            potTransferZone.ResetZone();
+            potTransferZone.SetRequiredIngredient(VaselinId, true);
+            potTransferZone.SetActive(false);
+        }
+
+        if (potContentVisual != null)
+            potContentVisual.SetActive(false);
     }
 
     private void BeginEtiket()
@@ -824,10 +1179,25 @@ public sealed class SalepProcedureManager : MonoBehaviour
     private void SetGuidanceForStep(int index, bool active)
     {
         if (stepHighlights != null && index < stepHighlights.Length && stepHighlights[index] != null)
-            stepHighlights[index].enabled = active;
+            SetHighlight(stepHighlights[index], active);
 
         if (stepArrows != null && index < stepArrows.Length && stepArrows[index] != null)
             stepArrows[index].SetVisible(active);
+    }
+
+    // Nyalakan/matikan outline penanda step. Jika target punya HoverOutlineController
+    // (mis. toples bahan), kunci outline lewat SetProcedureHold supaya event hover/grab
+    // tidak mematikannya — outline tetap jadi penanda sepanjang step aktif.
+    private void SetHighlight(Outlinable outline, bool active)
+    {
+        if (outline == null)
+            return;
+
+        HoverOutlineController hover = outline.GetComponent<HoverOutlineController>();
+        if (hover != null)
+            hover.SetProcedureHold(active);
+        else
+            outline.enabled = active;
     }
 
     private void SetAllGuidance(bool active)
@@ -837,7 +1207,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
             foreach (Outlinable highlight in stepHighlights)
             {
                 if (highlight != null)
-                    highlight.enabled = active;
+                    SetHighlight(highlight, active);
             }
         }
 
@@ -936,6 +1306,32 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         if (etiketWorkflow == null)
             etiketWorkflow = GetComponent<EtiketWorkflow>();
+
+        // --- Step 9 Sudip -> Pot workflow ---
+        if (stamperResidue == null && stamper != null)
+            stamperResidue = stamper.GetComponent<StamperResidueController>();
+        if (stamperResidue == null)
+            stamperResidue = FindFirstObjectByType<StamperResidueController>(FindObjectsInactive.Include);
+        if (stamperResidue != null && mortarController != null)
+            stamperResidue.BindMortar(mortarController);
+
+        if (sudipTip == null && sudip != null)
+        {
+            Transform tip = sudip.Find("SudipTip");
+            sudipTip = tip != null ? tip : sudip;
+        }
+
+        if (sudipSalepVisual == null && sudip != null)
+        {
+            sudipSalepVisual = sudip.GetComponentInChildren<SudipSalepVisual>(true);
+            if (sudipSalepVisual == null)
+                sudipSalepVisual = sudip.gameObject.AddComponent<SudipSalepVisual>();
+        }
+        if (sudipSalepVisual != null)
+            sudipSalepVisual.Configure(sudipTip);
+
+        if (potLid == null && potSalep != null)
+            potLid = potSalep.GetComponentInChildren<BottleLid>(true);
     }
 
     private static int GetStepIndex(SalepStep step)

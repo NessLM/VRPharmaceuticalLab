@@ -69,7 +69,7 @@ public sealed class SalepRecipeDefinition : ScriptableObject
     {
         ingredientId = "VaselinAlbum",
         displayName = "Vaselin Album",
-        amountPerScoopMg = 2000f,
+        amountPerScoopMg = 1000f,
         targetTotalMg = 10000f,
         displayInGrams = true,
         visualType = IngredientVisualType.CreamOintment,

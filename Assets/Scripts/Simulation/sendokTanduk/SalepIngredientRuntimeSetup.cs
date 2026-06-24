@@ -13,7 +13,7 @@ public static class SalepIngredientRuntimeSetup
     private const float AsamTargetMg = 200f;
     private const float SulfurScoopMg = 100f;
     private const float SulfurTargetMg = 400f;
-    private const float VaselinScoopMg = 2000f;    // 2 g per scoop
+    private const float VaselinScoopMg = 1000f;    // 1 g per scoop
     private const float VaselinTargetMg = 10000f;  // 10 g sesuai resep
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -66,14 +66,19 @@ public static class SalepIngredientRuntimeSetup
             FindObjectsInactive.Include);
         if (spoon != null)
         {
-            spoon.ConfigureIngredientScoopSupport(true, 0.085f);
+            // PENTING: matikan legacy direct-scoop (Physics.OverlapSphere per-frame yang
+            // mengisi sendok 80 mg/s saat ujung sendok dekat toples). Itu penyebab
+            // "didekatkan + nunggu → sendok penuh" tanpa trigger. Difenhidramin tidak
+            // pernah mengaktifkannya, jadi dia trigger-only. Scoop Salep sekarang HANYA
+            // lewat trigger ScoopBottleTarget (animasi sendok masuk-keluar), sama persis.
+            spoon.ConfigureIngredientScoopSupport(false, 0.085f);
             spoon.EnsureCreamVisual(creamMaterial != null ? creamMaterial : asamMaterial);
         }
 
-        BindBench(spoon);
+        BindBench(spoon, creamMaterial);
     }
 
-    private static void BindBench(HornSpoon spoon)
+    private static void BindBench(HornSpoon spoon, Material creamMaterial)
     {
         PowderDepositZone depositZone = Object.FindFirstObjectByType<PowderDepositZone>(
             FindObjectsInactive.Include);
@@ -94,6 +99,17 @@ public static class SalepIngredientRuntimeSetup
                 ? depositZone.gameObject
                 : (mortar != null ? mortar.gameObject : new GameObject("[SYS] SalepBench"));
             bench = host.AddComponent<SalepBench>();
+        }
+
+        // Visual krim Vaselin di piring (menggantikan mound bubuk saat menimbang Vaselin).
+        if (depositZone != null)
+        {
+            PowderVisualLevelSwitcher switcher = depositZone.DepositVisual;
+            SalepPanCreamVisual panCream = depositZone.GetComponent<SalepPanCreamVisual>();
+            if (panCream == null)
+                panCream = depositZone.gameObject.AddComponent<SalepPanCreamVisual>();
+            panCream.Setup(depositZone, switcher, creamMaterial);
+            bench.SetPanCream(panCream);
         }
 
         bench.Bind(depositZone, spoon, mortar, asam, sulfur, vaselin);
@@ -166,7 +182,12 @@ public static class SalepIngredientRuntimeSetup
         // Sinkronkan scoop amount pada ScoopBottleTarget jika ada.
         ScoopBottleTarget scoopTarget = jar.GetComponentInChildren<ScoopBottleTarget>(true);
         if (scoopTarget != null)
+        {
             scoopTarget.ApplyProfileScoopAmount();
+            // Gaya Difenhidramin: scoop hanya lewat trigger + animasi sendok masuk-keluar,
+            // bukan "didekatkan langsung dapat".
+            scoopTarget.SetAutoScoop(false);
+        }
 
         return material;
     }
@@ -227,7 +248,11 @@ public static class SalepIngredientRuntimeSetup
 
         ScoopBottleTarget scoopTarget = jar.GetComponentInChildren<ScoopBottleTarget>(true);
         if (scoopTarget != null)
+        {
             scoopTarget.ApplyProfileScoopAmount();
+            // Gaya Difenhidramin: scoop hanya lewat trigger + animasi sendok masuk-keluar.
+            scoopTarget.SetAutoScoop(false);
+        }
 
         return material;
     }

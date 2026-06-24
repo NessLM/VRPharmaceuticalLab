@@ -1,0 +1,31 @@
+{
+    "asset": "3222e484a19b295418033033d162f6e1",
+    "fileName": "019ef66f-46c1-7787-b0a7-c341ea639df6.jpg",
+    "prompt": "Seamless tileable top-down macro texture of very fine pharmaceutical powder, ultra-fine matte white milled powder, soft smooth surface with tiny subtle undulations, looks like sifted flour or fine medicinal powder, NO large grains, NO pebbles, NO crystals, even uniform soft studio lighting, neutral near-white, photorealistic",
+    "negativePrompt": "",
+    "model": "realistic-textures-3-0",
+    "modelName": "Realistic Textures 3.0",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0,
+    "dynamicParams": {
+        "serializedData": []
+    }
+}

@@ -31,7 +31,7 @@ MonoBehaviour:
   vaselinAlbum:
     ingredientId: VaselinAlbum
     displayName: Vaselin Album
-    amountPerScoopMg: 2000
+    amountPerScoopMg: 1000
     targetTotalMg: 10000
     displayInGrams: 1
     visualType: 2

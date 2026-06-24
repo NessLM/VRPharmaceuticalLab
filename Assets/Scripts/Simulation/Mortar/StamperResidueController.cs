@@ -30,8 +30,49 @@ public class StamperResidueController : MonoBehaviour
 
     private Vector3 residueOriginalScale = Vector3.one;
 
+    // Override penampilan untuk alur Salep (warna kuning + emisi + skala). Syrup tidak
+    // memanggil ini → tetap pakai material/skala bawaan (putih Difenhidramin).
+    private bool hasAppearanceOverride;
+    private Vector3 overrideScale = Vector3.one;
+    private Material overrideMaterialInstance;
+    private Vector3 EffectiveScale => hasAppearanceOverride ? overrideScale : residueOriginalScale;
+
     public bool HasResidue => hasResidue;
     public bool IsCleaned => !hasResidue;
+
+    /// <summary>
+    /// Alur Salep: ubah sisa di ujung stamper jadi BERWARNA SALEP (kuning) + emisi agar
+    /// jelas, dan perbesar sedikit. Material di-instance → aset bersama Syrup aman.
+    /// </summary>
+    public void ApplySalepAppearance(Color color, float scaleMultiplier)
+    {
+        if (residueVisual == null)
+            return;
+
+        // Pastikan skala dasar tersimpan (Awake mungkin menangkap nilai kecil).
+        if (residueOriginalScale == Vector3.zero)
+            residueOriginalScale = residueVisual.transform.localScale;
+
+        var mr = residueVisual.GetComponent<MeshRenderer>();
+        if (mr != null && mr.sharedMaterial != null)
+        {
+            if (overrideMaterialInstance == null)
+                overrideMaterialInstance = new Material(mr.sharedMaterial);
+            if (overrideMaterialInstance.HasProperty("_BaseColor"))
+                overrideMaterialInstance.SetColor("_BaseColor", color);
+            if (overrideMaterialInstance.HasProperty("_Color"))
+                overrideMaterialInstance.SetColor("_Color", color);
+            overrideMaterialInstance.EnableKeyword("_EMISSION");
+            overrideMaterialInstance.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            if (overrideMaterialInstance.HasProperty("_EmissionColor"))
+                overrideMaterialInstance.SetColor("_EmissionColor", color * 0.45f);
+            mr.sharedMaterial = overrideMaterialInstance;
+        }
+
+        Vector3 baseScale = residueOriginalScale == Vector3.zero ? Vector3.one * 0.01f : residueOriginalScale;
+        overrideScale = baseScale * Mathf.Max(0.1f, scaleMultiplier);
+        hasAppearanceOverride = true;
+    }
 
     private void Awake()
     {
@@ -122,7 +163,7 @@ public class StamperResidueController : MonoBehaviour
     private void ResetResiduePose()
     {
         if (residueVisual != null)
-            residueVisual.transform.localScale = residueOriginalScale;
+            residueVisual.transform.localScale = EffectiveScale;
     }
 
     private void SetResidueVisible(bool value)

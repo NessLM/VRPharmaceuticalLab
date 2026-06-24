@@ -176,6 +176,86 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
         main.startColor = color;
     }
 
+    private bool creamPourMode;
+    private ParticleSystem creamPourFx;
+    private Color creamColor = new Color(0.95f, 0.92f, 0.78f, 1f);
+
+    /// <summary>Aktifkan mode tuang KRIM (Vaselin): FX gumpalan krim jatuh, bukan debu serbuk.</summary>
+    public void SetCreamPourMode(bool value, Color color)
+    {
+        creamPourMode = value;
+        creamColor = color;
+    }
+
+    public void SetCreamPourMode(bool value)
+    {
+        creamPourMode = value;
+    }
+
+    private void EnsureCreamPourFx()
+    {
+        if (creamPourFx != null)
+            return;
+
+        GameObject fxObject = new GameObject("FX_PourCream");
+        fxObject.transform.SetParent(transform, false);
+
+        creamPourFx = fxObject.AddComponent<ParticleSystem>();
+        // ParticleSystem yang baru di-AddComponent otomatis "playing" → menyetel duration
+        // saat playing dilarang Unity. Hentikan & bersihkan dulu sebelum konfigurasi.
+        creamPourFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ParticleSystem.MainModule main = creamPourFx.main;
+        main.loop = false;
+        main.playOnAwake = false;
+        main.duration = 0.5f;
+        // Gumpalan krim: besar, lambat, jatuh karena gravity (bukan debu beterbangan).
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.6f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.02f, 0.08f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.012f, 0.026f);
+        main.gravityModifier = 0.5f;
+        main.maxParticles = 30;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.startColor = creamColor;
+
+        ParticleSystem.EmissionModule emission = creamPourFx.emission;
+        emission.enabled = false;
+        emission.rateOverTime = 0f;
+
+        ParticleSystem.ShapeModule shape = creamPourFx.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.angle = 6f;
+        shape.radius = 0.015f;
+        shape.rotation = new Vector3(90f, 0f, 0f); // arah ke bawah
+
+        ParticleSystemRenderer renderer = creamPourFx.GetComponent<ParticleSystemRenderer>();
+        if (renderer == null)
+            renderer = fxObject.AddComponent<ParticleSystemRenderer>();
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Sprites/Default");
+        if (shader != null)
+            renderer.sharedMaterial = new Material(shader) { name = "Runtime_CreamPourFX" };
+    }
+
+    private void PlayCreamPourFx(Transform target)
+    {
+        EnsureCreamPourFx();
+        if (creamPourFx == null)
+            return;
+
+        if (target != null)
+        {
+            creamPourFx.transform.position = target.position + Vector3.up * 0.06f;
+            creamPourFx.transform.rotation = Quaternion.identity;
+        }
+
+        ParticleSystem.MainModule main = creamPourFx.main;
+        main.startColor = creamColor;
+        creamPourFx.Emit(8);
+    }
+
     private void OnActivated(ActivateEventArgs args)
     {
         if (!transferEnabled)
@@ -260,7 +340,12 @@ public class SpoonPowderPlateTransfer : MonoBehaviour
                 PlayFxAt(scoopFx, powderSourcePoint);
 
             if (mode == TransferMode.PourToMortar)
-                PlayFxAt(pourFx, mortarTargetPoint);
+            {
+                if (creamPourMode)
+                    PlayCreamPourFx(mortarTargetPoint);
+                else
+                    PlayFxAt(pourFx, mortarTargetPoint);
+            }
         }
 
         if (holdTiltDuration > 0f)

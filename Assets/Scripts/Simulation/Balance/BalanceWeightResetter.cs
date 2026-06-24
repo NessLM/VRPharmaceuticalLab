@@ -36,6 +36,85 @@ public class BalanceWeightResetter : MonoBehaviour
     private void Awake()
     {
         SaveInitialPositions();
+        IgnoreInterWeightCollisions();
+    }
+
+    [Header("Anti-Bounce (collider)")]
+    [Tooltip("Collider baki tempat anak timbangan (weightbox). Tabrakan anak timbangan vs " +
+             "baki diabaikan agar tidak 'mental' saat digrab. Kosongkan untuk auto-cari " +
+             "object bernama mengandung 'weightbox'.")]
+    [SerializeField] private Collider[] trayColliders;
+
+    // BUG FIX (mental saat grab): anak timbangan tersusun rapat & melayang sedikit di atas
+    // baki, jadi collider-nya bisa tumpang tindih satu sama lain / dengan baki. Saat satu
+    // di-grab → jadi non-kinematic → PhysX mendorongnya keluar (depenetration) dengan impuls
+    // besar → terlempar. Solusi (TANPA mengubah gravity/feel): abaikan tabrakan ANTAR anak
+    // timbangan DAN anak timbangan vs baki. Anak timbangan tetap dinamis + gravity normal,
+    // tetap menabrak piring neraca & meja. Trigger (GrabCollider) otomatis dilewati.
+    private void IgnoreInterWeightCollisions()
+    {
+        var solidColliders = new List<Collider>();
+        foreach (WeightData data in savedWeights)
+        {
+            if (data.grab == null)
+                continue;
+            foreach (Collider col in data.grab.GetComponentsInChildren<Collider>(true))
+            {
+                if (col != null && !col.isTrigger)
+                    solidColliders.Add(col);
+            }
+        }
+
+        // Abaikan antar anak timbangan.
+        for (int i = 0; i < solidColliders.Count; i++)
+        {
+            for (int j = i + 1; j < solidColliders.Count; j++)
+            {
+                if (solidColliders[i] != null && solidColliders[j] != null)
+                    Physics.IgnoreCollision(solidColliders[i], solidColliders[j], true);
+            }
+        }
+
+        // Abaikan anak timbangan vs baki (weightbox), termasuk weightboxsusulan.
+        List<Collider> trays = ResolveTrayColliders();
+        foreach (Collider tray in trays)
+        {
+            if (tray == null || tray.isTrigger)
+                continue;
+            foreach (Collider weight in solidColliders)
+            {
+                if (weight != null)
+                    Physics.IgnoreCollision(weight, tray, true);
+            }
+        }
+    }
+
+    private List<Collider> ResolveTrayColliders()
+    {
+        var trays = new List<Collider>();
+
+        if (trayColliders != null)
+        {
+            foreach (Collider c in trayColliders)
+                if (c != null) trays.Add(c);
+        }
+
+        if (trays.Count == 0)
+        {
+            // Auto-cari semua object bernama mengandung "weightbox" di scene.
+            foreach (Transform t in Object.FindObjectsByType<Transform>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (t == null)
+                    continue;
+                if (t.name.IndexOf("weightbox", System.StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+                foreach (Collider c in t.GetComponents<Collider>())
+                    if (c != null) trays.Add(c);
+            }
+        }
+
+        return trays;
     }
 
     private void SaveInitialPositions()
@@ -127,7 +206,19 @@ public class BalanceWeightResetter : MonoBehaviour
                 data.rb.isKinematic = data.originalKinematic;
                 data.rb.useGravity = data.originalUseGravity;
             }
+
+            // Kembalikan state interaksi WeightItem (hasBeenPickedUp=false, terkunci di baki)
+            // supaya tidak perlu reset dua kali dan tetap tenang sampai di-grab lagi.
+            if (data.grab != null)
+            {
+                WeightItem item = data.grab.GetComponent<WeightItem>();
+                if (item != null)
+                    item.ResetInteractionState();
+            }
         }
+
+        // Re-assert: IgnoreCollision bisa hilang bila collider sempat di-disable/enable.
+        IgnoreInterWeightCollisions();
     }
 
     private void ForceRelease(XRGrabInteractable grab)

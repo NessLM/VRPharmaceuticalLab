@@ -1,0 +1,31 @@
+{
+    "asset": "517ab769364c99c4ba4452bef5ef6f7c",
+    "fileName": "019ef370-7e4a-7fc3-9f22-aad2c4e2aafd.png",
+    "prompt": "A single dollop of white petroleum jelly (Vaseline / Vaselin Album), a glossy translucent semi-solid ointment blob with soft rounded peaks like a scoop of thick cream, pristine slightly off-white ivory color, wet shiny surface highlights, photorealistic studio product photography, soft even lighting, centered single object, no container, no spoon, plain flat neutral light-grey background.",
+    "negativePrompt": "",
+    "model": "gemini-3.0-pro",
+    "modelName": "Gemini 3.0 Pro",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0,
+    "dynamicParams": {
+        "serializedData": []
+    }
+}

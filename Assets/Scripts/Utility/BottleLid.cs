@@ -13,9 +13,11 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 ///   4. Wire onOpened / onClosed events as needed (e.g., to PillBottleController).
 ///
 /// Behavior:
-///   - Grab lid → lid detaches from bottle (IsOpen = true).
-///   - Release lid near bottle mouth (within snapRadius) → auto-snaps back (IsOpen = false).
-///   - Release lid far from bottle → drops with gravity (pick it up and bring back to close again).
+///   - Grab lid → lid detaches from bottle (IsOpen = true), bisa dibawa bebas.
+///   - Release DEKAT mulut botol (≤ snapRadius) → menutup (snap balik).
+///   - Release di antara → jatuh dengan gravity (bisa diambil lagi).
+///   - Jika tutup TERLALU JAUH dari botolnya (≥ autoReturnDistance) → otomatis balik ke
+///     botol (jarak yang memicu auto-return), supaya tidak pernah hilang.
 /// </summary>
 [RequireComponent(typeof(XRGrabInteractable), typeof(Rigidbody))]
 public class BottleLid : MonoBehaviour
@@ -27,11 +29,18 @@ public class BottleLid : MonoBehaviour
     [Header("Closed Anchor")]
     [Tooltip("Empty Transform placed at the bottle mouth (world position where lid sits when closed).")]
     [SerializeField] private Transform closedAnchor;
-    [Tooltip("Distance (world units) within which releasing the lid triggers auto-snap back to bottle.")]
+    [Tooltip("Jarak (m) di mana melepas tutup akan langsung menutup ke botol.")]
     [SerializeField] private float snapRadius = 0.08f;
 
+    [Header("Auto Return By Distance")]
+    [Tooltip("Jika ON, saat tutup terlalu jauh dari botolnya ia otomatis kembali ke botol.")]
+    [SerializeField] private bool autoReturnWhenFar = true;
+    [Tooltip("Ambang jarak (m) dari posisi tertutup. Jika jarak tutup ≥ nilai ini, tutup " +
+             "otomatis balik ke botol — baik saat dilepas maupun saat menggelinding jauh.")]
+    [SerializeField] private float autoReturnDistance = 0.45f;
+
     [Header("Physics")]
-    [Tooltip("When dropped far from bottle, lid falls with gravity.")]
+    [Tooltip("Saat dijatuhkan (jarak menengah), tutup memakai gravity agar mendarat wajar di meja.")]
     [SerializeField] private bool useGravityWhenDropped = true;
 
     [Header("Debug")]
@@ -47,9 +56,31 @@ public class BottleLid : MonoBehaviour
     private XRGrabInteractable _grab;
     private Rigidbody _rb;
 
+    private Transform _homeParent;
+    private Vector3 _homeLocalPosition;
+    private Quaternion _homeLocalRotation;
+    private Vector3 _homeLocalScale = Vector3.one;
+    private bool _homeCaptured;
+
     private void Awake()
     {
         ResolveComponents();
+        CaptureHome();
+    }
+
+    private void CaptureHome()
+    {
+        if (_homeCaptured)
+            return;
+
+        _homeParent = transform.parent;
+        _homeLocalPosition = transform.localPosition;
+        _homeLocalRotation = transform.localRotation;
+        _homeLocalScale = transform.localScale; // simpan skala asli → cegah tutup "mengecil"
+        _homeCaptured = true;
+
+        if (bottleRoot == null && _homeParent != null)
+            bottleRoot = _homeParent;
     }
 
     private void OnEnable()
@@ -92,17 +123,50 @@ public class BottleLid : MonoBehaviour
 
     private void OnReleased(SelectExitEventArgs args)
     {
-        if (closedAnchor != null)
+        float dist = Vector3.Distance(transform.position, GetClosedWorldPosition());
+
+        // Dekat mulut botol → tutup.
+        if (dist <= snapRadius)
         {
-            float dist = Vector3.Distance(transform.position, closedAnchor.position);
-            if (dist <= snapRadius)
-            {
-                SnapToClosed(fireEvent: true);
-                return;
-            }
+            SnapToClosed(fireEvent: true);
+            return;
         }
 
+        // Terlalu jauh → otomatis balik ke botol (jarak yang memicu auto-return).
+        if (autoReturnWhenFar && dist >= autoReturnDistance)
+        {
+            SnapToClosed(fireEvent: true);
+            return;
+        }
+
+        // Jarak menengah → jatuh wajar dengan gravity, masih bisa diambil lagi.
         DropLid();
+    }
+
+    private void Update()
+    {
+        // Jaring pengaman: jika tutup (tidak sedang dipegang) menggelinding TERLALU JAUH
+        // dari botolnya, kembalikan otomatis supaya tidak pernah hilang.
+        if (!autoReturnWhenFar || !IsOpen)
+            return;
+
+        if (_grab != null && _grab.isSelected)
+            return;
+
+        float dist = Vector3.Distance(transform.position, GetClosedWorldPosition());
+        if (dist >= autoReturnDistance)
+            SnapToClosed(fireEvent: true);
+    }
+
+    private Vector3 GetClosedWorldPosition()
+    {
+        if (closedAnchor != null)
+            return closedAnchor.position;
+        if (_homeCaptured && _homeParent != null)
+            return _homeParent.TransformPoint(_homeLocalPosition);
+        if (_homeCaptured)
+            return _homeLocalPosition;
+        return transform.position;
     }
 
     private void SnapToClosed(bool fireEvent)
@@ -118,12 +182,25 @@ public class BottleLid : MonoBehaviour
             _rb.useGravity = false;
         }
 
-        if (bottleRoot != null)
-            transform.SetParent(bottleRoot, true);
-
-        if (closedAnchor != null)
+        // Selalu kembalikan ke pose awal lewat parent + local pos/rot/SCALE tersimpan.
+        // Memakai localScale tersimpan mencegah tutup tampak "mengecil/membesar" akibat
+        // perhitungan ulang skala saat re-parent (parent ber-skala non-1).
+        if (_homeCaptured)
         {
+            transform.SetParent(_homeParent, false);
+            transform.localPosition = _homeLocalPosition;
+            transform.localRotation = _homeLocalRotation;
+            transform.localScale = _homeLocalScale;
+        }
+        else if (closedAnchor != null)
+        {
+            if (bottleRoot != null)
+                transform.SetParent(bottleRoot, true);
             transform.SetPositionAndRotation(closedAnchor.position, closedAnchor.rotation);
+        }
+        else if (bottleRoot != null)
+        {
+            transform.SetParent(bottleRoot, true);
         }
 
         if (fireEvent)
@@ -139,13 +216,11 @@ public class BottleLid : MonoBehaviour
         if (_rb == null)
             return;
 
-        _rb.linearVelocity = Vector3.zero;
-        _rb.angularVelocity = Vector3.zero;
+        // Jatuh wajar: dinamis + gravity (jika diaktifkan) → mendarat di meja, bisa diambil.
+        _rb.isKinematic = false;
+        _rb.useGravity = useGravityWhenDropped;
 
-        _rb.useGravity = false;
-        _rb.isKinematic = true;
-
-        Log($"{gameObject.name} dropped and frozen in air");
+        Log($"{gameObject.name} dropped");
     }
     /// <summary>Programmatically force-closes the lid (re-snaps to bottle).</summary>
     public void ForceClose()

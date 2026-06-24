@@ -181,6 +181,17 @@ public sealed class ScoopBottleTarget : MonoBehaviour
         Log($"Spoon exited zone: {spoon.name}");
     }
 
+    /// <summary>
+    /// Aktif/nonaktifkan scoop otomatis saat ujung sendok masuk mulut toples.
+    /// Saat false, scoop HANYA terjadi lewat trigger (gaya Difenhidramin): tekan trigger
+    /// → animasi sendok masuk-keluar → sendok penuh. Dipakai setup Salep agar semua bahan
+    /// memakai gaya trigger yang sama, bukan "didekatkan langsung dapat".
+    /// </summary>
+    public void SetAutoScoop(bool enabled)
+    {
+        autoScoopWhenTipInside = enabled;
+    }
+
     /// <summary>Ambil ulang scoopAmountMg dari IngredientVisualProfile (dipanggil setup runtime).</summary>
     public void ApplyProfileScoopAmount()
     {

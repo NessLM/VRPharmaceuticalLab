@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Events;
 
 public enum BalanceBeamRotationAxis
@@ -45,6 +45,14 @@ public class MG_BalanceController : MonoBehaviour
     [Header("Calibration")]
     [SerializeField] private float maxBeamAngleDegrees = 60f;
     [SerializeField] private float maxImbalanceGrams = 0.15f;
+    [Tooltip("Jika ON, rentang kemiringan beam diskalakan ke massa anak timbangan (piring " +
+             "kanan), bukan nilai tetap. Ini membuat gerak beam tetap bertahap baik untuk " +
+             "50 mg maupun 5 g — tanpa ini, target gram besar bikin beam mentok lalu 'bum' " +
+             "setara di akhir.")]
+    [SerializeField] private bool scaleImbalanceToCounterweight = true;
+    [Tooltip("Batas bawah rentang imbalance (gram) saat penskalaan aktif, agar massa sangat " +
+             "kecil tetap punya rentang gerak wajar.")]
+    [SerializeField] private float minImbalanceGrams = 0.03f;
     [SerializeField] private float maxPanOffsetMeters = 0.04f;
     [SerializeField] private float balanceToleranceGrams = 0.005f;
     [SerializeField] private float smoothSpeed = 6f;
@@ -174,9 +182,21 @@ public class MG_BalanceController : MonoBehaviour
         onRightMassChanged?.Invoke(grams);
     }
 
+    // Rentang imbalance efektif. Saat penskalaan aktif, pakai massa terbesar dari kedua
+    // piring sebagai acuan full-tilt: piring kosong vs anak timbangan 5 g → beam full,
+    // lalu mendekati 0 secara bertahap saat bahan ditambah. Untuk 50 mg juga proporsional.
+    private float GetEffectiveImbalanceReference()
+    {
+        if (!scaleImbalanceToCounterweight)
+            return Mathf.Max(0.0001f, maxImbalanceGrams);
+
+        float reference = Mathf.Max(RightMassGrams, LeftMassGrams);
+        return Mathf.Max(minImbalanceGrams, reference);
+    }
+
     private void AnimateVisual()
     {
-        float safeMaxImbalance = Mathf.Max(0.0001f, maxImbalanceGrams);
+        float safeMaxImbalance = GetEffectiveImbalanceReference();
         float normalized = Mathf.Clamp(DifferenceGrams / safeMaxImbalance, -1f, 1f);
 
         float beamSign = invertBeamDirection ? -1f : 1f;
@@ -196,7 +216,7 @@ public class MG_BalanceController : MonoBehaviour
 
     private void ApplyImmediateVisual()
     {
-        float safeMaxImbalance = Mathf.Max(0.0001f, maxImbalanceGrams);
+        float safeMaxImbalance = GetEffectiveImbalanceReference();
         float normalized = Mathf.Clamp(DifferenceGrams / safeMaxImbalance, -1f, 1f);
 
         float beamSign = invertBeamDirection ? -1f : 1f;

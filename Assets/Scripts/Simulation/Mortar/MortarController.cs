@@ -163,6 +163,18 @@ public class MortarController : MonoBehaviour
         acceptingPowderTransfer = value;
     }
 
+    /// <summary>
+    /// Ubah kapasitas maksimum bubuk/isi mortar (mg). Default 3000 mg untuk Sirup, tapi
+    /// Salep butuh jauh lebih besar (600 mg serbuk + 10000 mg Vaselin). Tanpa ini, tuang
+    /// Vaselin berhenti di ~2.4 g karena mentok kapasitas. Aman dipanggil ulang.
+    /// </summary>
+    public void SetMaxCapacityMg(float value)
+    {
+        maxCapacityMg = Mathf.Max(1f, value);
+        currentAmountMg = Mathf.Clamp(currentAmountMg, 0f, maxCapacityMg);
+        RefreshVisuals();
+    }
+
     public float AddPowder(float amountMg)
     {
         if (requireExplicitPowderTransfer && !acceptingPowderTransfer)

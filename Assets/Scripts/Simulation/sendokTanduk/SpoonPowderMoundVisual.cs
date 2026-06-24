@@ -16,6 +16,14 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
     [SerializeField] private Material powderMaterial;
     [SerializeField] private bool regenerateOnStart = true;
 
+    [Header("Granular (butiran bubuk)")]
+    [Tooltip("Jika ON, permukaan diberi gundukan acak frekuensi tinggi agar tampak " +
+             "seperti tumpukan bubuk butiran, bukan kubah halus.")]
+    [SerializeField] private bool granular;
+    [Tooltip("Tinggi butiran sebagai fraksi moundHeight (mis. 0.35 = bergerigi jelas).")]
+    [SerializeField] private float grainAmount = 0.3f;
+    [SerializeField] private int grainSeed = 1337;
+
     private void Start()
     {
         if (regenerateOnStart)
@@ -43,6 +51,42 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
         noiseAmount = Mathf.Max(0f, newNoiseAmount);
         powderMaterial = newMaterial;
         Rebuild();
+    }
+
+    /// <summary>Konfigurasi dengan opsi butiran (granular) untuk tampilan bubuk tumpukan.</summary>
+    public void Configure(
+        float newRadiusX,
+        float newRadiusZ,
+        float newBaseHeight,
+        float newMoundHeight,
+        float newNoiseAmount,
+        Material newMaterial,
+        bool newGranular,
+        float newGrainAmount,
+        int newGrainSeed)
+    {
+        granular = newGranular;
+        grainAmount = Mathf.Clamp01(newGrainAmount);
+        grainSeed = newGrainSeed;
+        if (granular)
+        {
+            // Lebih banyak segmen/cincin agar butiran terbaca jelas.
+            radialSegments = Mathf.Max(radialSegments, 44);
+            rings = Mathf.Max(rings, 7);
+        }
+        Configure(newRadiusX, newRadiusZ, newBaseHeight, newMoundHeight, newNoiseAmount, newMaterial);
+    }
+
+    // Pseudo-random hash [-1,1] stabil per (i, ring) untuk gundukan butiran.
+    private float GrainHash(int i, int ring)
+    {
+        unchecked
+        {
+            int h = grainSeed;
+            h = h * 73856093 ^ i * 19349663 ^ ring * 83492791;
+            float v = ((h & 0x7fffffff) % 10000) / 10000f; // 0..1
+            return v * 2f - 1f;
+        }
     }
 
     public void Rebuild()
@@ -166,7 +210,10 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
             float inward = (float)ring / ringCount;
             float ringRadiusX = radiusX * (1f - inward);
             float ringRadiusZ = radiusZ * (1f - inward);
-            float y = baseHeight + moundHeight * inward * inward;
+
+            // Tinggi linier (kerucut) + sedikit runcing di puncak (sudut runtuh/repose serbuk alami)
+            // agar terlihat seperti tumpukan bubuk nyata, bukan pil kubah bulat.
+            float y = baseHeight + moundHeight * Mathf.Pow(inward, 0.88f);
 
             if (ring == ringCount)
             {
@@ -179,8 +226,26 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
             for (int i = 0; i < segments; i++)
             {
                 float angle = i * Mathf.PI * 2f / segments;
-                float wave = Mathf.Sin(angle * 3.2f + ring * 0.8f) * noiseAmount;
-                vertices.Add(new Vector3(Mathf.Cos(angle) * ringRadiusX, y + wave, Mathf.Sin(angle) * ringRadiusZ));
+
+                // Lipatan lereng alami (slip/collapse folds) pada tumpukan serbuk halus
+                float slopeWave = Mathf.Sin(angle * 4.5f + ring * 0.5f) * noiseAmount * 0.8f * (1f - inward);
+                float wave = Mathf.Sin(angle * 3.2f + ring * 0.8f) * noiseAmount + slopeWave;
+                float jx = 0f, jz = 0f;
+
+                if (granular)
+                {
+                    // Gundukan butiran acak; lebih kuat di tepi, menipis di puncak agar
+                    // tetap berbentuk tumpukan namun bertekstur seperti bubuk.
+                    float edgeFade = 1f - inward * 0.55f;
+                    wave += GrainHash(i, ring) * moundHeight * grainAmount * edgeFade;
+                    // Jitter horizontal kecil agar siluet tidak rapi seperti pil/elips,
+                    // melainkan bergerigi seperti tumpukan serbuk.
+                    float hj = Mathf.Min(ringRadiusX, ringRadiusZ) * 0.14f * grainAmount;
+                    jx = GrainHash(i + 991, ring) * hj;
+                    jz = GrainHash(i + 1733, ring) * hj;
+                }
+
+                vertices.Add(new Vector3(Mathf.Cos(angle) * ringRadiusX + jx, y + wave, Mathf.Sin(angle) * ringRadiusZ + jz));
                 normals.Add(Vector3.up);
                 uvs.Add(new Vector2(0.5f + Mathf.Cos(angle) * 0.5f, 0.5f + Mathf.Sin(angle) * 0.5f));
             }

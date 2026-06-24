@@ -184,6 +184,14 @@ public sealed class SalepTransferZone : MonoBehaviour
                 valid = requireHeld ? IsHeld(nearMortar.gameObject) : true;
         }
 
+        // Terima Sudip yang sedang membawa salep (visual ter-load) & sedang dipegang.
+        if (!valid)
+        {
+            SudipSalepVisual sudipComp = other.GetComponentInParent<SudipSalepVisual>();
+            if (sudipComp != null && sudipComp.IsLoaded)
+                valid = requireHeld ? IsHeld(sudipComp.gameObject) : true;
+        }
+
         if (!valid)
             return;
 

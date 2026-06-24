@@ -28,6 +28,9 @@ public sealed class SalepBench : MonoBehaviour
     [SerializeField] private IngredientVisualProfile sulfurProfile;
     [SerializeField] private IngredientVisualProfile vaselinProfile;
 
+    [Header("Visual krim di piring (Vaselin)")]
+    [SerializeField] private SalepPanCreamVisual panCream;
+
     [Header("Toleransi target (mg)")]
     [SerializeField] private float toleranceMg = 1f;
 
@@ -105,6 +108,13 @@ public sealed class SalepBench : MonoBehaviour
         Unsubscribe();
     }
 
+    /// <summary>Set komponen visual krim piring (Vaselin) dari setup runtime. Aman null.</summary>
+    public void SetPanCream(SalepPanCreamVisual cream)
+    {
+        if (cream != null)
+            panCream = cream;
+    }
+
     /// <summary>Bind semua referensi sekali; aman dipanggil ulang.</summary>
     public void Bind(
         PowderDepositZone newDepositZone,
@@ -148,7 +158,21 @@ public sealed class SalepBench : MonoBehaviour
         // Matikan visual bubuk bawaan MortarController supaya tidak menutup visual
         // dua-warna Salep (Asam putih + Sulfur kuning).
         if (mortar != null)
+        {
             mortar.SetPowderVisualSuppressed(true);
+            // Salep butuh kapasitas besar: 600 mg serbuk + 10000 mg Vaselin. Default Sirup
+            // (3000 mg) menyebabkan tuang Vaselin mentok di ~2.4 g. Naikkan ke 12000 mg.
+            mortar.SetMaxCapacityMg(12000f);
+        }
+
+        // Pakai mesh granul bubuk asli (dari plate timbangan) untuk mound mortar supaya
+        // terlihat seperti bubuk butiran, bukan bola halus.
+        if (mortarVisual != null && depositZone != null)
+        {
+            Mesh granule = depositZone.GetDepositGranuleMesh();
+            if (granule != null)
+                mortarVisual.ConfigureGranuleSource(granule);
+        }
     }
 
     private void Subscribe()
@@ -197,6 +221,16 @@ public sealed class SalepBench : MonoBehaviour
 
         if (panVisual != null)
             panVisual.ConfigureForIngredient(activeProfile, activeProfile.SpoonMaterial);
+
+        // Vaselin = krim semi-padat → tampilkan visual krim mengilap di piring (bukan bubuk).
+        // Bahan bubuk (Asam/Sulfur) → pastikan mode krim mati supaya mound bubuk normal tampil.
+        if (panCream != null)
+        {
+            if (activeProfile.IsCream)
+                panCream.Begin();
+            else
+                panCream.Stop();
+        }
     }
 
     /// <summary>Bersihkan visual pan timbangan (mis. setelah dipindah ke mortar / reset).</summary>
@@ -206,6 +240,8 @@ public sealed class SalepBench : MonoBehaviour
             depositZone.SetDepositMg(0f);
         if (panVisual != null)
             panVisual.Clear();
+        if (panCream != null)
+            panCream.Stop();
     }
 
     public void SetMortarPhase(SalepMortarPhase phase, float fill01)
@@ -213,6 +249,13 @@ public sealed class SalepBench : MonoBehaviour
         EnsureVisuals();
         if (mortarVisual != null)
             mortarVisual.SetPhase(phase, fill01);
+    }
+
+    public void SetMortarPhase(SalepMortarPhase phase, float fill01, float amount01)
+    {
+        EnsureVisuals();
+        if (mortarVisual != null)
+            mortarVisual.SetPhase(phase, fill01, amount01);
     }
 
     public void ResetAll()
@@ -233,7 +276,10 @@ public sealed class SalepBench : MonoBehaviour
 
         // Kembalikan visual bubuk MortarController untuk workflow Syrup/Difenhidramin.
         if (mortar != null)
+        {
             mortar.SetPowderVisualSuppressed(false);
+            mortar.SetMaxCapacityMg(3000f); // kembalikan default Sirup
+        }
 
         activeProfile = null;
         targetAnnounced = false;

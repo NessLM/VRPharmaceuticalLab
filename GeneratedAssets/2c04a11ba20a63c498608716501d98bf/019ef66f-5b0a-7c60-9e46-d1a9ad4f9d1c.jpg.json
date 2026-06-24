@@ -1,0 +1,31 @@
+{
+    "asset": "2c04a11ba20a63c498608716501d98bf",
+    "fileName": "019ef66f-5b0a-7c60-9e46-d1a9ad4f9d1c.jpg",
+    "prompt": "Seamless tileable top-down macro texture of smooth cosmetic ointment cream, pale ivory yellow medicinal salve, glossy soft surface with gentle swirls folds and a subtle sheen, looks like petroleum jelly mixed with fine powder, creamy and smooth NOT grainy, soft studio lighting, photorealistic",
+    "negativePrompt": "",
+    "model": "realistic-textures-3-0",
+    "modelName": "Realistic Textures 3.0",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0,
+    "dynamicParams": {
+        "serializedData": []
+    }
+}

@@ -24,6 +24,14 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
     [SerializeField] private float grainAmount = 0.3f;
     [SerializeField] private int grainSeed = 1337;
 
+    [Header("Irisan sudut (setengah kubah split warna)")]
+    [Tooltip("Jika ON, hanya membangun potongan kubah (wedge) dari startAngleDeg ke " +
+             "endAngleDeg + sebuah bidang potong rata sepanjang diameter agar setiap " +
+             "setengah tampak SOLID (tidak bolong). Dipakai untuk dome split dua warna.")]
+    [SerializeField] private bool angularSlice;
+    [SerializeField] private float startAngleDeg;
+    [SerializeField] private float endAngleDeg = 360f;
+
     private void Start()
     {
         if (regenerateOnStart)
@@ -77,6 +85,33 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
         Configure(newRadiusX, newRadiusZ, newBaseHeight, newMoundHeight, newNoiseAmount, newMaterial);
     }
 
+    /// <summary>
+    /// Konfigurasi dengan rentang sudut (wedge). startAngleDeg..endAngleDeg menentukan
+    /// potongan kubah; jika rentangnya &lt; 360° maka hanya separuh/seperempat kubah yang
+    /// dibangun + bidang potong rata sepanjang diameter (agar tampak solid, bukan bolong).
+    /// Dipakai untuk dome split dua warna (kiri Asam putih, kanan Sulfur kuning).
+    /// Lewatkan 0..360 untuk kubah penuh seperti biasa.
+    /// </summary>
+    public void Configure(
+        float newRadiusX,
+        float newRadiusZ,
+        float newBaseHeight,
+        float newMoundHeight,
+        float newNoiseAmount,
+        Material newMaterial,
+        bool newGranular,
+        float newGrainAmount,
+        int newGrainSeed,
+        float newStartAngleDeg,
+        float newEndAngleDeg)
+    {
+        startAngleDeg = newStartAngleDeg;
+        endAngleDeg = newEndAngleDeg;
+        angularSlice = Mathf.Abs(newEndAngleDeg - newStartAngleDeg) < 359.5f;
+        Configure(newRadiusX, newRadiusZ, newBaseHeight, newMoundHeight, newNoiseAmount, newMaterial,
+                  newGranular, newGrainAmount, newGrainSeed);
+    }
+
     // Pseudo-random hash [-1,1] stabil per (i, ring) untuk gundukan butiran.
     private float GrainHash(int i, int ring)
     {
@@ -125,9 +160,25 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
         var uvs = new List<Vector2>();
         var triangles = new List<int>();
 
-        AddBottom(vertices, normals, uvs, triangles, segments);
-        AddSide(vertices, normals, uvs, triangles, segments);
-        AddTop(vertices, normals, uvs, triangles, segments, ringCount);
+        if (angularSlice)
+        {
+            float startRad = startAngleDeg * Mathf.Deg2Rad;
+            float endRad = endAngleDeg * Mathf.Deg2Rad;
+            int arcSeg = Mathf.Max(2, Mathf.RoundToInt(segments * Mathf.Abs(endAngleDeg - startAngleDeg) / 360f));
+
+            AddBottomArc(vertices, normals, uvs, triangles, arcSeg, startRad, endRad);
+            AddSideArc(vertices, normals, uvs, triangles, arcSeg, startRad, endRad);
+            AddTopArc(vertices, normals, uvs, triangles, arcSeg, ringCount, startRad, endRad);
+            // Bidang potong rata di kedua ujung diameter agar setengah kubah tampak solid.
+            AddCutFace(vertices, normals, uvs, triangles, ringCount, startRad);
+            AddCutFace(vertices, normals, uvs, triangles, ringCount, endRad);
+        }
+        else
+        {
+            AddBottom(vertices, normals, uvs, triangles, segments);
+            AddSide(vertices, normals, uvs, triangles, segments);
+            AddTop(vertices, normals, uvs, triangles, segments, ringCount);
+        }
 
         Mesh mesh = new Mesh
         {
@@ -279,8 +330,200 @@ public sealed class SpoonPowderMoundVisual : MonoBehaviour
         }
     }
 
+// ---- Pembangun WEDGE (irisan sudut) untuk dome split dua warna ----
+
+private void AddBottomArc(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles, int arcSeg, float startRad, float endRad)
+{
+    int center = vertices.Count;
+    vertices.Add(Vector3.zero);
+    normals.Add(Vector3.down);
+    uvs.Add(new Vector2(0.5f, 0.5f));
+
+    int ringStart = vertices.Count;
+    for (int i = 0; i <= arcSeg; i++)
+    {
+        float angle = Mathf.Lerp(startRad, endRad, (float)i / arcSeg);
+        vertices.Add(new Vector3(Mathf.Cos(angle) * radiusX, 0f, Mathf.Sin(angle) * radiusZ));
+        normals.Add(Vector3.down);
+        uvs.Add(new Vector2(0.5f + Mathf.Cos(angle) * 0.5f, 0.5f + Mathf.Sin(angle) * 0.5f));
+    }
+
+    for (int i = 0; i < arcSeg; i++)
+    {
+        triangles.Add(center);
+        triangles.Add(ringStart + i);
+        triangles.Add(ringStart + i + 1);
+    }
+}
+
+private void AddSideArc(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles, int arcSeg, float startRad, float endRad)
+{
+    int start = vertices.Count;
+    for (int i = 0; i <= arcSeg; i++)
+    {
+        float angle = Mathf.Lerp(startRad, endRad, (float)i / arcSeg);
+        float x = Mathf.Cos(angle) * radiusX;
+        float z = Mathf.Sin(angle) * radiusZ;
+        Vector3 normal = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)).normalized;
+
+        vertices.Add(new Vector3(x, 0f, z));
+        normals.Add(normal);
+        uvs.Add(new Vector2((float)i / arcSeg, 0f));
+
+        vertices.Add(new Vector3(x, baseHeight, z));
+        normals.Add(normal);
+        uvs.Add(new Vector2((float)i / arcSeg, 1f));
+    }
+
+    for (int i = 0; i < arcSeg; i++)
+    {
+        int bottomLeft = start + i * 2;
+        int topLeft = bottomLeft + 1;
+        int bottomRight = start + (i + 1) * 2;
+        int topRight = bottomRight + 1;
+
+        triangles.Add(bottomLeft);
+        triangles.Add(topLeft);
+        triangles.Add(topRight);
+        triangles.Add(bottomLeft);
+        triangles.Add(topRight);
+        triangles.Add(bottomRight);
+    }
+}
+
+private void AddTopArc(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles, int arcSeg, int ringCount, float startRad, float endRad)
+{
+    int[] ringStarts = new int[ringCount + 1];
+    for (int ring = 0; ring <= ringCount; ring++)
+    {
+        ringStarts[ring] = vertices.Count;
+        float inward = (float)ring / ringCount;
+        float ringRadiusX = radiusX * (1f - inward);
+        float ringRadiusZ = radiusZ * (1f - inward);
+        float y = baseHeight + moundHeight * Mathf.Pow(inward, 0.88f);
+
+        if (ring == ringCount)
+        {
+            vertices.Add(new Vector3(0f, baseHeight + moundHeight, 0f));
+            normals.Add(Vector3.up);
+            uvs.Add(new Vector2(0.5f, 0.5f));
+            continue;
+        }
+
+        for (int i = 0; i <= arcSeg; i++)
+        {
+            float angle = Mathf.Lerp(startRad, endRad, (float)i / arcSeg);
+            bool boundary = i == 0 || i == arcSeg;
+
+            float slopeWave = Mathf.Sin(angle * 4.5f + ring * 0.5f) * noiseAmount * 0.8f * (1f - inward);
+            float wave = Mathf.Sin(angle * 3.2f + ring * 0.8f) * noiseAmount + slopeWave;
+            float jx = 0f, jz = 0f;
+
+            // Jangan beri butiran/jitter pada kolom tepi (boundary) supaya menempel
+            // rapat ke bidang potong rata (tidak ada celah di pertemuan dua setengah).
+            if (granular && !boundary)
+            {
+                float edgeFade = 1f - inward * 0.55f;
+                wave += GrainHash(i, ring) * moundHeight * grainAmount * edgeFade;
+                float hj = Mathf.Min(ringRadiusX, ringRadiusZ) * 0.14f * grainAmount;
+                jx = GrainHash(i + 991, ring) * hj;
+                jz = GrainHash(i + 1733, ring) * hj;
+            }
+            if (boundary)
+                wave = 0f; // tepi mengikuti profil meridian datar persis dengan cut face
+
+            vertices.Add(new Vector3(Mathf.Cos(angle) * ringRadiusX + jx, y + wave, Mathf.Sin(angle) * ringRadiusZ + jz));
+            normals.Add(Vector3.up);
+            uvs.Add(new Vector2(0.5f + Mathf.Cos(angle) * 0.5f, 0.5f + Mathf.Sin(angle) * 0.5f));
+        }
+    }
+
+    for (int ring = 0; ring < ringCount; ring++)
+    {
+        int outer = ringStarts[ring];
+        int inner = ringStarts[ring + 1];
+        bool last = ring == ringCount - 1;
+
+        for (int i = 0; i < arcSeg; i++)
+        {
+            int next = i + 1; // tanpa wrap-around (wedge terbuka)
+            if (last)
+            {
+                triangles.Add(outer + i);
+                triangles.Add(inner);
+                triangles.Add(outer + next);
+            }
+            else
+            {
+                triangles.Add(outer + i);
+                triangles.Add(inner + i);
+                triangles.Add(inner + next);
+                triangles.Add(outer + i);
+                triangles.Add(inner + next);
+                triangles.Add(outer + next);
+            }
+        }
+    }
+}
+
+// Bidang potong rata (vertikal) sepanjang radius pada sudut tertentu. Dibangun
+// double-sided dengan vertex sendiri agar selalu solid dari sisi mana pun.
+private void AddCutFace(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles, int ringCount, float angle)
+{
+    float cos = Mathf.Cos(angle);
+    float sin = Mathf.Sin(angle);
+
+    var boundary = new List<Vector3>();
+    // Tepi bawah (rim) lalu naik mengikuti meridian sampai puncak.
+    boundary.Add(new Vector3(cos * radiusX, 0f, sin * radiusZ));
+    for (int ring = 0; ring <= ringCount; ring++)
+    {
+        float inward = (float)ring / ringCount;
+        if (ring == ringCount)
+        {
+            boundary.Add(new Vector3(0f, baseHeight + moundHeight, 0f));
+            break;
+        }
+        float rrx = radiusX * (1f - inward);
+        float rrz = radiusZ * (1f - inward);
+        float y = baseHeight + moundHeight * Mathf.Pow(inward, 0.88f);
+        boundary.Add(new Vector3(cos * rrx, y, sin * rrz));
+    }
+
+    Vector3 p0 = Vector3.zero; // titik pusat dasar
+    for (int k = 0; k < boundary.Count - 1; k++)
+    {
+        AddDoubleTri(vertices, normals, uvs, triangles, p0, boundary[k], boundary[k + 1]);
+    }
+}
+
+private void AddDoubleTri(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles, Vector3 a, Vector3 b, Vector3 c)
+{
+    AddSingleTri(vertices, normals, uvs, triangles, a, b, c);
+    AddSingleTri(vertices, normals, uvs, triangles, a, c, b);
+}
+
+private void AddSingleTri(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles, Vector3 a, Vector3 b, Vector3 c)
+{
+    int s = vertices.Count;
+    Vector3 nor = Vector3.Cross(b - a, c - a).normalized;
+    vertices.Add(a); normals.Add(nor); uvs.Add(FlatUV(a));
+    vertices.Add(b); normals.Add(nor); uvs.Add(FlatUV(b));
+    vertices.Add(c); normals.Add(nor); uvs.Add(FlatUV(c));
+    triangles.Add(s);
+    triangles.Add(s + 1);
+    triangles.Add(s + 2);
+}
+
+private Vector2 FlatUV(Vector3 p)
+{
+    float u = 0.5f + p.x / (2f * Mathf.Max(0.0001f, radiusX));
+    float v = Mathf.Clamp01(p.y / Mathf.Max(0.0001f, baseHeight + moundHeight));
+    return new Vector2(u, v);
+}
+
 #if UNITY_EDITOR
-    private void OnValidate()
+private void OnValidate()
     {
         UnityEditor.EditorApplication.delayCall += () =>
         {

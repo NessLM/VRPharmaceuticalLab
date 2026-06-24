@@ -68,6 +68,11 @@ public sealed class SalepProcedureManager : MonoBehaviour
     [SerializeField] private Transform balanceResetTarget;
     [SerializeField] private Outlinable balanceResetHighlight;
     [SerializeField] private float rightPanClearedGrams = 0.002f;
+    [Tooltip("Komponen BalanceWeightResetter — dipanggil OTOMATIS saat step penimbangan selesai (anak timbangan kembali sendiri).")]
+    [SerializeField] private BalanceWeightResetter balanceResetter;
+
+    // Index step terakhir yang sudah memicu auto-reset timbangan (cegah retrigger tiap frame).
+    private int autoResetTriggeredStep = -1;
 
     [Header("Interaction Zones (snap/proximity)")]
     [SerializeField] private SalepTransferZone mortarTransferZone;
@@ -119,7 +124,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
     private float mortarBaselineMg;
 
     // --- Step 9 (salep -> pot) mini state machine ---
-    private enum PotPhase { CleanStamper, OpenPot, DepositToPot }
+    private enum PotPhase { CleanStamper, OpenPot, DepositToPot, CloseLid }
     private PotPhase potPhase;
 
     // --- Per-step "timbang lalu tuang ke mortar" mini state machine (Sulfur & Vaselin) ---
@@ -308,6 +313,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
     {
         currentStep = step;
         stableTimer = 0f;
+        autoResetTriggeredStep = -1;
         SetAllGuidance(false);
         DeactivateZones();
         ApplyStepSetup(step);
@@ -659,16 +665,21 @@ public sealed class SalepProcedureManager : MonoBehaviour
             return false;
         }
 
-        // Fase 2: bubuk sudah pindah, tapi anak timbangan masih di piring. Suruh reset.
+        // Fase 2: bubuk sudah pindah → reset timbangan OTOMATIS (kembali sendiri).
         bool panCleared = IsRightPanCleared();
-        SetMortarMoveResetGuidance(!panCleared);
+        if (!panCleared)
+        {
+            TriggerAutoBalanceReset();
+            SetMortarMoveResetGuidance(false);
+            if (progressText != null)
+                progressText.text = $"{displayName} sudah masuk ke mortar.\nMereset timbangan otomatis\u2026";
+            return false;
+        }
 
+        SetMortarMoveResetGuidance(false);
         if (progressText != null)
-            progressText.text = panCleared
-                ? $"{displayName} sudah masuk ke mortar dan timbangan sudah direset."
-                : $"{displayName} sudah masuk ke mortar.\nAnak timbangan masih di piring kanan — tekan tombol RESET timbangan.";
-
-        return panCleared;
+            progressText.text = $"{displayName} sudah masuk ke mortar dan timbangan sudah direset.";
+        return true;
     }
 
     private bool IsRightPanCleared()
@@ -677,6 +688,24 @@ public sealed class SalepProcedureManager : MonoBehaviour
             return true;
 
         return rightWeighingZone.TotalGrams <= rightPanClearedGrams;
+    }
+
+    // Auto-reset timbangan saat step penimbangan selesai: anak timbangan kembali sendiri
+    // ke tempatnya tanpa harus menekan tombol RESET manual. Hanya sekali per step.
+    private void TriggerAutoBalanceReset()
+    {
+        int stepIndex = GetStepIndex(currentStep);
+        if (autoResetTriggeredStep == stepIndex)
+            return;
+
+        if (balanceResetter == null)
+            balanceResetter = FindFirstObjectByType<BalanceWeightResetter>(FindObjectsInactive.Include);
+
+        if (balanceResetter != null)
+        {
+            balanceResetter.ResetAllWeights();
+            autoResetTriggeredStep = stepIndex;
+        }
     }
 
     // Fase 1 (pindah bubuk): sorot mortar. Fase 2 (reset): sorot tombol reset + arahkan arrow ke sana.
@@ -770,24 +799,43 @@ public sealed class SalepProcedureManager : MonoBehaviour
             potPhase = PotPhase.DepositToPot;
         }
 
-        // FASE 3: Tuang salep dari sudip ke pot (dwell).
-        if (potTransferZone == null)
-            return false;
-
-        float p = potTransferZone.Progress01;
-        UpdatePotVisual(p);
-
-        if (progressText != null)
-            progressText.text = $"Masukkan salep ke pot pakai Sudip: {p * 100f:0}%.\nTahan Sudip berisi salep di atas Pot.";
-
-        if (p >= 0.999f)
+        // FASE 3: Keruk salep dari mortar pakai sudip → tuang ke pot (dwell).
+        // Mortar menyusut (sedikit demi sedikit) & pot terisi (sedikit → penuh) seiring progress.
+        if (potPhase == PotPhase.DepositToPot)
         {
+            if (potTransferZone == null)
+                return false;
+
+            float p = potTransferZone.Progress01;
+            UpdatePotVisual(p);
+
+            // Salep di ujung sudip ikut menyusut → kesan "terambil sedikit demi sedikit".
+            if (sudipSalepVisual != null)
+                sudipSalepVisual.SetFill(1f - p);
+
+            if (progressText != null)
+                progressText.text = $"Keruk salep dari mortar pakai Sudip lalu isi ke Pot: {p * 100f:0}%.\nTahan Sudip di atas Pot sampai penuh.";
+
+            if (p < 0.999f)
+                return false;
+
+            // Pot penuh → sudip kosong, lanjut ke menutup pot.
             if (sudipSalepVisual != null)
                 sudipSalepVisual.Unload();
-            return true;
+            potPhase = PotPhase.CloseLid;
         }
 
-        return false;
+        // FASE 4: Tutup Pot Salep sebelum step selesai (lanjut ke Etiket).
+        // Jika lid tidak ada referensinya, jangan blokir (anggap tertutup).
+        bool potClosed = potLid == null || !potLid.IsOpen;
+        if (!potClosed)
+        {
+            if (progressText != null)
+                progressText.text = "Pot sudah penuh salep.\nTUTUP kembali Pot Salep (pasang tutupnya) untuk lanjut ke Etiket.";
+            return false;
+        }
+
+        return true;
     }
 
     private void UpdateMixVisual(bool isVaselinPhase, float progress)
@@ -1116,6 +1164,40 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         if (potContentVisual != null)
             potContentVisual.SetActive(false);
+    }
+
+    private bool potContentLookApplied;
+
+    // Set material isi pot ke krim salep pucat UNLIT supaya warnanya konsisten & terlihat
+    // jelas (Lit + lampu terang bikin "blown out" putih). Dipanggil sekali.
+    private void ApplyPotContentSalepLook()
+    {
+        if (potContentLookApplied || potContentVisual == null)
+            return;
+
+        var mr = potContentVisual.GetComponent<MeshRenderer>();
+        if (mr == null)
+            return;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Unlit/Color");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null)
+            return;
+
+        Color salep = new Color(0.94f, 0.89f, 0.62f, 1f);
+        var mat = new Material(shader) { name = "Runtime_SalepPotContent_Unlit" };
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", salep);
+        if (mat.HasProperty("_Color")) mat.SetColor("_Color", salep);
+
+        Texture2D creamTex = Resources.Load<Texture2D>("SalepTex/cream_surface");
+        if (creamTex != null)
+        {
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", creamTex);
+            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", creamTex);
+        }
+        mr.sharedMaterial = mat;
+        potContentLookApplied = true;
     }
 
     private void BeginEtiket()

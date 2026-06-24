@@ -99,6 +99,10 @@ public class SyrupProcedureManager : MonoBehaviour
     [SerializeField] private Transform rightPanTarget;
     [SerializeField] private WorldStepArrow rightWeightStepArrow;
     [SerializeField] private WorldStepArrow leftPowderStepArrow;
+    [Tooltip("Toples bubuk Difenhidramin (sumber bubuk). Auto-resolve dari objek 'Difenhidramin'.")]
+    [SerializeField] private Outlinable difenhidraminOutline;
+    [SerializeField] private Transform difenhidraminTarget;
+    [SerializeField] private WorldStepArrow difenhidraminStepArrow;
 
     [Header("Step 4 - Move Powder To Mortar")]
     [SerializeField] private MortarController mortarController;
@@ -309,6 +313,33 @@ public class SyrupProcedureManager : MonoBehaviour
 
         SetEditableGuideArrow(ref rightWeightStepArrow, "ARW_Step3_AnakTimbangan", rightTarget, finalActive && showRight);
         SetEditableGuideArrow(ref leftPowderStepArrow, "ARW_Step3_Bubuk", leftTarget, finalActive && showLeft);
+
+        // Sorot toples bubuk Difenhidramin + panah penunjuk selama bubuk belum cukup.
+        bool highlightJar = active && showLeft;
+        if (highlightJar)
+            SetProcedureOutlineActive(difenhidraminOutline, true);
+        else
+            SetProcedureOutlineOff(difenhidraminOutline);
+
+        EnsureDifenhidraminArrow();
+        SetGuideArrow(ref difenhidraminStepArrow, "ARW_Step3_Difenhidramin", difenhidraminTarget,
+            "\u2193\nAmbil bubuk\nDifenhidramin", new Vector3(0f, 0.32f, 0f), finalActive && showLeft);
+    }
+
+    // Buat panah penunjuk toples Difenhidramin saat runtime bila belum ada di scene
+    // (WorldStepArrow membangun teksnya sendiri), supaya tidak perlu setup manual.
+    private void EnsureDifenhidraminArrow()
+    {
+        if (difenhidraminStepArrow != null)
+            return;
+
+        difenhidraminStepArrow = FindSceneComponentByName<WorldStepArrow>("ARW_Step3_Difenhidramin");
+        if (difenhidraminStepArrow != null || difenhidraminTarget == null)
+            return;
+
+        GameObject go = new GameObject("ARW_Step3_Difenhidramin");
+        difenhidraminStepArrow = go.AddComponent<WorldStepArrow>();
+        difenhidraminStepArrow.SetVisible(false);
     }
 
     private void SetStep4ArrowsActive(bool active)
@@ -993,6 +1024,18 @@ public class SyrupProcedureManager : MonoBehaviour
             GameObject rightPanObject = FindSceneObjectByName("Balance_WeightRight");
             if (rightPanObject != null)
                 rightPanTarget = rightPanObject.transform;
+        }
+
+        // Toples bubuk Difenhidramin = sumber bubuk yang harus disorot di Step 3.
+        if (difenhidraminTarget == null)
+        {
+            GameObject jar = FindSceneObjectByName("Difenhidramin");
+            if (jar != null)
+            {
+                difenhidraminTarget = jar.transform;
+                if (difenhidraminOutline == null)
+                    difenhidraminOutline = jar.GetComponent<Outlinable>();
+            }
         }
     }
 

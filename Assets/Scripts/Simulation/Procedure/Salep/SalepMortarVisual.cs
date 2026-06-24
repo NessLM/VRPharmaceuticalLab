@@ -24,7 +24,9 @@ public sealed class SalepMortarVisual : MonoBehaviour
     [SerializeField] private Vector3 localPosition = new Vector3(0f, 0f, 0.0001f);
     [SerializeField] private Vector3 localEuler = new Vector3(-90f, 0f, 0f);
     [SerializeField] private float baseScale = 0.0018f;
-    [SerializeField] private float fullScaleMultiplier = 1.9f;
+    // Maks skala dikecilkan dari 1.9 → 1.2 supaya gundukan terbesar JELAS muat di
+    // dalam bowl mortar (tidak overflow/kelewat tepi). Orchestrator boleh fine-tune.
+    [SerializeField] private float fullScaleMultiplier = 1.2f;
 
     [Header("Pemisahan dua serbuk (Asam kiri, Sulfur kanan)")]
     [Tooltip("Jarak pisah kedua mound serbuk (local visualRoot units) saat belum homogen.")]
@@ -46,12 +48,38 @@ public sealed class SalepMortarVisual : MonoBehaviour
     private Transform visualRoot;
     private Transform powderMound;    // mound A: Asam (putih)
     private Transform powderMoundB;   // mound B: Sulfur (kuning)
+    private SpoonPowderMoundVisual powderShapeA;
+    private SpoonPowderMoundVisual powderShapeB;
     private float powderMoundBaseScale = 1f;
+    private float creamMoundBaseScale = 1f;   // ukuran kubah krim (tumbuh saat Vaselin dituang)
     private Transform creamMound;
     private Material runtimePowderMaterial;
     private Material runtimePowderMaterialB;
     private Material runtimeCreamMaterial;
     private Mesh granuleMesh;
+
+    // --- Reuse mesh tumpukan bubuk ASLI mortar (Bubuk_Level_01..03 di bawah
+    // MortarPowderVisualRoot) supaya serbuk Salep berbentuk GUNDUKAN nyata, MENEMPEL dasar
+    // mortar, dan tumbuh bertahap 3 level dari bawah — bukan disk melayang prosedural. ---
+    private Transform nativePowderRoot;     // MortarPowderVisualRoot (child mortar)
+    private Transform salepPowder;          // objek heap serbuk Salep (pakai mesh asli)
+    private Material salepPowderMat;
+    private Mesh nativeHeapMesh;
+    private Vector3[] heapLevelPos;         // 3 posisi lokal level (dari Bubuk_Level_01..03)
+    private Vector3[] heapLevelScale;       // 3 skala lokal level
+    private Vector3 salepPowderBaseScale = Vector3.one;
+
+    // Bentuk geometri serbuk saat ini: penuh (satu kubah) atau dua setengah split warna.
+    private enum PowderGeo { None, FullSingle, SplitHalves }
+    private PowderGeo powderGeo = PowderGeo.None;
+
+    // Parameter kubah serbuk (dipakai untuk kubah penuh & dua setengah split).
+    private const float PowderRadiusX = 0.42f;
+    private const float PowderRadiusZ = 0.38f;
+    private const float PowderBaseH = 0.05f;
+    private const float PowderMoundH = 0.34f;
+    private const float PowderNoise = 0.012f;
+    private const float PowderGrain = 0.28f;
 
     private SalepMortarPhase phase = SalepMortarPhase.Empty;
     private float fill01;
@@ -60,7 +88,7 @@ public sealed class SalepMortarVisual : MonoBehaviour
     // Skala kubah krim/salep — disamakan dengan serbuk (fullScaleMultiplier) agar salep
     // benar-benar MENGGUNUNG & terlihat di dalam mortar (skala kecil membuatnya tenggelam
     // di dasar bowl). Aman dari "blown out" putih karena material krim kini UNLIT.
-    private const float CreamMaxScale = 1.9f;
+    private const float CreamMaxScale = 1.2f;
 
     [Header("Efek mengaduk (saat menggerus)")]
     [Tooltip("Lama efek aduk aktif setelah progress terakhir bertambah (detik).")]
@@ -88,11 +116,13 @@ public sealed class SalepMortarVisual : MonoBehaviour
         if (powderMound == null)
         {
             powderMound = BuildPowderMound("MortarPowderMound", asamWhite, out runtimePowderMaterial, "Runtime_SalepMortarPowderA");
+            powderShapeA = powderMound.GetComponent<SpoonPowderMoundVisual>();
         }
 
         if (powderMoundB == null)
         {
             powderMoundB = BuildPowderMound("MortarPowderMoundB", sulfurYellow, out runtimePowderMaterialB, "Runtime_SalepMortarPowderB");
+            powderShapeB = powderMound != null ? powderMoundB.GetComponent<SpoonPowderMoundVisual>() : null;
         }
 
         if (creamMound == null)
@@ -113,6 +143,98 @@ public sealed class SalepMortarVisual : MonoBehaviour
             creamShape.Configure(0.42f, 0.38f, 0.05f, 0.34f, 0.012f, runtimeCreamMaterial);
             creamObject.SetActive(false);
         }
+
+        EnsureNativeHeap();
+    }
+
+    // Bangun objek heap serbuk Salep yang MEREUSE mesh tumpukan bubuk asli mortar
+    // (MortarPowderMound_Generated) + menangkap 3 preset level (posisi & skala) dari
+    // Bubuk_Level_01..03. Hasilnya: gundukan bubuk nyata yang menempel dasar mortar dan
+    // tumbuh bertahap dari bawah, sama persis seperti visual bubuk Sirup yang sudah benar.
+    private void EnsureNativeHeap()
+    {
+        if (salepPowder != null)
+            return;
+
+        if (nativePowderRoot == null)
+        {
+            foreach (Transform t in transform.GetComponentsInChildren<Transform>(true))
+                if (t.name == "MortarPowderVisualRoot") { nativePowderRoot = t; break; }
+        }
+        if (nativePowderRoot == null)
+            return;
+
+        heapLevelPos = new Vector3[3];
+        heapLevelScale = new Vector3[3];
+        string[] names = { "Bubuk_Level_01", "Bubuk_Level_02", "Bubuk_Level_03" };
+        for (int i = 0; i < 3; i++)
+        {
+            Transform lv = null;
+            foreach (Transform c in nativePowderRoot)
+                if (c.name == names[i]) { lv = c; break; }
+
+            if (lv != null)
+            {
+                heapLevelPos[i] = lv.localPosition;
+                heapLevelScale[i] = lv.localScale;
+                if (nativeHeapMesh == null)
+                {
+                    var mf = lv.GetComponent<MeshFilter>();
+                    if (mf != null) nativeHeapMesh = mf.sharedMesh;
+                }
+            }
+            else
+            {
+                // Fallback sesuai data terukur bila objek level tidak ketemu.
+                heapLevelPos[i] = new Vector3(0f, i == 2 ? -0.93f : -1.12f, 0f);
+                heapLevelScale[i] = i == 0 ? Vector3.one * 0.5f
+                    : i == 1 ? Vector3.one * 0.8f
+                    : new Vector3(1f, 1.456f, 1f);
+            }
+        }
+
+        GameObject go = new GameObject("SalepPowderHeap");
+        go.transform.SetParent(nativePowderRoot, false);
+        var mfp = go.AddComponent<MeshFilter>();
+        mfp.sharedMesh = nativeHeapMesh;
+        var mrp = go.AddComponent<MeshRenderer>();
+        // Material runtime sendiri (JANGAN sentuh material 'Difenhidramin' milik Sirup).
+        salepPowderMat = CreateMaterial("Runtime_SalepPowderHeap", asamWhite, 0.06f, SurfaceTex.Powder);
+        ApplyEmission(salepPowderMat, asamWhite * 0.18f);
+        mrp.sharedMaterial = salepPowderMat;
+
+        salepPowder = go.transform;
+        salepPowder.localPosition = heapLevelPos[0];
+        salepPowder.localScale = heapLevelScale[0];
+        salepPowderBaseScale = heapLevelScale[0];
+        go.SetActive(false);
+    }
+
+    private int HeapLevelIndex(float amount01)
+    {
+        float a = Mathf.Clamp01(amount01);
+        if (a < 0.2f) return 0;
+        if (a < 0.55f) return 1;
+        return 2;
+    }
+
+    // Pilih preset level (3 tahap) berbasis jumlah → gundukan naik bertahap dari dasar.
+    private void ApplyHeapLevel(float amount01)
+    {
+        if (salepPowder == null || heapLevelPos == null)
+            return;
+        int idx = HeapLevelIndex(amount01);
+        salepPowder.localPosition = heapLevelPos[idx];
+        salepPowderBaseScale = heapLevelScale[idx];
+        salepPowder.localScale = heapLevelScale[idx];
+    }
+
+    // Tampilkan HANYA heap serbuk Salep (matikan mound prosedural lama).
+    private void ShowHeapOnly()
+    {
+        if (powderMound != null) powderMound.gameObject.SetActive(false);
+        if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
+        if (salepPowder != null) salepPowder.gameObject.SetActive(true);
     }
 
     private Transform BuildPowderMound(string objectName, Color color, out Material material, string materialName)
@@ -190,9 +312,11 @@ public sealed class SalepMortarVisual : MonoBehaviour
         float pulse = MixingActive
             ? 1f + Mathf.Sin(Time.time * mixPulseSpeed) * mixPulseAmount
             : 1f;
-        ApplyPulse(powderMound, powderMoundBaseScale, pulse);
-        ApplyPulse(powderMoundB, powderMoundBaseScale, pulse);
-        ApplyPulse(creamMound != null ? creamMound.transform : null, 1f, pulse);
+        // Heap serbuk asli: pulse XZ saja (jaga tinggi & skala non-uniform level).
+        ApplyPulseVec(salepPowder, salepPowderBaseScale, pulse);
+        // Krim memakai skala basis yang tumbuh (creamMoundBaseScale) → kubah krim membesar
+        // bertahap tanpa mengubah ukuran serbuk di bawahnya.
+        ApplyPulse(creamMound, creamMoundBaseScale, pulse);
     }
 
     private static void ApplyPulse(Transform mound, float baseScale, float pulse)
@@ -201,6 +325,14 @@ public sealed class SalepMortarVisual : MonoBehaviour
             return;
         // Pulse hanya pada XZ (jaga tinggi), dikali skala dasar mound.
         mound.localScale = new Vector3(baseScale * pulse, baseScale, baseScale * pulse);
+    }
+
+    // Versi untuk skala dasar non-uniform (heap level: X/Y/Z berbeda). Pulse XZ, jaga Y.
+    private static void ApplyPulseVec(Transform mound, Vector3 baseScale, float pulse)
+    {
+        if (mound == null || !mound.gameObject.activeSelf)
+            return;
+        mound.localScale = new Vector3(baseScale.x * pulse, baseScale.y, baseScale.z * pulse);
     }
 
     private void EmitMixPuff()
@@ -283,71 +415,60 @@ public sealed class SalepMortarVisual : MonoBehaviour
         switch (phase)
         {
             case SalepMortarPhase.Empty:
-                powderMound.gameObject.SetActive(false);
-                powderMoundB.gameObject.SetActive(false);
+                if (salepPowder != null) salepPowder.gameObject.SetActive(false);
+                if (powderMound != null) powderMound.gameObject.SetActive(false);
+                if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
                 creamMound.gameObject.SetActive(false);
                 break;
 
             case SalepMortarPhase.AsamPowder:
-                // Hanya Asam (putih), di tengah. Tumbuh sesuai sizeAmount01 (jumlah dituang).
+                // Asam (putih). Gundukan NYATA menempel dasar mortar (mesh asli), tumbuh
+                // bertahap 3 level dari bawah sesuai sizeAmount01 (jumlah dituang).
                 creamMound.gameObject.SetActive(false);
-                powderMoundB.gameObject.SetActive(false);
-                powderMound.gameObject.SetActive(true);
-                powderMound.transform.localPosition = Vector3.zero;
-                ApplyColor(runtimePowderMaterial, asamWhite);
-                SetRootScale(Mathf.Lerp(0.25f, fullScaleMultiplier, sizeAmount01));
+                ShowHeapOnly();
+                ApplyColor(salepPowderMat, asamWhite);
+                ApplyHeapLevel(sizeAmount01);
                 break;
 
             case SalepMortarPhase.PowderMix:
-            {
-                // Dua serbuk terpisah: Asam kiri (putih), Sulfur kanan (kuning).
-                // fill01 = tingkat homogen (0 = terpisah, 1 = menyatu) → dipakai saat menggerus.
-                // sizeAmount01 = ukuran keseluruhan → tumbuh saat Sulfur dituang.
+                // Asam putih + Sulfur kuning dalam satu gundukan. Sulfur lebih banyak
+                // (400 vs 200 mg) → condong kuning; saat menggerus (fill01→1) membaur ke
+                // warna campuran. Gundukan tetap menempel dasar & bertingkat.
                 creamMound.gameObject.SetActive(false);
-                powderMound.gameObject.SetActive(true);
-                powderMoundB.gameObject.SetActive(true);
-
-                float sep = Mathf.Lerp(splitOffset, 0f, fill01);
-                powderMound.transform.localPosition = new Vector3(-sep, 0f, 0f);
-                powderMoundB.transform.localPosition = new Vector3(sep, 0f, 0f);
-
-                ApplyColor(runtimePowderMaterial, Color.Lerp(asamWhite, powderMixColor, fill01));
-                ApplyColor(runtimePowderMaterialB, Color.Lerp(sulfurYellow, powderMixColor, fill01));
-                SetRootScale(Mathf.Lerp(0.55f, fullScaleMultiplier, sizeAmount01));
+                ShowHeapOnly();
+                ApplyColor(salepPowderMat, Color.Lerp(Color.Lerp(asamWhite, sulfurYellow, 0.6f), powderMixColor, fill01));
+                ApplyHeapLevel(sizeAmount01);
                 break;
-            }
 
             case SalepMortarPhase.PowdersHomogeneous:
-                // Sudah menyatu: satu mound campuran di tengah.
+                // Campuran homogen: gundukan penuh berwarna campuran.
                 creamMound.gameObject.SetActive(false);
-                powderMoundB.gameObject.SetActive(false);
-                powderMound.gameObject.SetActive(true);
-                powderMound.transform.localPosition = Vector3.zero;
-                ApplyColor(runtimePowderMaterial, powderMixColor);
-                SetRootScale(Mathf.Lerp(0.7f, fullScaleMultiplier, sizeAmount01));
+                ShowHeapOnly();
+                ApplyColor(salepPowderMat, powderMixColor);
+                ApplyHeapLevel(1f);
                 break;
 
             case SalepMortarPhase.CreamAdded:
-                // Krim Vaselin di atas serbuk campuran. Warna krim SUDAH salep (kuning) +
-                // emisi → jelas terlihat. Tumbuh sesuai sizeAmount01 (Vaselin dituang).
-                // Skala di-CAP (CreamMaxScale) agar kubah tetap MEMBUKIT & kuning, tidak
-                // melebar-rata yang membuat puncaknya "blown out" putih oleh lampu terang.
-                powderMoundB.gameObject.SetActive(false);
-                powderMound.gameObject.SetActive(true);
-                powderMound.transform.localPosition = Vector3.zero;
-                ApplyColor(runtimePowderMaterial, powderMixColor);
+                // Krim Vaselin DI ATAS gundukan serbuk yang sudah penuh. Serbuk tetap penuh
+                // (menempel dasar), HANYA kubah krim yang tumbuh bertahap mengikuti Vaselin.
+                ShowHeapOnly();
+                ApplyColor(salepPowderMat, powderMixColor);
+                ApplyHeapLevel(1f);
                 creamMound.gameObject.SetActive(true);
                 ApplyColor(runtimeCreamMaterial, salepIvory);
-                SetRootScale(Mathf.Lerp(0.7f, CreamMaxScale, sizeAmount01));
+                SetRootScale(fullScaleMultiplier);
+                creamMoundBaseScale = Mathf.Lerp(0.3f, 1f, sizeAmount01);
                 break;
 
             case SalepMortarPhase.SalepHomogeneous:
-                // Salep jadi: krim kuning homogen. Skala di-CAP agar tetap kubah kuning jelas.
-                powderMound.gameObject.SetActive(false);
-                powderMoundB.gameObject.SetActive(false);
+                // Salep jadi: krim kuning homogen penuh; serbuk disembunyikan.
+                if (salepPowder != null) salepPowder.gameObject.SetActive(false);
+                if (powderMound != null) powderMound.gameObject.SetActive(false);
+                if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
                 creamMound.gameObject.SetActive(true);
                 ApplyColor(runtimeCreamMaterial, salepIvory);
-                SetRootScale(Mathf.Lerp(0.7f, CreamMaxScale, sizeAmount01));
+                SetRootScale(CreamMaxScale);
+                creamMoundBaseScale = 1f;
                 break;
         }
     }
@@ -355,6 +476,45 @@ public sealed class SalepMortarVisual : MonoBehaviour
     private void SetRootScale(float multiplier)
     {
         visualRoot.localScale = Vector3.one * (baseScale * multiplier);
+    }
+
+    // Rekonfigurasi bentuk serbuk hanya saat mode berubah (hindari rebuild mesh tiap frame).
+    // FullSingle = satu kubah penuh (mound A). SplitHalves = dua setengah kubah: A [0..180]
+    // (kiri, Asam putih) + B [180..360] (kanan, Sulfur kuning), keduanya di pusat → satu
+    // gundukan dome yang dibagi setengah-setengah berdasarkan warna.
+    private void SetPowderGeometry(PowderGeo mode)
+    {
+        if (powderGeo == mode)
+            return;
+        powderGeo = mode;
+        if (powderShapeA == null || powderShapeB == null)
+            return;
+
+        if (mode == PowderGeo.SplitHalves)
+        {
+            powderShapeA.Configure(PowderRadiusX, PowderRadiusZ, PowderBaseH, PowderMoundH, PowderNoise,
+                runtimePowderMaterial, true, PowderGrain, 1337, 0f, 180f);
+            powderShapeB.Configure(PowderRadiusX, PowderRadiusZ, PowderBaseH, PowderMoundH, PowderNoise,
+                runtimePowderMaterialB, true, PowderGrain, 911, 180f, 360f);
+        }
+        else // FullSingle: mound A jadi kubah penuh
+        {
+            powderShapeA.Configure(PowderRadiusX, PowderRadiusZ, PowderBaseH, PowderMoundH, PowderNoise,
+                runtimePowderMaterial, true, PowderGrain, 1337, 0f, 360f);
+        }
+    }
+
+    // Kuantisasi jumlah (0..1) ke MIN 3 level ukuran diskret agar tumpukan tumbuh
+    // bertahap (sedikit → banyak) saat bahan dituang berulang, bukan mulus terus.
+    // Level 1 ≈ 0.5, Level 2 ≈ 0.75, Level 3 ≈ 1.0 dari skala maksimum.
+    private static float QuantizeSizeScale(float amount01, float maxScale)
+    {
+        float a = Mathf.Clamp01(amount01);
+        float level;
+        if (a < 0.33f) level = 0.5f;
+        else if (a < 0.66f) level = 0.75f;
+        else level = 1f;
+        return maxScale * level;
     }
 
     // Tekstur serbuk & krim hasil generate (Resources/SalepTex). Dipakai sebagai base map

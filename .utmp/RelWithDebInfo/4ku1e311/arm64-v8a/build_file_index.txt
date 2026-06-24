@@ -1,0 +1,2 @@
+F:\PA\PA - COLLAB\VRPharmaceuticalLab\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
+F:\PA\PA - COLLAB\VRPharmaceuticalLab\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt

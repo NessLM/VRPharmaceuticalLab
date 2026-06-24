@@ -10,7 +10,7 @@ public class CTMMortarPourTrigger : MonoBehaviour
     [SerializeField] private float moveDuration = 0.4f;
     [SerializeField] private float pourDuration = 0.9f;
     [SerializeField] private GameObject paracetamolMortarTrigger;
-
+[SerializeField] private Step2ChecklistManager checklistManager;
     private bool hasPoured = false;
 
     private void Start()
@@ -96,6 +96,8 @@ public class CTMMortarPourTrigger : MonoBehaviour
         paper.gameObject.SetActive(false);
 
         Debug.Log("CTM berhasil dituangkan ke mortar.");
+        if (checklistManager != null)
+    checklistManager.CheckCTM();
 
         if (paracetamolMortarTrigger != null)
     paracetamolMortarTrigger.SetActive(true);

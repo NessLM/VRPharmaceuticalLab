@@ -508,10 +508,14 @@ public class EtiketWorkflow : MonoBehaviour
 
         float radius = 0.046f;
         if (bottleRenderer != null)
-            radius = Mathf.Max(0.03f, Mathf.Min(bottleRenderer.bounds.extents.x, bottleRenderer.bounds.extents.z) * 0.93f);
+            radius = Mathf.Max(0.03f, Mathf.Max(bottleRenderer.bounds.extents.x, bottleRenderer.bounds.extents.z));
 
-        Vector3 position = center + towardViewer * (radius + 0.0015f);
-        rotation = Quaternion.LookRotation(-towardViewer, Vector3.up);
+        // +margin agar kartu duduk PERSIS DI LUAR permukaan (rata di depan), tidak menekuk
+        // masuk ke dalam pot/salep.
+        Vector3 position = center + towardViewer * (radius + 0.004f);
+        // Kartu etiket menghadap KELUAR ke arah pengguna (rata di depan pot), bukan
+        // menekuk masuk ke dalam salep. Forward (+Z, muka kartu) = arah ke viewer.
+        rotation = Quaternion.LookRotation(towardViewer, Vector3.up);
         return position;
     }
 
@@ -542,8 +546,9 @@ public class EtiketWorkflow : MonoBehaviour
             return Quaternion.identity;
 
         Vector3 direction = Camera.main.transform.position - worldPosition;
+        // Muka kartu (+Z) menghadap kamera supaya teks terbaca lurus di depan.
         return direction.sqrMagnitude > 0.001f
-            ? Quaternion.LookRotation(-direction.normalized, Vector3.up)
+            ? Quaternion.LookRotation(direction.normalized, Vector3.up)
             : Quaternion.identity;
     }
 

@@ -42,6 +42,9 @@ public sealed class SalepMortarVisual : MonoBehaviour
     // jadi warna tampil persis seperti ini tanpa "blown out" putih → pucat pun tetap
     // terbaca sebagai krim kuning, bukan kosong.
     [SerializeField] private Color salepIvory = new Color(0.94f, 0.89f, 0.62f, 1f);
+    // Vaselin Album saat baru dituang: krim KUNING HANGAT lebih pekat agar JELAS berbeda
+    // dari serbuk putih di bawahnya. Saat diaduk, warnanya membaur ke salepIvory yang pucat.
+    [SerializeField] private Color vaselinCream = new Color(0.95f, 0.82f, 0.50f, 1f);
 
     [Header("Mesh bubuk (butiran)")]
     [Tooltip("Skala mound saat memakai mesh granul asli proyek (Pile_03_M_Granules).")]
@@ -60,6 +63,16 @@ public sealed class SalepMortarVisual : MonoBehaviour
     private Material runtimeCreamMaterial;
     private Mesh granuleMesh;
 
+    // --- Sisa salep menempel di mangkuk saat dikeruk pakai sudip ---
+    // Model: cincin "smear" di pinggir (lengket di permukaan bowl) + 1 bagian tengah,
+    // semuanya bertekstur. Saat dikeruk, potongan pinggir HILANG berurutan dari satu sisi
+    // (bukan mengecil seragam), lalu bagian tengah terakhir menyusut habis.
+    private Transform residueRoot;
+    private Transform[] residueSegments;
+    private Transform residueCenter;
+    private Material residueMaterial;
+    private const int ResidueSegmentCount = 8;
+
     // --- Reuse mesh tumpukan bubuk ASLI mortar (Bubuk_Level_01..03 di bawah
     // MortarPowderVisualRoot) supaya serbuk Salep berbentuk GUNDUKAN nyata, MENEMPEL dasar
     // mortar, dan tumbuh bertahap 3 level dari bawah — bukan disk melayang prosedural. ---
@@ -69,6 +82,12 @@ public sealed class SalepMortarVisual : MonoBehaviour
     private Transform salepPowderB;         // heap B: Sulfur (kuning) — untuk tampilan 2 warna
     private Material salepPowderBMat;
     private Vector3 salepPowderBBaseScale = Vector3.one;
+    // Heap C: KRIM Vaselin/salep. MEREUSE mesh & level native yang SAMA dengan serbuk supaya
+    // ukuran & posisinya BENAR di dalam bowl (bukan kubah prosedural mungil yang melayang).
+    // Permukaan HALUS (bukan granular) + warna krim → terbaca sebagai salep.
+    private Transform salepCream;
+    private Material salepCreamMat;
+    private Vector3 salepCreamBaseScale = Vector3.one;
     private float heapMeshHalfX = 0.5f;     // setengah lebar mesh (untuk separasi dua heap)
     private Mesh nativeHeapMesh;
     private Mesh granularHeapMesh;          // salinan flat-shaded bergerigi (dipakai 2 heap)
@@ -443,6 +462,101 @@ public sealed class SalepMortarVisual : MonoBehaviour
         }
     }
 
+    private void EnsureResidue()
+    {
+        EnsureChildren();
+        if (residueRoot != null)
+            return;
+
+        GameObject rootGo = new GameObject("SalepBowlResidue");
+        residueRoot = rootGo.transform;
+        residueRoot.SetParent(visualRoot, false);
+        residueRoot.localPosition = Vector3.zero;
+        residueRoot.localScale = Vector3.one;
+
+        // Material krim MATTE solid (warna salep pucat, TANPA tekstur foto) supaya warnanya
+        // SAMA dengan kubah salep → tidak ada perubahan warna mendadak saat mulai dikeruk.
+        residueMaterial = CreateUnlitCreamMaterial("Runtime_SalepBowlResidue", salepIvory);
+
+        residueSegments = new Transform[ResidueSegmentCount];
+        const float ring = 0.30f;
+        for (int i = 0; i < ResidueSegmentCount; i++)
+        {
+            float ang = (i / (float)ResidueSegmentCount) * Mathf.PI * 2f;
+            GameObject seg = new GameObject("ResidueSeg_" + i);
+            seg.AddComponent<MeshFilter>();
+            seg.AddComponent<MeshRenderer>();
+            Transform st = seg.transform;
+            st.SetParent(residueRoot, false);
+            st.localPosition = new Vector3(Mathf.Cos(ang) * ring, 0f, Mathf.Sin(ang) * ring);
+            var sm = seg.AddComponent<SpoonPowderMoundVisual>();
+            // Smear krim MENEMPEL di pinggir mangkuk: gundukan pipih halus (non-granular) warna
+            // krim matte — natural, bukan tekstur kasar/foto.
+            sm.Configure(0.14f, 0.11f, 0.015f, 0.06f, 0.01f, residueMaterial);
+            residueSegments[i] = st;
+            seg.SetActive(false);
+        }
+
+        GameObject center = new GameObject("ResidueCenter");
+        center.AddComponent<MeshFilter>();
+        center.AddComponent<MeshRenderer>();
+        residueCenter = center.transform;
+        residueCenter.SetParent(residueRoot, false);
+        residueCenter.localPosition = Vector3.zero;
+        var cm = center.AddComponent<SpoonPowderMoundVisual>();
+        cm.Configure(0.22f, 0.20f, 0.03f, 0.12f, 0.02f, residueMaterial, true, 0.35f, 99);
+        center.SetActive(false);
+
+        residueRoot.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Tampilkan salep yang menempel di mangkuk lalu KIKIS sedikit demi sedikit saat
+    /// dikeruk pakai sudip. scrapeProgress01: 0 = penuh (cincin pinggir + bagian tengah),
+    /// 1 = habis. Potongan pinggir HILANG berurutan dari satu sisi (bukan mengecil seragam),
+    /// bagian tengah bertahan paling akhir.
+    /// </summary>
+    public void SetScrapeResidue(float scrapeProgress01)
+    {
+        EnsureResidue();
+
+        // Yang tampil HANYA residu mangkuk — sembunyikan dome/serbuk.
+        if (creamMound != null) creamMound.gameObject.SetActive(false);
+        if (salepPowder != null) salepPowder.gameObject.SetActive(false);
+        if (salepPowderB != null) salepPowderB.gameObject.SetActive(false);
+        if (powderMound != null) powderMound.gameObject.SetActive(false);
+        if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
+
+        phase = SalepMortarPhase.SalepHomogeneous;
+        SetRootScale(CreamMaxScale);
+
+        float p = Mathf.Clamp01(scrapeProgress01);
+        float remain = 1f - p;
+        bool anyLeft = remain > 0.04f;
+
+        residueRoot.gameObject.SetActive(anyLeft);
+
+        // Inti salep = LANJUTAN kubah krim yang sama (warna & material sama) yang MENYUSUT
+        // halus seiring dikeruk → tidak ada lonjakan warna. ApplyPulse di Update memakai
+        // creamMoundBaseScale sebagai skala.
+        creamMound.gameObject.SetActive(anyLeft);
+        if (anyLeft)
+        {
+            ApplyColor(runtimeCreamMaterial, salepIvory);
+            creamMoundBaseScale = Mathf.Lerp(0.25f, 1f, remain);
+            creamMound.localPosition = Vector3.zero;
+        }
+
+        // Sisa salep yang menempel di pinggir mangkuk: potongan HILANG berurutan dari satu
+        // sisi (kesan dikeruk per bagian). Warna sama dengan inti (krim matte), bukan tekstur.
+        int gone = Mathf.FloorToInt(p / 0.85f * ResidueSegmentCount);
+        for (int i = 0; i < ResidueSegmentCount; i++)
+            residueSegments[i].gameObject.SetActive(anyLeft && i >= gone);
+
+        if (residueCenter != null)
+            residueCenter.gameObject.SetActive(false);
+    }
+
     private Transform BuildPowderMound(string objectName, Color color, out Material material, string materialName)
     {
         GameObject powderObject = new GameObject(objectName);
@@ -645,6 +759,11 @@ public sealed class SalepMortarVisual : MonoBehaviour
         visualRoot.localPosition = localPosition;
         visualRoot.localRotation = Quaternion.Euler(localEuler);
 
+        // Residu mangkuk hanya tampil lewat SetScrapeResidue (bypass Refresh). Fase normal
+        // apa pun menyembunyikannya supaya tidak tertinggal.
+        if (residueRoot != null)
+            residueRoot.gameObject.SetActive(false);
+
         switch (phase)
         {
             case SalepMortarPhase.Empty:
@@ -683,17 +802,19 @@ public sealed class SalepMortarVisual : MonoBehaviour
                 if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
                 if (salepPowderB != null) salepPowderB.gameObject.SetActive(false);
 
-                // Kubah krim utama (smooth, pale ivory):
+                // Kubah krim utama: kuning hangat (Vaselin baru) → pucat (salep homogen)
+                // seiring diaduk, supaya BEDA warnanya dari serbuk putih di bawah.
                 creamMound.gameObject.SetActive(true);
-                ApplyColor(runtimeCreamMaterial, salepIvory);
+                ApplyColor(runtimeCreamMaterial, Color.Lerp(vaselinCream, salepIvory, mix));
                 SetRootScale(fullScaleMultiplier);
 
                 // --- 4 TRANSISI BERTAHAP (VISUAL SMOOTH BLEND): ---
                 if (mix < 0.25f)
                 {
                     // TAHAP 1: Baru Ditambah (mix < 25%).
-                    // Krim masih kecil di atas, bubuk kuning-putih di bawah masih utuh dan kasar.
-                    creamMoundBaseScale = Mathf.Lerp(0.4f, 0.6f, mix / 0.25f);
+                    // Krim sudah JELAS TERLIHAT menyelimuti serbuk (floor dinaikkan agar batch 1
+                    // pun terbaca, tidak cuma titik kecil), bubuk kuning-putih di bawah masih utuh.
+                    creamMoundBaseScale = Mathf.Lerp(0.7f, 0.85f, mix / 0.25f);
                     
                     if (salepPowder != null)
                     {
@@ -755,21 +876,44 @@ public sealed class SalepMortarVisual : MonoBehaviour
                     if (salepPowder != null)
                         salepPowder.gameObject.SetActive(false);
                 }
+
+                // PENTING (bug "baru muncul pas Batch 2"): selama menuang Vaselin (mix masih
+                // rendah), ukuran kubah krim mengikuti JUMLAH yang sudah dituang (creamAmt).
+                // Min 0.6 supaya batch 1 SUDAH JELAS TERLIHAT (bukan titik kecil), tumbuh ke
+                // 1.0 di batch 2. Saat sudah diaduk creamAmt=1 → tahap aduk tak terpengaruh.
+                creamMoundBaseScale *= Mathf.Lerp(0.78f, 1f, creamAmt);
+
+                // Krim duduk di pusat mangkuk (menyelimuti serbuk). CATATAN: jangan pakai
+                // koordinat heap serbuk di sini — heap berada di root berbeda (nativePowderRoot)
+                // sehingga mencampur ruang koordinat malah membuat krim tenggelam/menghilang.
+                creamMound.localPosition = Vector3.zero;
                 break;
             }
 
             case SalepMortarPhase.SalepHomogeneous:
-                // Salep JADI: kubah krim SMOOTH pucat (Salep 2-4) — halus & sederhana,
-                // bukan granular. Serbuk disembunyikan; krim unlit jadi tidak mengilap.
+            {
+                // Salep JADI: kubah krim SMOOTH pucat. fill01 dipakai sebagai JUMLAH salep di
+                // mortar (0 = kosong). Ini membuat mortar bisa benar-benar KOSONG (mis. setelah
+                // salep dipindah ke pot / saat step lanjut) — bukan selalu dome penuh.
                 if (salepPowder != null) salepPowder.gameObject.SetActive(false);
                 if (salepPowderB != null) salepPowderB.gameObject.SetActive(false);
                 if (powderMound != null) powderMound.gameObject.SetActive(false);
                 if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
-                creamMound.gameObject.SetActive(true);
-                ApplyColor(runtimeCreamMaterial, salepIvory);
-                SetRootScale(CreamMaxScale);
-                creamMoundBaseScale = 1f;
+
+                float amt = Mathf.Clamp01(fill01);
+                // Ambang 0.08: nilai sentinel "kosong/selesai" (0.05) terbaca sebagai KOSONG,
+                // sehingga mortar benar-benar bersih saat step selesai / idle.
+                bool show = amt > 0.08f;
+                creamMound.gameObject.SetActive(show);
+                if (show)
+                {
+                    ApplyColor(runtimeCreamMaterial, salepIvory);
+                    SetRootScale(CreamMaxScale);
+                    creamMoundBaseScale = amt;
+                    creamMound.localPosition = Vector3.zero;
+                }
                 break;
+            }
         }
     }
 
@@ -778,7 +922,7 @@ public sealed class SalepMortarVisual : MonoBehaviour
         visualRoot.localScale = Vector3.one * (baseScale * multiplier);
     }
 
-    // Rekonfigurasi bentuk serbuk hanya saat mode berubah (hindari rebuild mesh tiap frame).
+    // Rekonfigurasi bentuk serbuk hanya saat mode berubah(hindari rebuild mesh tiap frame).
     // FullSingle = satu kubah penuh (mound A). SplitHalves = dua setengah kubah: A [0..180]
     // (kiri, Asam putih) + B [180..360] (kanan, Sulfur kuning), keduanya di pusat → satu
     // gundukan dome yang dibagi setengah-setengah berdasarkan warna.

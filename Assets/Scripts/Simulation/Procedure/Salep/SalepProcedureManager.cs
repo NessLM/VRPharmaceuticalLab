@@ -3,6 +3,8 @@ using EPOOutline;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 [DisallowMultipleComponent]
 public sealed class SalepProcedureManager : MonoBehaviour
@@ -123,9 +125,31 @@ public sealed class SalepProcedureManager : MonoBehaviour
     private bool etiketAttached;
     private float mortarBaselineMg;
 
+    // Pose dasar isi pot (untuk pengisian DARI BAWAH KE ATAS, bukan membesar dari tengah).
+    private Vector3 potContentBaseLocalPos;
+    private bool potContentBaseCaptured;
+    private float potContentBottomY;
+
     // --- Step 9 (salep -> pot) mini state machine ---
-    private enum PotPhase { CleanStamper, OpenPot, DepositToPot, CloseLid }
+    // CleanStamper: bersihkan ujung stamper pakai sudip (sudip TETAP KOSONG).
+    // ScoopDeposit: keruk salep dari mortar (tombol) → bawa → tuang ke pot (tombol), 4x.
+    // CloseLid: tutup pot.
+    private enum PotPhase { CleanStamper, ScoopDeposit, CloseLid }
     private PotPhase potPhase;
+
+    // Sudip berbasis STATE: kosong vs membawa salep (sudipSalepVisual.IsLoaded). Pot punya
+    // progress diskret 0..4. Transfer hanya sukses bila sudip membawa salep & ujung sudip
+    // dekat target (mortar untuk ambil, pot untuk tuang) saat tombol (trigger) ditekan.
+    private const int PotFillStepsRequired = 4;
+    private int potFillSteps;
+    private PotSalepFillVisual potFillVisual;
+    private XRGrabInteractable sudipGrab;
+    private bool sudipActivatedBound;
+    [Header("Step 9 - Sudip Scoop Tuning")]
+    [Tooltip("Jarak ujung sudip ke mortar agar boleh MENGAMBIL salep saat tombol ditekan (m).")]
+    [SerializeField] private float sudipScoopRadius = 0.35f;
+    [Tooltip("Jarak ujung sudip ke pot agar boleh MENUANG salep saat tombol ditekan (m).")]
+    [SerializeField] private float sudipPotRadius = 0.30f;
 
     // --- Per-step "timbang lalu tuang ke mortar" mini state machine (Sulfur & Vaselin) ---
     private enum WeighPourPhase { Weighing, Pouring }
@@ -466,6 +490,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
         // ---------- FASE A: TIMBANG ----------
         if (weighPourPhase == WeighPourPhase.Weighing)
         {
+            // Arahkan panduan ke TIMBANGAN (bukan arrow "Masukkan X" yang tertinggal dari
+            // fase tuang). Ini yang membuat Batch 2 jelas "timbang lagi", bukan "Masukkan".
+            SetWeighGuidance(displayName, batchNumber, batchesNeeded);
+
             float cur = depositZone.DepositedMg;
             bool atTarget = depositZone.IsAtTargetMg(batchTargetMg, Tolerance) || cur >= batchTargetMg - Tolerance;
 
@@ -733,6 +761,38 @@ public sealed class SalepProcedureManager : MonoBehaviour
         }
     }
 
+    // Fase TIMBANG (timbang-lalu-tuang): sorot timbangan + arahkan arrow ke neraca dengan
+    // teks "Timbang {bahan} Batch n/m". Dipakai agar Batch 2 (Sulfur & Vaselin) memandu
+    // MENIMBANG LAGI, bukan menampilkan arrow "Masukkan {bahan}" sisa fase tuang.
+    private void SetWeighGuidance(string displayName, int batchNumber, int batchesNeeded)
+    {
+        int index = GetStepIndex(currentStep);
+
+        if (stepHighlights != null && index >= 0 && index < stepHighlights.Length && stepHighlights[index] != null)
+            SetHighlight(stepHighlights[index], true);
+
+        if (balanceResetHighlight != null)
+            balanceResetHighlight.enabled = false;
+
+        if (stepArrows == null || index < 0 || index >= stepArrows.Length || stepArrows[index] == null)
+            return;
+
+        // Arahkan ke PIRING KIRI (Collider_Piring_Kiri / depositZone) tempat bubuk ditaruh,
+        // bukan ke badan neraca. Inilah lokasi yang user maksud "timbangan di kirinya".
+        Transform target = depositZone != null
+            ? depositZone.transform
+            : balance;
+        if (target == null)
+            return;
+
+        WorldStepArrow arrow = stepArrows[index];
+        arrow.Configure(
+            target,
+            $"\u2193\nTimbang {displayName}\nBatch {batchNumber}/{batchesNeeded}",
+            new Vector3(0f, 0.18f, 0f));
+        arrow.SetVisible(true);
+    }
+
     // Fase 1 (pindah bubuk): sorot mortar. Fase 2 (reset): sorot tombol reset + arahkan arrow ke sana.
     private void SetMortarMoveResetGuidance(bool resetPhase)
     {
@@ -784,7 +844,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
     private bool EvaluatePotTransfer()
     {
-        // FASE 1: Bersihkan ujung stamper pakai sudip.
+        // FASE 1: Bersihkan ujung stamper pakai Sudip. Sudip TETAP KOSONG setelahnya.
         if (potPhase == PotPhase.CleanStamper)
         {
             bool cleaned = stamperResidue == null || stamperResidue.IsCleaned;
@@ -795,72 +855,141 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 return false;
             }
 
-            // Sudah bersih → salep berpindah ke sudip (muncul visual di ujung sudip).
-            if (sudipSalepVisual != null && !sudipSalepVisual.IsLoaded)
-                sudipSalepVisual.Load();
+            // Sudip tetap kosong — salep diambil dari MORTAR pakai tombol di fase berikutnya.
+            if (sudipSalepVisual != null)
+                sudipSalepVisual.Unload();
 
-            potPhase = PotPhase.OpenPot;
+            potPhase = PotPhase.ScoopDeposit;
         }
 
-        // FASE 2: Buka tutup Pot Salep.
-        if (potPhase == PotPhase.OpenPot)
+        // FASE 2: Ambil salep dari Mortar (tombol) → bawa → tuang ke Pot (tombol), ulang 4x.
+        // Logika scoop/deposit ada di OnSudipActivated (dipicu trigger). Di sini hanya
+        // menampilkan progress & mengecek selesai.
+        if (potPhase == PotPhase.ScoopDeposit)
         {
-            bool potOpen = potLid == null || potLid.IsOpen;
-            if (!potOpen)
+            // Pot harus terbuka untuk menerima salep.
+            if (potLid != null && !potLid.IsOpen)
             {
                 if (progressText != null)
-                    progressText.text = "Salep sudah di Sudip.\nAmbil & dekatkan Pot Salep, lalu BUKA tutupnya.";
+                    progressText.text = $"Dekatkan & BUKA tutup Pot Salep untuk mulai mengisi. ({potFillSteps}/{PotFillStepsRequired})";
+                UpdatePotVisual();
                 return false;
             }
 
-            // Pot terbuka → aktifkan zona dwell pot untuk menerima sudip.
-            if (potTransferZone != null && !potTransferZone.IsActive)
+            if (potFillSteps < PotFillStepsRequired)
             {
-                potTransferZone.ResetZone();
-                potTransferZone.SetRequiredIngredient(VaselinId, true);
-                potTransferZone.SetActive(true);
+                bool carrying = sudipSalepVisual != null && sudipSalepVisual.IsLoaded;
+                if (progressText != null)
+                    progressText.text = carrying
+                        ? $"Sudip membawa salep. Dekatkan ke POT lalu TEKAN tombol untuk menuang. ({potFillSteps}/{PotFillStepsRequired})"
+                        : $"Dekatkan Sudip ke MORTAR lalu TEKAN tombol untuk mengambil salep. ({potFillSteps}/{PotFillStepsRequired})";
+                UpdatePotVisual();
+                return false;
             }
 
-            potPhase = PotPhase.DepositToPot;
-        }
-
-        // FASE 3: Keruk salep dari mortar pakai sudip → tuang ke pot (dwell).
-        // Mortar menyusut (sedikit demi sedikit) & pot terisi (sedikit → penuh) seiring progress.
-        if (potPhase == PotPhase.DepositToPot)
-        {
-            if (potTransferZone == null)
-                return false;
-
-            float p = potTransferZone.Progress01;
-            UpdatePotVisual(p);
-
-            // Salep di ujung sudip ikut menyusut → kesan "terambil sedikit demi sedikit".
-            if (sudipSalepVisual != null)
-                sudipSalepVisual.SetFill(1f - p);
-
-            if (progressText != null)
-                progressText.text = $"Keruk salep dari mortar pakai Sudip lalu isi ke Pot: {p * 100f:0}%.\nTahan Sudip di atas Pot sampai penuh.";
-
-            if (p < 0.999f)
-                return false;
-
-            // Pot penuh → sudip kosong, lanjut ke menutup pot.
+            // Pot penuh 4/4 → sudip kosong, lanjut menutup.
             if (sudipSalepVisual != null)
                 sudipSalepVisual.Unload();
             potPhase = PotPhase.CloseLid;
         }
 
-        // FASE 4: Tutup Pot Salep sebelum step selesai (lanjut ke Etiket).
-        // Jika lid tidak ada referensinya, jangan blokir (anggap tertutup).
+        // FASE 3: Tutup Pot Salep sebelum step selesai (lanjut ke Etiket).
         bool potClosed = potLid == null || !potLid.IsOpen;
         if (!potClosed)
         {
             if (progressText != null)
-                progressText.text = "Pot sudah penuh salep.\nTUTUP kembali Pot Salep (pasang tutupnya) untuk lanjut ke Etiket.";
+                progressText.text = "Pot sudah penuh salep (4/4).\nTUTUP kembali Pot Salep untuk lanjut ke Etiket.";
             return false;
         }
 
         return true;
+    }
+
+    // Trigger Sudip (button): ambil salep dari mortar saat kosong & dekat mortar; tuang ke
+    // pot saat membawa & dekat pot. State sudip = sudipSalepVisual.IsLoaded.
+    private void OnSudipActivated(ActivateEventArgs args)
+    {
+        if (currentStep != SalepStep.Step_09_MoveOintmentToPot || potPhase != PotPhase.ScoopDeposit)
+            return;
+        if (potFillSteps >= PotFillStepsRequired)
+            return;
+
+        Transform tip = sudipTip != null ? sudipTip : sudip;
+        if (tip == null)
+            return;
+
+        bool carrying = sudipSalepVisual != null && sudipSalepVisual.IsLoaded;
+        float dMortar = mortarController != null
+            ? Vector3.Distance(tip.position, mortarController.transform.position)
+            : float.MaxValue;
+        float dPot = potSalep != null
+            ? Vector3.Distance(tip.position, potSalep.position)
+            : float.MaxValue;
+
+        if (!carrying)
+        {
+            // AMBIL dari mortar.
+            if (dMortar <= sudipScoopRadius && sudipSalepVisual != null)
+                sudipSalepVisual.Load();
+        }
+        else
+        {
+            // TUANG ke pot (pot harus terbuka).
+            bool potOpen = potLid == null || potLid.IsOpen;
+            if (dPot <= sudipPotRadius && potOpen)
+            {
+                sudipSalepVisual.Unload();
+                potFillSteps = Mathf.Min(PotFillStepsRequired, potFillSteps + 1);
+                UpdatePotVisual();
+            }
+        }
+    }
+
+    private void BindSudipActivated()
+    {
+        if (sudipActivatedBound)
+            return;
+        if (sudipGrab == null && sudip != null)
+        {
+            sudipGrab = sudip.GetComponentInParent<XRGrabInteractable>();
+            if (sudipGrab == null)
+                sudipGrab = sudip.GetComponent<XRGrabInteractable>();
+        }
+        if (sudipGrab == null)
+            return;
+        sudipGrab.activated.AddListener(OnSudipActivated);
+        sudipActivatedBound = true;
+    }
+
+    private void UnbindSudipActivated()
+    {
+        if (!sudipActivatedBound || sudipGrab == null)
+            return;
+        sudipGrab.activated.RemoveListener(OnSudipActivated);
+        sudipActivatedBound = false;
+    }
+
+    private void EnsurePotFillVisual()
+    {
+        if (potFillVisual != null || potSalep == null)
+            return;
+
+        potFillVisual = potSalep.GetComponentInChildren<PotSalepFillVisual>(true);
+        if (potFillVisual != null)
+            return;
+
+        GameObject go = new GameObject("PotSalepFill");
+        go.transform.SetParent(potSalep, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+
+        // Dasar isi tepat di DASAR DALAM pot (interior bottom ~ local y 0.006, rim ~ 0.08),
+        // radius hampir selebar dalam pot, tinggi penuh ~0.055 (terisi sampai dekat bibir).
+        // Nilai disesuaikan dgn Pot_Salep (skala 1, JarBody interior y 1.00..1.08, r~0.04).
+        Vector3 bottom = new Vector3(0f, 0.006f, 0f);
+
+        potFillVisual = go.AddComponent<PotSalepFillVisual>();
+        potFillVisual.Configure(bottom, 0.038f, 0.055f);
     }
 
     private void UpdateMixVisual(bool isVaselinPhase, float progress)
@@ -890,17 +1019,25 @@ public sealed class SalepProcedureManager : MonoBehaviour
         }
     }
 
-    private void UpdatePotVisual(float progress)
+    // Sinkronkan visual pot (isi krim stylized, dari bawah ke atas) + sisa salep di mortar
+    // sesuai progress diskret potFillSteps/4.
+    private void UpdatePotVisual()
     {
-        if (bench != null)
-            bench.SetMortarPhase(SalepMortarPhase.SalepHomogeneous, Mathf.Lerp(1f, 0.05f, progress));
+        float p = PotFillStepsRequired > 0 ? (float)potFillSteps / PotFillStepsRequired : 0f;
 
-        if (potContentVisual != null)
-        {
-            if (progress > 0.02f && !potContentVisual.activeSelf)
-                potContentVisual.SetActive(true);
-            potContentVisual.transform.localScale = potContentFullScale * Mathf.Clamp01(progress);
-        }
+        // Mortar: salep menempel di mangkuk lalu BERKURANG (potongan hilang dari sisi) tiap
+        // kali dikeruk ke pot.
+        if (bench != null)
+            bench.SetMortarScrapeResidue(p);
+
+        // Pot: isi krim stylized tumbuh DARI BAWAH KE ATAS (object baru PotSalepFillVisual).
+        EnsurePotFillVisual();
+        if (potFillVisual != null)
+            potFillVisual.SetFill01(p);
+
+        // Silinder PNG/realistis lama tidak dipakai lagi.
+        if (potContentVisual != null && potContentVisual.activeSelf)
+            potContentVisual.SetActive(false);
     }
 
     private bool HasParchmentReady()
@@ -986,6 +1123,12 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         if (sudipSalepVisual != null)
             sudipSalepVisual.Unload();
+
+        UnbindSudipActivated();
+        potFillSteps = 0;
+        potPhase = PotPhase.CleanStamper;
+        if (potFillVisual != null)
+            potFillVisual.Clear();
 
         if (stamperResidue != null)
             stamperResidue.ClearResidue();
@@ -1208,21 +1351,30 @@ public sealed class SalepProcedureManager : MonoBehaviour
         // Warnai jadi salep (kuning) + sedikit perbesar — bukan putih Difenhidramin.
         if (stamperResidue != null)
         {
-            stamperResidue.ApplySalepAppearance(new Color(0.80f, 0.60f, 0.22f), 1.6f);
+            // Sisa salep di ujung stamper = krim PUCAT (bukan oranye), ukuran wajar (1.0)
+            // supaya terlihat seperti krim hasil gerusan, bukan gumpalan oranye besar.
+            stamperResidue.ApplySalepAppearance(new Color(0.94f, 0.89f, 0.62f), 1.0f);
             stamperResidue.ShowResidue();
         }
 
-        // Sudip masih kosong; pot belum perlu zona dwell sampai fase deposit.
+        // Sudip mulai KOSONG; salep diambil dari mortar pakai tombol (trigger).
         if (sudipSalepVisual != null)
             sudipSalepVisual.Unload();
 
-        if (potTransferZone != null)
-        {
-            potTransferZone.ResetZone();
-            potTransferZone.SetRequiredIngredient(VaselinId, true);
-            potTransferZone.SetActive(false);
-        }
+        // Reset progress pot + siapkan visual isi krim stylized (object baru, bottom-up).
+        potFillSteps = 0;
+        EnsurePotFillVisual();
+        if (potFillVisual != null)
+            potFillVisual.SetFill01(0f);
 
+        // Pasang tombol Sudip (trigger) untuk scoop/deposit.
+        BindSudipActivated();
+
+        // Zona dwell pot lama tidak dipakai lagi (alur sekarang berbasis tombol).
+        if (potTransferZone != null)
+            potTransferZone.SetActive(false);
+
+        // Silinder isi pot lama (PNG/realistis) disembunyikan — diganti PotSalepFillVisual.
         if (potContentVisual != null)
             potContentVisual.SetActive(false);
     }
@@ -1307,6 +1459,9 @@ public sealed class SalepProcedureManager : MonoBehaviour
         }
         if (mortarStirGuide != null)
             mortarStirGuide.SetVisible(false);
+
+        // Lepas tombol sudip; akan dipasang lagi oleh ActivatePotTransfer saat Step 9.
+        UnbindSudipActivated();
     }
 
     private void ResetZones()

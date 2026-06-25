@@ -62,10 +62,12 @@ public class StamperResidueController : MonoBehaviour
                 overrideMaterialInstance.SetColor("_BaseColor", color);
             if (overrideMaterialInstance.HasProperty("_Color"))
                 overrideMaterialInstance.SetColor("_Color", color);
+            // Emisi sangat lembut saja: krim salep pucat, JANGAN sampai "blown out"/menyala
+            // seperti gumpalan oranye terang. Cukup agar tetap terbaca di bawah lampu.
             overrideMaterialInstance.EnableKeyword("_EMISSION");
             overrideMaterialInstance.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             if (overrideMaterialInstance.HasProperty("_EmissionColor"))
-                overrideMaterialInstance.SetColor("_EmissionColor", color * 0.45f);
+                overrideMaterialInstance.SetColor("_EmissionColor", color * 0.1f);
             mr.sharedMaterial = overrideMaterialInstance;
         }
 

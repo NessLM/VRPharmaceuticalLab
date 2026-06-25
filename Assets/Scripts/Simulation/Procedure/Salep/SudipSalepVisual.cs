@@ -10,10 +10,13 @@ using UnityEngine;
 public sealed class SudipSalepVisual : MonoBehaviour
 {
     [SerializeField] private Transform sudipTip;
-    [SerializeField] private float blobRadius = 0.012f;
+    // Radius dunia (meter) gumpalan salep di ujung sudip. Kecil = cungkilan krim mungil.
+    [SerializeField] private float blobRadius = 0.008f;
     // Warna salep pucat (sama referensi salep 2-4). Material UNLIT → tidak "blown out" putih.
     [SerializeField] private Color salepColor = new Color(0.94f, 0.89f, 0.62f, 1f);
-    [SerializeField] private Vector3 localOffset = new Vector3(0f, 0.004f, 0f);
+    // Offset 0 → gumpalan duduk PERSIS di ujung sudip (menempel), bukan melayang. Offset
+    // lama ikut terskala besar oleh sudip (lossyScale ~6-9x) sehingga blob tampak mengambang.
+    [SerializeField] private Vector3 localOffset = Vector3.zero;
 
     private Transform blob;
     private bool loaded;
@@ -45,24 +48,22 @@ public sealed class SudipSalepVisual : MonoBehaviour
         blob = go.transform;
         blob.SetParent(parent, false);
         blob.localPosition = localOffset;
-        blob.localScale = Vector3.one;
-        _fullBlobScale = Vector3.one;
+        // Sudip diskalakan besar (lossyScale ~6.5-9x). Mesh blob dibangun pada ukuran DUNIA
+        // (blobRadius dalam meter), jadi lawan skala parent supaya gumpalan tampil kecil &
+        // wajar di ujung sudip, bukan "segede gaban".
+        _fullBlobScale = InverseParentScale(parent);
+        blob.localScale = _fullBlobScale;
 
         // UNLIT supaya warna krim pucat tetap terlihat & tidak "blown out" putih di
         // bawah pencahayaan scene yang terang.
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null) shader = Shader.Find("Unlit/Color");
         if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+        // Krim MATTE solid (tanpa tekstur foto realistis) → tampilan natural & konsisten
+        // dengan salep di mortar/pot.
         Material mat = new Material(shader) { name = "Runtime_SudipSalep" };
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", salepColor);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", salepColor);
-
-        Texture2D creamTex = Resources.Load<Texture2D>("SalepTex/cream_surface");
-        if (creamTex != null)
-        {
-            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", creamTex);
-            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", creamTex);
-        }
         mr.sharedMaterial = mat;
 
         // Kubah kecil & pipih: lebar > tinggi, halus (tanpa butiran) seperti krim.
@@ -101,6 +102,19 @@ public sealed class SudipSalepVisual : MonoBehaviour
         float k = Mathf.Clamp01(t);
         blob.gameObject.SetActive(loaded && k > 0.02f);
         blob.localScale = _fullBlobScale * Mathf.Lerp(0.25f, 1f, k);
+    }
+
+    // Skala lokal yang membatalkan lossyScale parent (komponen-per-komponen) sehingga
+    // ukuran dunia gumpalan = ukuran mesh aslinya (blobRadius dalam meter).
+    private static Vector3 InverseParentScale(Transform parent)
+    {
+        if (parent == null)
+            return Vector3.one;
+        Vector3 ls = parent.lossyScale;
+        return new Vector3(
+            Mathf.Approximately(ls.x, 0f) ? 1f : 1f / ls.x,
+            Mathf.Approximately(ls.y, 0f) ? 1f : 1f / ls.y,
+            Mathf.Approximately(ls.z, 0f) ? 1f : 1f / ls.z);
     }
 
     public void Unload()

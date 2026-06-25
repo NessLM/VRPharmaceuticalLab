@@ -261,6 +261,17 @@ public sealed class SalepBench : MonoBehaviour
     }
 
     /// <summary>
+    /// Salep menempel di mangkuk lalu dikeruk: scrapeProgress01 0 = penuh, 1 = habis.
+    /// Potongan pinggir hilang berurutan dari satu sisi + bagian tengah (lihat SalepMortarVisual).
+    /// </summary>
+    public void SetMortarScrapeResidue(float scrapeProgress01)
+    {
+        EnsureVisuals();
+        if (mortarVisual != null)
+            mortarVisual.SetScrapeResidue(scrapeProgress01);
+    }
+
+    /// <summary>
     /// Set serbuk mortar sebagai DUA tumpukan terpisah (Asam putih + Sulfur kuning) yang
     /// tumbuh sendiri per level. homogeneity01: 0 = terpisah dua warna, 1 = homogen.
     /// </summary>

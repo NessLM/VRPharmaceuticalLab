@@ -22,11 +22,38 @@ public sealed class SalepMortarVisual : MonoBehaviour
 {
     [Header("Penempatan visual di dasar mortar (local)")]
     [SerializeField] private Vector3 localPosition = new Vector3(0f, 0f, 0.0001f);
-    [SerializeField] private Vector3 localEuler = new Vector3(-90f, 0f, 0f);
+    [SerializeField] private Vector3 localEuler = new Vector3(0f, 0f, 0f);
     [SerializeField] private float baseScale = 0.0018f;
     // Maks skala dikecilkan dari 1.9 → 1.2 supaya gundukan terbesar JELAS muat di
     // dalam bowl mortar (tidak overflow/kelewat tepi). Orchestrator boleh fine-tune.
     [SerializeField] private float fullScaleMultiplier = 1.2f;
+    [Header("Cream pose - CreamAdded / Vaselin Album")]
+    [SerializeField] private Vector3 creamAddedLocalPosition = new Vector3(0.0501f, 0.3062f, -0.046f);
+    [SerializeField] private Vector3 creamAddedLocalEuler = new Vector3(79.26f, 3.46f, 4.192f);
+
+    // awal kecil saat batch Vaselin pertama
+    [SerializeField] private Vector3 creamMinLocalScale = new Vector3(0.45f, 0.22f, 0.33f);
+
+    // maksimal Vaselin Album di mortar, pakai pose seperti gambar ke-4
+    [SerializeField] private Vector3 creamMaxLocalScale = new Vector3(1.218556f, 0.4388503f, 0.9019135f);
+
+    [Header("Cream pose - Final Salep 2-4")]
+    [SerializeField] private Vector3 finalSalepLocalPosition = new Vector3(0.003f, 0f, -0.23f);
+    [SerializeField] private Vector3 finalSalepLocalEuler = new Vector3(90f, 0f, 0.732f);
+    [SerializeField] private Vector3 finalSalepLocalScale = new Vector3(1.65f, 1.35f, 1.65f);
+
+    [Header("Cream material")]
+    [SerializeField] private Material creamMaterialTemplate;
+
+    [Header("Residue pose/shape")]
+    [SerializeField] private Vector3 residueLocalPosition = new Vector3(0.003f, 0f, -0.245f);
+    [SerializeField] private Vector3 residueLocalEuler = new Vector3(90f, 0f, 0f);
+    [SerializeField] private float residueRingRadiusX = 0.34f;
+    [SerializeField] private float residueRingRadiusZ = 0.28f;
+    [SerializeField] private float residueSegRadiusX = 0.09f;
+    [SerializeField] private float residueSegRadiusZ = 0.05f;
+    [SerializeField] private float residueSegBaseH = 0.006f;
+    [SerializeField] private float residueSegMoundH = 0.014f;
 
     [Header("Pemisahan dua serbuk (Asam kiri, Sulfur kanan)")]
     [Tooltip("Jarak pisah kedua mound serbuk (local visualRoot units) saat belum homogen.")]
@@ -41,10 +68,11 @@ public sealed class SalepMortarVisual : MonoBehaviour
     // Salep 2-4 asli = krim KUNING PUCAT lembut (lihat referensi). Material krim UNLIT
     // jadi warna tampil persis seperti ini tanpa "blown out" putih → pucat pun tetap
     // terbaca sebagai krim kuning, bukan kosong.
-    [SerializeField] private Color salepIvory = new Color(0.94f, 0.89f, 0.62f, 1f);
-    // Vaselin Album saat baru dituang: krim KUNING HANGAT lebih pekat agar JELAS berbeda
-    // dari serbuk putih di bawahnya. Saat diaduk, warnanya membaur ke salepIvory yang pucat.
-    [SerializeField] private Color vaselinCream = new Color(0.95f, 0.82f, 0.50f, 1f);
+    // Vaselin Album: lebih putih krem
+    [SerializeField] private Color vaselinCream = new Color(0.970f, 0.935f, 0.840f, 1f);
+
+    // Salep 2-4 final: kuning pucat agak kehijauan seperti referensi
+    [SerializeField] private Color salepIvory = new Color(0.90f, 0.89f, 0.58f, 1f);
 
     [Header("Mesh bubuk (butiran)")]
     [Tooltip("Skala mound saat memakai mesh granul asli proyek (Pile_03_M_Granules).")]
@@ -61,6 +89,7 @@ public sealed class SalepMortarVisual : MonoBehaviour
     private Material runtimePowderMaterial;
     private Material runtimePowderMaterialB;
     private Material runtimeCreamMaterial;
+    private Vector3 creamCurrentBaseScale = Vector3.one;
     private Mesh granuleMesh;
 
     // --- Sisa salep menempel di mangkuk saat dikeruk pakai sudip ---
@@ -144,6 +173,38 @@ public sealed class SalepMortarVisual : MonoBehaviour
     private float lastMixTime = float.NegativeInfinity;
     private float lastObservedFill;
     private bool MixingActive => Application.isPlaying && Time.time - lastMixTime <= mixEffectHoldSeconds;
+    private void ApplyCreamPose(bool finalPose)
+    {
+        if (creamMound == null)
+            return;
+
+        if (finalPose)
+        {
+            creamMound.localPosition = finalSalepLocalPosition;
+            creamMound.localRotation = Quaternion.Euler(finalSalepLocalEuler);
+        }
+        else
+        {
+            creamMound.localPosition = creamAddedLocalPosition;
+            creamMound.localRotation = Quaternion.Euler(creamAddedLocalEuler);
+        }
+    }
+
+    private void SetCreamScale(Vector3 scale)
+    {
+        creamCurrentBaseScale = scale;
+        if (creamMound != null)
+            creamMound.localScale = scale;
+    }
+
+    private void ApplyResiduePose()
+    {
+        if (residueRoot == null)
+            return;
+
+        residueRoot.localPosition = residueLocalPosition;
+        residueRoot.localRotation = Quaternion.Euler(residueLocalEuler);
+    }
 
     private void EnsureChildren()
     {
@@ -176,15 +237,17 @@ public sealed class SalepMortarVisual : MonoBehaviour
             creamObject.AddComponent<MeshFilter>();
             var creamMeshRenderer = creamObject.AddComponent<MeshRenderer>();
             creamMound = creamObject.transform;
-            // Krim/salep memakai material UNLIT: warnanya terkunci & TIDAK "blown out" putih
-            // oleh lampu scene yang sangat terang (penyebab salep tampak kosong/putih).
-            runtimeCreamMaterial = CreateUnlitCreamMaterial("Runtime_SalepMortarCream", salepIvory);
+
+            runtimeCreamMaterial = CreateSudipStyleCreamMaterial("Runtime_SudipSalep", salepIvory);
+
             creamMeshRenderer.sharedMaterial = runtimeCreamMaterial;
-            // Pakai BUILDER GUNDUKAN yang SAMA dengan serbuk (SpoonPowderMoundVisual) — bentuk
-            // tinggi & menggunung yang TERBUKTI terlihat di mortar (CreamMoundVisual lama terlalu
-            // datar → tenggelam di dasar bowl → tampak kosong). Material krim unlit + tekstur.
+
             var creamShape = creamObject.AddComponent<SpoonPowderMoundVisual>();
             creamShape.Configure(0.42f, 0.38f, 0.05f, 0.34f, 0.012f, runtimeCreamMaterial);
+
+            ApplyCreamPose(false);
+            SetCreamScale(creamMinLocalScale);
+
             creamObject.SetActive(false);
         }
 
@@ -471,28 +534,33 @@ public sealed class SalepMortarVisual : MonoBehaviour
         GameObject rootGo = new GameObject("SalepBowlResidue");
         residueRoot = rootGo.transform;
         residueRoot.SetParent(visualRoot, false);
-        residueRoot.localPosition = Vector3.zero;
         residueRoot.localScale = Vector3.one;
+        ApplyResiduePose();
 
         // Material krim MATTE solid (warna salep pucat, TANPA tekstur foto) supaya warnanya
         // SAMA dengan kubah salep → tidak ada perubahan warna mendadak saat mulai dikeruk.
         residueMaterial = CreateUnlitCreamMaterial("Runtime_SalepBowlResidue", salepIvory);
 
         residueSegments = new Transform[ResidueSegmentCount];
-        const float ring = 0.30f;
         for (int i = 0; i < ResidueSegmentCount; i++)
         {
             float ang = (i / (float)ResidueSegmentCount) * Mathf.PI * 2f;
+
             GameObject seg = new GameObject("ResidueSeg_" + i);
             seg.AddComponent<MeshFilter>();
             seg.AddComponent<MeshRenderer>();
+
             Transform st = seg.transform;
             st.SetParent(residueRoot, false);
-            st.localPosition = new Vector3(Mathf.Cos(ang) * ring, 0f, Mathf.Sin(ang) * ring);
+
+            float x = Mathf.Cos(ang) * residueRingRadiusX;
+            float z = Mathf.Sin(ang) * residueRingRadiusZ;
+            st.localPosition = new Vector3(x, 0f, z);
+            st.localRotation = Quaternion.Euler(0f, -Mathf.Rad2Deg * ang, 0f);
+
             var sm = seg.AddComponent<SpoonPowderMoundVisual>();
-            // Smear krim MENEMPEL di pinggir mangkuk: gundukan pipih halus (non-granular) warna
-            // krim matte — natural, bukan tekstur kasar/foto.
-            sm.Configure(0.14f, 0.11f, 0.015f, 0.06f, 0.01f, residueMaterial);
+            sm.Configure(residueSegRadiusX, residueSegRadiusZ, residueSegBaseH, residueSegMoundH, 0.004f, residueMaterial);
+
             residueSegments[i] = st;
             seg.SetActive(false);
         }
@@ -544,7 +612,9 @@ public sealed class SalepMortarVisual : MonoBehaviour
         {
             ApplyColor(runtimeCreamMaterial, salepIvory);
             creamMoundBaseScale = Mathf.Lerp(0.25f, 1f, remain);
-            creamMound.localPosition = Vector3.zero;
+            ApplyCreamPose(true);
+            SetCreamScale(finalSalepLocalScale * creamMoundBaseScale);
+            ApplyResiduePose();
         }
 
         // Sisa salep yang menempel di pinggir mangkuk: potongan HILANG berurutan dari satu
@@ -663,7 +733,7 @@ public sealed class SalepMortarVisual : MonoBehaviour
         ApplyPulseVec(salepPowderB, salepPowderBBaseScale, pulse);
         // Krim memakai skala basis yang tumbuh (creamMoundBaseScale) → kubah krim membesar
         // bertahap tanpa mengubah ukuran serbuk di bawahnya.
-        ApplyPulse(creamMound, creamMoundBaseScale, pulse);
+        ApplyPulseVec(creamMound, creamCurrentBaseScale, pulse);
     }
 
     private static void ApplyPulse(Transform mound, float baseScale, float pulse)
@@ -759,6 +829,9 @@ public sealed class SalepMortarVisual : MonoBehaviour
         visualRoot.localPosition = localPosition;
         visualRoot.localRotation = Quaternion.Euler(localEuler);
 
+        if (residueRoot != null)
+            ApplyResiduePose();
+
         // Residu mangkuk hanya tampil lewat SetScrapeResidue (bypass Refresh). Fase normal
         // apa pun menyembunyikannya supaya tidak tertinggal.
         if (residueRoot != null)
@@ -791,129 +864,89 @@ public sealed class SalepMortarVisual : MonoBehaviour
                 break;
 
             case SalepMortarPhase.CreamAdded:
-            {
-                // Step 7-8: Vaselin masuk lalu DIADUK → 4 Transisi MULUS menuju salep smooth.
-                // mix (fill01)   = tingkat pengadukan: 0 bergumpal → 1 smooth.
-                // creamAmt (sizeAmount01) = jumlah krim Vaselin yang dituang (0..1).
-                float mix = fill01;
-                float creamAmt = sizeAmount01;
-
-                if (powderMound != null) powderMound.gameObject.SetActive(false);
-                if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
-                if (salepPowderB != null) salepPowderB.gameObject.SetActive(false);
-
-                // Kubah krim utama: kuning hangat (Vaselin baru) → pucat (salep homogen)
-                // seiring diaduk, supaya BEDA warnanya dari serbuk putih di bawah.
-                creamMound.gameObject.SetActive(true);
-                ApplyColor(runtimeCreamMaterial, Color.Lerp(vaselinCream, salepIvory, mix));
-                SetRootScale(fullScaleMultiplier);
-
-                // --- 4 TRANSISI BERTAHAP (VISUAL SMOOTH BLEND): ---
-                if (mix < 0.25f)
                 {
-                    // TAHAP 1: Baru Ditambah (mix < 25%).
-                    // Krim sudah JELAS TERLIHAT menyelimuti serbuk (floor dinaikkan agar batch 1
-                    // pun terbaca, tidak cuma titik kecil), bubuk kuning-putih di bawah masih utuh.
-                    creamMoundBaseScale = Mathf.Lerp(0.7f, 0.85f, mix / 0.25f);
-                    
+                    // Step 7-8: Vaselin masuk lalu DIADUK → 4 Transisi MULUS menuju salep smooth.
+                    // mix (fill01)   = tingkat pengadukan: 0 bergumpal → 1 smooth.
+                    // creamAmt (sizeAmount01) = jumlah krim Vaselin yang dituang (0..1).
+                    float mix = fill01;
+                    float creamAmt = sizeAmount01;
+
+                    if (powderMound != null) powderMound.gameObject.SetActive(false);
+                    if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
+                    if (salepPowderB != null) salepPowderB.gameObject.SetActive(false);
+
+                    // Kubah krim utama: kuning hangat (Vaselin baru) → pucat (salep homogen)
+                    // seiring diaduk, supaya BEDA warnanya dari serbuk putih di bawah.
+                    creamMound.gameObject.SetActive(true);
+                    ApplyColor(runtimeCreamMaterial, Color.Lerp(vaselinCream, salepIvory, mix));
+                    SetRootScale(fullScaleMultiplier);
+
+                    // --- 4 TRANSISI BERTAHAP (VISUAL SMOOTH BLEND): ---
+                    // Scale harus smooth: tidak boleh turun di tengah mixing.
+                    // creamAmt = jumlah Vaselin masuk.
+                    // mix = progress aduk.
+                    // Yang dipakai adalah nilai paling besar dari keduanya supaya visual tidak mengecil.
+                    float grow01 = Mathf.Clamp01(Mathf.Max(creamAmt, mix));
+                    grow01 = Mathf.SmoothStep(0f, 1f, grow01);
+
+                    // Krim tumbuh dari kecil sampai besar sekitar 10 gram.
+                    Vector3 targetCreamScale = Vector3.Lerp(creamMinLocalScale, creamMaxLocalScale, grow01);
+
+                    // Bubuk di bawah tidak boleh tiba-tiba hilang terlalu cepat.
+                    // Dia memudar/menyusut pelan saat mix naik.
+                    // Saat Vaselin/cream masuk, jangan pakai SalepPowderHeap lagi.
+                    // Visual cream harus murni dari MortarCreamMound, bukan Runtime_SalepPowderHeap.
                     if (salepPowder != null)
                     {
-                        salepPowder.gameObject.SetActive(true);
-                        ApplyColor(salepPowderMat, powderMixColor);
-                        int idx = HeapLevelIndex(1f);
-                        salepPowder.localPosition = heapLevelPos[idx];
-                        salepPowderBaseScale = heapLevelScale[idx];
-                        salepPowder.localScale = salepPowderBaseScale;
+                        bool showPowderTrace = mix < 0.92f;
+                        salepPowder.gameObject.SetActive(showPowderTrace);
+
+                        if (showPowderTrace)
+                        {
+                            ApplyColor(salepPowderMat, Color.Lerp(powderMixColor, salepIvory, mix));
+
+                            int idx = HeapLevelIndex(1f);
+                            salepPowder.localPosition = heapLevelPos[idx];
+
+                            float powderShrink = Mathf.Lerp(1f, 0.35f, Mathf.SmoothStep(0f, 1f, mix));
+                            salepPowderBaseScale = heapLevelScale[idx] * powderShrink;
+                            salepPowder.localScale = salepPowderBaseScale;
+                        }
                     }
+
+                    ApplyCreamPose(false);
+                    SetCreamScale(targetCreamScale);
+                    break;
                 }
-                else if (mix < 0.50f)
-                {
-                    // TAHAP 2: Mulai Terlarut (25% - 50%).
-                    // Krim membesar melingkari bubuk, bubuk mulai menyusut & berubah warna memucat.
-                    float t = (mix - 0.25f) / 0.25f; // 0..1
-                    creamMoundBaseScale = Mathf.Lerp(0.6f, 0.8f, t);
-
-                    if (salepPowder != null)
-                    {
-                        salepPowder.gameObject.SetActive(true);
-                        // Bubuk mulai melarut: warna memucat ke arah ivory salep
-                        ApplyColor(salepPowderMat, Color.Lerp(powderMixColor, salepIvory, 0.35f * t));
-                        int idx = HeapLevelIndex(1f);
-                        salepPowder.localPosition = heapLevelPos[idx];
-                        // Menyusut 15%
-                        float shrink = Mathf.Lerp(1.0f, 0.85f, t);
-                        salepPowderBaseScale = heapLevelScale[idx] * shrink;
-                        salepPowder.localScale = salepPowderBaseScale;
-                    }
-                }
-                else if (mix < 0.75f)
-                {
-                    // TAHAP 3: Setengah Larut (50% - 75%).
-                    // Krim menyelimuti hampir seluruh bagian, bubuk menyusut drastis & memucat penuh (jejak).
-                    float t = (mix - 0.50f) / 0.25f; // 0..1
-                    creamMoundBaseScale = Mathf.Lerp(0.8f, 0.95f, t);
-
-                    if (salepPowder != null)
-                    {
-                        salepPowder.gameObject.SetActive(true);
-                        // Bubuk hampir seluruhnya menyatu: warna didominasi ivory salep
-                        ApplyColor(salepPowderMat, Color.Lerp(Color.Lerp(powderMixColor, salepIvory, 0.35f), salepIvory, 0.8f * t));
-                        int idx = HeapLevelIndex(1f);
-                        salepPowder.localPosition = heapLevelPos[idx];
-                        // Menyusut drastis ke 55%
-                        float shrink = Mathf.Lerp(0.85f, 0.55f, t);
-                        salepPowderBaseScale = heapLevelScale[idx] * shrink;
-                        salepPowder.localScale = salepPowderBaseScale;
-                    }
-                }
-                else
-                {
-                    // TAHAP 4: Homogen (75% - 100%).
-                    // Bubuk sepenuhnya larut dan hilang, menyisakan salep smooth penuh di permukaan.
-                    float t = (mix - 0.75f) / 0.25f; // 0..1
-                    creamMoundBaseScale = Mathf.Lerp(0.95f, 1.0f, t);
-
-                    if (salepPowder != null)
-                        salepPowder.gameObject.SetActive(false);
-                }
-
-                // PENTING (bug "baru muncul pas Batch 2"): selama menuang Vaselin (mix masih
-                // rendah), ukuran kubah krim mengikuti JUMLAH yang sudah dituang (creamAmt).
-                // Min 0.6 supaya batch 1 SUDAH JELAS TERLIHAT (bukan titik kecil), tumbuh ke
-                // 1.0 di batch 2. Saat sudah diaduk creamAmt=1 → tahap aduk tak terpengaruh.
-                creamMoundBaseScale *= Mathf.Lerp(0.78f, 1f, creamAmt);
-
-                // Krim duduk di pusat mangkuk (menyelimuti serbuk). CATATAN: jangan pakai
-                // koordinat heap serbuk di sini — heap berada di root berbeda (nativePowderRoot)
-                // sehingga mencampur ruang koordinat malah membuat krim tenggelam/menghilang.
-                creamMound.localPosition = Vector3.zero;
-                break;
-            }
 
             case SalepMortarPhase.SalepHomogeneous:
-            {
-                // Salep JADI: kubah krim SMOOTH pucat. fill01 dipakai sebagai JUMLAH salep di
-                // mortar (0 = kosong). Ini membuat mortar bisa benar-benar KOSONG (mis. setelah
-                // salep dipindah ke pot / saat step lanjut) — bukan selalu dome penuh.
-                if (salepPowder != null) salepPowder.gameObject.SetActive(false);
-                if (salepPowderB != null) salepPowderB.gameObject.SetActive(false);
-                if (powderMound != null) powderMound.gameObject.SetActive(false);
-                if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
-
-                float amt = Mathf.Clamp01(fill01);
-                // Ambang 0.08: nilai sentinel "kosong/selesai" (0.05) terbaca sebagai KOSONG,
-                // sehingga mortar benar-benar bersih saat step selesai / idle.
-                bool show = amt > 0.08f;
-                creamMound.gameObject.SetActive(show);
-                if (show)
                 {
-                    ApplyColor(runtimeCreamMaterial, salepIvory);
-                    SetRootScale(CreamMaxScale);
-                    creamMoundBaseScale = amt;
-                    creamMound.localPosition = Vector3.zero;
+                    // Salep JADI: kubah krim SMOOTH pucat. fill01 dipakai sebagai JUMLAH salep di
+                    // mortar (0 = kosong). Ini membuat mortar bisa benar-benar KOSONG (mis. setelah
+                    // salep dipindah ke pot / saat step lanjut) — bukan selalu dome penuh.
+                    if (salepPowder != null) salepPowder.gameObject.SetActive(false);
+                    if (salepPowderB != null) salepPowderB.gameObject.SetActive(false);
+                    if (powderMound != null) powderMound.gameObject.SetActive(false);
+                    if (powderMoundB != null) powderMoundB.gameObject.SetActive(false);
+
+                    float amt = Mathf.Clamp01(fill01);
+                    // Ambang 0.08: nilai sentinel "kosong/selesai" (0.05) terbaca sebagai KOSONG,
+                    // sehingga mortar benar-benar bersih saat step selesai / idle.
+                    bool show = amt > 0.08f;
+                    creamMound.gameObject.SetActive(show);
+                    if (show)
+                    {
+                        ApplyColor(runtimeCreamMaterial, salepIvory);
+                        SetRootScale(CreamMaxScale);
+                        creamMoundBaseScale = amt;
+                        ApplyCreamPose(true);
+
+                        // Final jangan start dari kecil lagi. Kalau amt masih rendah, tetap minimal terlihat besar.
+                        float finalAmt = Mathf.Lerp(0.65f, 1f, amt);
+                        SetCreamScale(finalSalepLocalScale * finalAmt);
+                    }
+                    break;
                 }
-                break;
-            }
         }
     }
 
@@ -1068,6 +1101,39 @@ public sealed class SalepMortarVisual : MonoBehaviour
         material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
         // Tidak memakai tekstur krim → warna solid sederhana (kurang realistis, sesuai mau).
         return material;
+    }
+    private Material CreateSudipStyleCreamMaterial(string materialName, Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) shader = Shader.Find("Unlit/Color");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null) shader = Shader.Find("Standard");
+        if (shader == null) return null;
+
+        Material mat = new Material(shader) { name = materialName };
+
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", color);
+
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", color);
+
+        if (mat.HasProperty("_Smoothness"))
+            mat.SetFloat("_Smoothness", 0f);
+
+        if (mat.HasProperty("_Glossiness"))
+            mat.SetFloat("_Glossiness", 0f);
+
+        if (mat.HasProperty("_Metallic"))
+            mat.SetFloat("_Metallic", 0f);
+
+        if (mat.HasProperty("_Cull"))
+            mat.SetFloat("_Cull", 0f);
+
+        mat.DisableKeyword("_EMISSION");
+        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+
+        return mat;
     }
 
     private static void ApplyEmission(Material material, Color emission)

@@ -158,7 +158,7 @@ public class StamperResidueController : MonoBehaviour
 
         float t = requiredScrapeTime > 0f ? Mathf.Clamp01(scrapeTimer / requiredScrapeTime) : 1f;
         float shrink = Mathf.Lerp(1f, 0.2f, t);
-        residueVisual.transform.localScale = residueOriginalScale * shrink;
+        residueVisual.transform.localScale = EffectiveScale * shrink;
         residueVisual.transform.localRotation *= Quaternion.Euler(0f, 0f, 220f * Time.deltaTime);
     }
 

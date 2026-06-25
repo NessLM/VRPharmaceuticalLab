@@ -176,6 +176,9 @@ public class BalanceWeightResetter : MonoBehaviour
 
     private IEnumerator ResetRoutine()
     {
+        // FASE 1: lepas paksa dari tangan, bekukan (kinematic), matikan deteksi tabrakan
+        // SEMENTARA, lalu snap PERSIS ke pose awal. Kinematic + detectCollisions=false
+        // mencegah PhysX mendorong/melempar (depenetration) saat objek dipindah balik.
         foreach (WeightData data in savedWeights)
         {
             ForceRelease(data.grab);
@@ -194,27 +197,52 @@ public class BalanceWeightResetter : MonoBehaviour
             data.transform.localScale = data.localScale;
         }
 
-        yield return new WaitForFixedUpdate();
+        // FASE 2: tahan beberapa frame fisika sambil TERUS men-snap pose & menol-kan
+        // kecepatan, supaya tidak ada sisa gerak/drift sebelum diaktifkan kembali.
+        for (int frame = 0; frame < 3; frame++)
+        {
+            yield return new WaitForFixedUpdate();
+            foreach (WeightData data in savedWeights)
+            {
+                if (data.rb != null)
+                {
+                    data.rb.linearVelocity = Vector3.zero;
+                    data.rb.angularVelocity = Vector3.zero;
+                }
+                data.transform.position = data.worldPosition;
+                data.transform.rotation = data.worldRotation;
+            }
+        }
 
+        // FASE 3: PAKSA keadaan istirahat = kinematic + TANPA gravity (terkunci di baki),
+        // detectCollisions kembali aktif. JANGAN dipulihkan ke dinamis di sini — itulah
+        // penyebab "melayang/mental". Anak timbangan baru jadi dinamis lagi saat DI-GRAB.
         foreach (WeightData data in savedWeights)
         {
             if (data.rb != null)
             {
                 data.rb.linearVelocity = Vector3.zero;
                 data.rb.angularVelocity = Vector3.zero;
-                data.rb.detectCollisions = data.originalDetectCollisions;
-                data.rb.isKinematic = data.originalKinematic;
-                data.rb.useGravity = data.originalUseGravity;
+                data.rb.detectCollisions = true;
+                data.rb.isKinematic = true;   // PAKSA beku → tidak melayang, tidak mental
+                data.rb.useGravity = false;
             }
 
-            // Kembalikan state interaksi WeightItem (hasBeenPickedUp=false, terkunci di baki)
-            // supaya tidak perlu reset dua kali dan tetap tenang sampai di-grab lagi.
+            // Reset interaksi (hasBeenPickedUp=false) lalu PAKSA Settle() agar benar-benar
+            // beku, walau WeightItem-nya tidak ber-startsLockedInTray.
             if (data.grab != null)
             {
                 WeightItem item = data.grab.GetComponent<WeightItem>();
                 if (item != null)
+                {
                     item.ResetInteractionState();
+                    item.Settle();
+                }
             }
+
+            // Snap final sekali lagi (ResetInteractionState bisa menyentuh fisika).
+            data.transform.position = data.worldPosition;
+            data.transform.rotation = data.worldRotation;
         }
 
         // Re-assert: IgnoreCollision bisa hilang bila collider sempat di-disable/enable.

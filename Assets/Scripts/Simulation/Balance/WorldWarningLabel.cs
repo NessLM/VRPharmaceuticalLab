@@ -41,8 +41,9 @@ public sealed class WorldWarningLabel : MonoBehaviour
         scaler.dynamicPixelsPerUnit = 10f;
 
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(360f, 96f);
-        canvasRect.localScale = Vector3.one * 0.0016f; // ~0.58m lebar di world
+        // Lebih besar (lebar & tinggi) supaya pesan peringatan panjang muat tanpa keluar kotak.
+        canvasRect.sizeDelta = new Vector2(460f, 150f);
+        canvasRect.localScale = Vector3.one * 0.0016f; // ~0.74m lebar di world
 
         canvasGroup = gameObject.AddComponent<CanvasGroup>();
         canvasGroup.alpha = 0f;
@@ -82,13 +83,17 @@ public sealed class WorldWarningLabel : MonoBehaviour
         label = textGo.AddComponent<TextMeshProUGUI>();
         label.text = "";
         label.fontStyle = FontStyles.Bold;
-        label.alignment = TextAlignmentOptions.Left;
+        label.alignment = TextAlignmentOptions.MidlineLeft;
         label.enableWordWrapping = true;
-        label.fontSize = 26f;
+        // AUTO-SIZE: teks mengecil otomatis agar SELALU muat di dalam kotak amber
+        // (pesan panjang tidak lagi keluar/terpotong).
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 10f;
+        label.fontSizeMax = 26f;
         label.color = Color.white;
         RectTransform textRect = textGo.GetComponent<RectTransform>();
-        textRect.anchorMin = new Vector2(0.24f, 0f);
-        textRect.anchorMax = new Vector2(0.98f, 1f);
+        textRect.anchorMin = new Vector2(0.24f, 0.08f);
+        textRect.anchorMax = new Vector2(0.97f, 0.92f);
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
 

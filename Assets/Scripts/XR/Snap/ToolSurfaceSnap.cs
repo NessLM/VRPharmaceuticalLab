@@ -24,6 +24,12 @@ public class ToolSurfaceSnap : MonoBehaviour
     private Vector3 targetPosition;
     private Quaternion targetRotation;
 
+    // Ketinggian (Y) ASLI objek saat di-author di scene. Dipakai sebagai target Y snap
+    // supaya objek kembali PERSIS ke tinggi semula ("seperti sedia kala"), bukan dipaksa
+    // ke satu bidang permukaan (zone.SurfaceY) yang mengabaikan offset pivot tiap objek
+    // → itulah penyebab toples/pot/botol tampak MELAYANG di atas meja.
+    private float restY;
+
     private bool isHeld;
     private bool isSnapping;
 
@@ -33,6 +39,7 @@ public class ToolSurfaceSnap : MonoBehaviour
         grabInteractable = GetComponent<XRGrabInteractable>();
 
         startRotation = transform.rotation;
+        restY = transform.position.y; // tangkap tinggi asli sebelum objek tersentuh apa pun
     }
 
     private void OnEnable()
@@ -116,9 +123,12 @@ public class ToolSurfaceSnap : MonoBehaviour
     {
         Vector3 pos = transform.position;
 
+        // Target Y = tinggi ASLI objek (restY), BUKAN zone.SurfaceY. Ini mengembalikan objek
+        // ke ketinggian persis seperti semula (tidak melayang / tidak tenggelam), sambil
+        // tetap mempertahankan X/Z di mana pemain meletakkannya.
         targetPosition = new Vector3(
             pos.x,
-            zone.SurfaceY,
+            restY,
             pos.z
         );
 

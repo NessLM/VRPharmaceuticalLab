@@ -1060,6 +1060,25 @@ public class SyrupProcedureManager : MonoBehaviour
             spoonPowderPlateTransfer = FindSceneComponentByName<SpoonPowderPlateTransfer>("sendokTanduk");
     }
 
+    // Kunci/buka kemampuan grab Mortar lewat MortarGrabGate (jika ada). Cache state agar
+    // tidak memanggil berulang tiap frame untuk nilai yang sama.
+    private bool _mortarGrabbableState = true;
+    private bool _mortarGrabbableInit;
+    private void SetMortarGrabbable(bool value)
+    {
+        if (_mortarGrabbableInit && _mortarGrabbableState == value)
+            return;
+        if (mortarController == null)
+            mortarController = FindSceneComponentByName<MortarController>("Mortar");
+        if (mortarController == null)
+            return;
+        MortarGrabGate gate = mortarController.GetComponent<MortarGrabGate>();
+        if (gate != null)
+            gate.SetGrabbable(value);
+        _mortarGrabbableState = value;
+        _mortarGrabbableInit = true;
+    }
+
     private void CheckStep05MixWithWater()
     {
         ResolveStep5References();
@@ -1337,7 +1356,29 @@ public class SyrupProcedureManager : MonoBehaviour
         SetProcedureOutlineActive(bottleOutline, true);
         SetStep6ArrowActive(true);
 
+        // Botol mendekat sendiri ke sisi mortar agar mudah diraih (tetap bisa di-grab).
+        TriggerBottleApproach();
+
         Debug.Log("[SyrupProcedure] Step 6 started.");
+    }
+
+    // Botol mendekat sendiri ke sisi mortar (animate) supaya gampang diraih saat tahap
+    // menuang/akhir. Tetap bisa di-grab; begitu diraih, animasi berhenti.
+    private void TriggerBottleApproach()
+    {
+        if (bottleTarget == null)
+            return;
+
+        Transform anchor = mortarController != null ? mortarController.transform
+            : (mortarTarget != null ? mortarTarget : null);
+        if (anchor == null)
+            return;
+
+        var approach = bottleTarget.GetComponent<ProcedureAutoApproach>();
+        if (approach == null)
+            approach = bottleTarget.gameObject.AddComponent<ProcedureAutoApproach>();
+
+        approach.ApproachBeside(anchor);
     }
 
     private void CheckStep06PourIntoBottle()

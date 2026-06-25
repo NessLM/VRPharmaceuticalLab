@@ -216,11 +216,16 @@ public class BottleLid : MonoBehaviour
         if (_rb == null)
             return;
 
-        // Jatuh wajar: dinamis + gravity (jika diaktifkan) → mendarat di meja, bisa diambil.
-        _rb.isKinematic = false;
-        _rb.useGravity = useGravityWhenDropped;
+        // MELAYANG DI TEMPAT (bukan jatuh, bukan drifting): saat dilepas di jarak menengah,
+        // tutup dibekukan PERSIS di posisi terakhir → gravity mati, kecepatan nol, kinematic.
+        // Jadi ia "terbang" diam di udara di tempat dilepas, masih bisa diambil lagi, dan
+        // jaring-pengaman auto-return tetap berlaku bila terlalu jauh.
+        _rb.linearVelocity = Vector3.zero;
+        _rb.angularVelocity = Vector3.zero;
+        _rb.useGravity = false;
+        _rb.isKinematic = true;
 
-        Log($"{gameObject.name} dropped");
+        Log($"{gameObject.name} dropped (frozen floating)");
     }
     /// <summary>Programmatically force-closes the lid (re-snaps to bottle).</summary>
     public void ForceClose()

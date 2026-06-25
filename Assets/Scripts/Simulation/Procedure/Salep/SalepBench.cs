@@ -155,13 +155,15 @@ public sealed class SalepBench : MonoBehaviour
                 mortarVisual = mortar.gameObject.AddComponent<SalepMortarVisual>();
         }
 
-        // Matikan visual bubuk bawaan MortarController supaya tidak menutup visual
-        // dua-warna Salep (Asam putih + Sulfur kuning).
+        // PENTING: JANGAN suppress visual bubuk bawaan MortarController di sini. Bind dipanggil
+        // otomatis tiap mulai play (RuntimeInitializeOnLoadMethod) untuk SEMUA prosedur — kalau
+        // suppress di sini, visual bubuk Sirup/Difenhidramin (Bubuk_Level_*) ikut hilang.
+        // Suppress hanya dilakukan saat prosedur SALEP benar-benar dimulai (lihat
+        // SalepProcedureManager.BeginSalepProcedure) dan dipulihkan di ResetAll().
         if (mortar != null)
         {
-            mortar.SetPowderVisualSuppressed(true);
-            // Salep butuh kapasitas besar: 600 mg serbuk + 10000 mg Vaselin. Default Sirup
-            // (3000 mg) menyebabkan tuang Vaselin mentok di ~2.4 g. Naikkan ke 12000 mg.
+            // Kapasitas besar aman untuk semua prosedur (tidak mengubah visual Sirup).
+            // Salep butuh 600 mg serbuk + 10000 mg Vaselin.
             mortar.SetMaxCapacityMg(12000f);
         }
 
@@ -256,6 +258,17 @@ public sealed class SalepBench : MonoBehaviour
         EnsureVisuals();
         if (mortarVisual != null)
             mortarVisual.SetPhase(phase, fill01, amount01);
+    }
+
+    /// <summary>
+    /// Set serbuk mortar sebagai DUA tumpukan terpisah (Asam putih + Sulfur kuning) yang
+    /// tumbuh sendiri per level. homogeneity01: 0 = terpisah dua warna, 1 = homogen.
+    /// </summary>
+    public void SetMortarPowders(float asam01, float sulfur01, float homogeneity01)
+    {
+        EnsureVisuals();
+        if (mortarVisual != null)
+            mortarVisual.SetPowderPiles(asam01, sulfur01, homogeneity01);
     }
 
     public void ResetAll()

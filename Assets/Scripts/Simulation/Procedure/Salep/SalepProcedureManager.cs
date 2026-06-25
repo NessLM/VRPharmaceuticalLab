@@ -220,6 +220,23 @@ public sealed class SalepProcedureManager : MonoBehaviour
         return total > 0f ? Mathf.Clamp01(mortarController.CurrentPowderMg / total) : 1f;
     }
 
+    // Jumlah ASAM di mortar (0..1). Asam dituang lebih dulu (Step 3), jadi = isi mortar
+    // dibatasi target Asam. Tumbuh sendiri tanpa terpengaruh Sulfur.
+    private float AsamAmount01()
+    {
+        if (mortarController == null) return 1f;
+        return AsamTargetMg > 0f ? Mathf.Clamp01(mortarController.CurrentPowderMg / AsamTargetMg) : 1f;
+    }
+
+    // Jumlah SULFUR di mortar (0..1) = isi mortar DI ATAS target Asam, dibatasi target Sulfur.
+    // Tumbuh sendiri (terpisah dari tumpukan Asam).
+    private float SulfurAmount01()
+    {
+        if (mortarController == null) return 1f;
+        float sulfurIn = mortarController.CurrentPowderMg - AsamTargetMg;
+        return SulfurTargetMg > 0f ? Mathf.Clamp01(sulfurIn / SulfurTargetMg) : 1f;
+    }
+
     // Ukuran krim Vaselin (0..1) berbasis Vaselin yang sudah masuk mortar (di atas serbuk).
     private float CreamAmount01()
     {
@@ -299,7 +316,13 @@ public sealed class SalepProcedureManager : MonoBehaviour
             stepUiRoot.SetActive(true);
 
         if (mortarController != null)
+        {
+            // Salep memakai visual bubuk dua-warna sendiri → baru di sini visual bubuk
+            // bawaan mortar (Bubuk_Level, dipakai Sirup) disembunyikan. Dipulihkan saat
+            // reset/keluar lewat SalepBench.ResetAll().
+            mortarController.SetPowderVisualSuppressed(true);
             mortarController.ResetMortar();
+        }
 
         if (potContentVisual != null)
             potContentVisual.SetActive(false);
@@ -468,11 +491,20 @@ public sealed class SalepProcedureManager : MonoBehaviour
         bool movedDone = moved >= batchTargetMg - Tolerance;
         bool panEmpty = depositZone.DepositedMg <= 0.1f;
 
-        // Visual mortar: serbuk/cream bahan ini muncul & TUMBUH saat dituang.
+        // Visual mortar: bahan ini muncul & TUMBUH saat dituang.
         if (bench != null && moved > 0.5f)
         {
-            float amt = enterPhase == SalepMortarPhase.CreamAdded ? CreamAmount01() : PowderAmount01();
-            bench.SetMortarPhase(enterPhase, GetEnterPhaseFill(enterPhase), amt);
+            if (enterPhase == SalepMortarPhase.CreamAdded)
+            {
+                // Vaselin = krim di atas serbuk homogen.
+                bench.SetMortarPhase(enterPhase, GetEnterPhaseFill(enterPhase), CreamAmount01());
+            }
+            else
+            {
+                // Sulfur tumbuh sebagai tumpukan KANAN (kuning) terpisah dari Asam (kiri,
+                // putih) yang sudah penuh. Belum digerus → homogen 0.
+                bench.SetMortarPowders(AsamAmount01(), SulfurAmount01(), 0f);
+            }
         }
 
         if (!(movedDone && panEmpty))
@@ -489,17 +521,20 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         bool isLastBatch = batchesDoneInStep + 1 >= batchesNeeded;
 
-        // Reset anak timbangan hanya di akhir step (batch terakhir) jika diminta.
+        // Akhir step (batch terakhir): reset anak timbangan OTOMATIS (kembali sendiri),
+        // tidak perlu tekan tombol RESET manual.
         if (isLastBatch && requireWeightResetAtEnd)
         {
             bool panCleared = IsRightPanCleared();
-            SetMortarMoveResetGuidance(!panCleared);
-            if (progressText != null)
-                progressText.text = panCleared
-                    ? $"{displayName} sudah masuk ke mortar dan timbangan sudah direset."
-                    : $"{displayName} sudah masuk ke mortar.\nAnak timbangan masih di piring kanan \u2014 tekan tombol RESET timbangan.";
             if (!panCleared)
+            {
+                TriggerAutoBalanceReset();
+                SetMortarMoveResetGuidance(false);
+                if (progressText != null)
+                    progressText.text = $"{displayName} sudah masuk ke mortar.\nMereset timbangan otomatis\u2026";
                 return false;
+            }
+            SetMortarMoveResetGuidance(false);
         }
 
         // Batch ini selesai.
@@ -591,7 +626,7 @@ public sealed class SalepProcedureManager : MonoBehaviour
             case SalepMortarPhase.PowderMix:
                 return 0f;   // serbuk masih terpisah (belum digerus)
             case SalepMortarPhase.CreamAdded:
-                return 0.7f; // cream/vaselin masuk di atas serbuk
+                return 0.08f; // vaselin baru masuk di atas serbuk — BELUM teraduk (bergumpal)
             default:
                 return 0.5f;
         }
@@ -631,28 +666,18 @@ public sealed class SalepProcedureManager : MonoBehaviour
         bool movedDone = moved >= targetMg - Tolerance;
 
         // Visual mortar tumbuh sesuai bubuk yang BENAR-BENAR sudah dituang — mulai KOSONG.
-        // (Bug lama: serbuk langsung muncul saat masuk step walau 0 mg dituang.)
+        // Model DUA TUMPUKAN: Asam (putih) & Sulfur (kuning) tumbuh sendiri-sendiri.
         if (bench != null)
         {
-            float poured01 = targetMg > 0f ? Mathf.Clamp01(moved / targetMg) : 0f;
-            if (moved <= 0.5f)
+            if (moved <= 0.5f && !isSecondPowder)
             {
-                // Belum ada yang dituang. Bahan pertama (Asam) → mortar kosong. Bahan kedua
-                // → mortar sudah berisi Asam dari step sebelumnya (jangan dikosongkan).
-                bench.SetMortarPhase(
-                    isSecondPowder ? SalepMortarPhase.AsamPowder : SalepMortarPhase.Empty,
-                    isSecondPowder ? 0.5f : 0f);
-            }
-            else if (isSecondPowder)
-            {
-                // Serbuk kedua masuk → dua serbuk terpisah (Asam putih + Sulfur kuning).
-                bench.SetMortarPhase(SalepMortarPhase.PowderMix, 0f);
+                // Asam belum dituang sama sekali → mortar kosong.
+                bench.SetMortarPhase(SalepMortarPhase.Empty, 0f);
             }
             else
             {
-                // Serbuk pertama (Asam) masuk → mound putih tumbuh dari kecil ke penuh
-                // mengikuti jumlah yang sudah benar-benar dituang.
-                bench.SetMortarPhase(SalepMortarPhase.AsamPowder, Mathf.Clamp01(poured01));
+                // Asam tumbuh sendiri (kiri, putih); Sulfur 0 di tahap ini. Homogen 0.
+                bench.SetMortarPowders(AsamAmount01(), SulfurAmount01(), 0f);
             }
         }
 
@@ -845,19 +870,23 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         if (isVaselinPhase)
         {
-            SalepMortarPhase phase = progress < 0.95f
+            // fill01 = tingkat menyatu/halus salep: 0 (baru ditambah, masih bergumpal serbuk
+            // + krim) → 1 (homogen, benar-benar smooth). Dipakai full range supaya 4 transisi
+            // bertahap terlihat selama mengaduk. amount01 = 1 (krim sudah penuh dituang).
+            SalepMortarPhase phase = progress < 0.97f
                 ? SalepMortarPhase.CreamAdded
                 : SalepMortarPhase.SalepHomogeneous;
-            bench.SetMortarPhase(phase, Mathf.Lerp(0.7f, 1f, progress));
+            bench.SetMortarPhase(phase, progress, 1f);
         }
         else
         {
-            // fill01 = tingkat homogen: 0 (terpisah) → 1 (menyatu). Saat menggerus,
-            // mound putih & kuning saling mendekat lalu warnanya berbaur bertahap.
-            SalepMortarPhase phase = progress < 0.95f
-                ? SalepMortarPhase.PowderMix
-                : SalepMortarPhase.PowdersHomogeneous;
-            bench.SetMortarPhase(phase, progress);
+            // Menggerus: kedua tumpukan (Asam penuh + Sulfur penuh) mendekat ke tengah &
+            // warnanya membaur seiring homogenitas (progress) naik, lalu menyatu jadi satu
+            // gundukan homogen di akhir.
+            if (progress < 0.95f)
+                bench.SetMortarPowders(1f, 1f, progress);
+            else
+                bench.SetMortarPhase(SalepMortarPhase.PowdersHomogeneous, 1f);
         }
     }
 
@@ -1026,19 +1055,20 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 break;
 
             case SalepStep.Step_04_WeighSulfurPP:
-                // Batch 1/2 Sulfur. Mortar masih berisi Asam (putih) dari Step 3.
-                bench?.SetMortarPhase(SalepMortarPhase.AsamPowder, 0.5f);
+                // Mortar berisi Asam penuh (putih, kiri). Sulfur belum ada (kanan kosong).
+                bench?.SetMortarPowders(AsamAmount01(), SulfurAmount01(), 0f);
                 SetupWeighAndPour(SulfurId, SulfurTargetMg * 0.5f, 1);
                 break;
 
             case SalepStep.Step_05_MoveSulfurToMortar:
-                // Batch 2/2 Sulfur. Mortar sudah berisi Asam + 200 mg Sulfur dari batch 1.
-                bench?.SetMortarPhase(SalepMortarPhase.PowderMix, 0f);
+                // Asam penuh + Sulfur batch 1 (½). Dua tumpukan terpisah, belum digerus.
+                bench?.SetMortarPowders(AsamAmount01(), SulfurAmount01(), 0f);
                 SetupWeighAndPour(SulfurId, SulfurTargetMg * 0.5f, 1);
                 break;
 
             case SalepStep.Step_06_GrindPowders:
-                bench?.SetMortarPhase(SalepMortarPhase.PowderMix, 0.5f);
+                // Dua tumpukan penuh terpisah (Asam putih + Sulfur kuning), belum digerus.
+                bench?.SetMortarPowders(1f, 1f, 0f);
                 ActivateMixZone();
                 break;
 
@@ -1063,6 +1093,16 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 BeginEtiket();
                 break;
         }
+    }
+
+    // Kunci/buka kemampuan grab Mortar lewat MortarGrabGate (jika ada).
+    private void SetMortarGrabbable(bool value)
+    {
+        if (mortarController == null)
+            return;
+        MortarGrabGate gate = mortarController.GetComponent<MortarGrabGate>();
+        if (gate != null)
+            gate.SetGrabbable(value);
     }
 
     private void ActivateMortarTransfer(string ingredientId)
@@ -1135,10 +1175,31 @@ public sealed class SalepProcedureManager : MonoBehaviour
         }
     }
 
+    // Pot Salep mendekat sendiri ke sisi mortar (animate) supaya gampang diraih saat tahap
+    // memindahkan salep ke pot. Tetap bisa di-grab; begitu diraih, animasi berhenti.
+    private void TriggerPotApproach()
+    {
+        if (potSalep == null)
+            return;
+
+        Transform anchor = mortarController != null ? mortarController.transform : null;
+        if (anchor == null)
+            return;
+
+        var approach = potSalep.GetComponent<ProcedureAutoApproach>();
+        if (approach == null)
+            approach = potSalep.gameObject.AddComponent<ProcedureAutoApproach>();
+
+        approach.ApproachBeside(anchor);
+    }
+
     private void ActivatePotTransfer()
     {
         // Mulai dari fase bersihkan stamper. Salep jadi masih ada di mortar/ujung stamper.
         potPhase = PotPhase.CleanStamper;
+
+        // Pot Salep mendekat sendiri ke sisi mortar agar mudah diraih (tetap bisa di-grab).
+        TriggerPotApproach();
 
         if (bench != null)
             bench.SetMortarPhase(SalepMortarPhase.SalepHomogeneous, 1f);

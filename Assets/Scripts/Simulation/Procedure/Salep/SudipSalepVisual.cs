@@ -12,8 +12,9 @@ public sealed class SudipSalepVisual : MonoBehaviour
     [SerializeField] private Transform sudipTip;
     // Radius dunia (meter) gumpalan salep di ujung sudip. Kecil = cungkilan krim mungil.
     [SerializeField] private float blobRadius = 0.008f;
-    // Warna salep pucat (sama referensi salep 2-4). Material UNLIT → tidak "blown out" putih.
-    [SerializeField] private Color salepColor = new Color(0.94f, 0.89f, 0.62f, 1f);
+    // Warna SAMA dengan Vaselin Album di toples (MAT_VaselinAlbumCream = 0.970,0.935,0.840):
+    // krim ivory hangat. Material UNLIT → tidak "blown out" putih.
+    [SerializeField] private Color salepColor = new Color(0.970f, 0.935f, 0.840f, 1f);
     // Offset 0 → gumpalan duduk PERSIS di ujung sudip (menempel), bukan melayang. Offset
     // lama ikut terskala besar oleh sudip (lossyScale ~6-9x) sehingga blob tampak mengambang.
     [SerializeField] private Vector3 localOffset = Vector3.zero;
@@ -66,14 +67,15 @@ public sealed class SudipSalepVisual : MonoBehaviour
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", salepColor);
         mr.sharedMaterial = mat;
 
-        // Kubah kecil & pipih: lebar > tinggi, halus (tanpa butiran) seperti krim.
+        // Cungkilan krim MENGGUNUNG: dollop bulat penuh yang menumpuk di ujung sudip
+        // (puncak tinggi, bukan pipih/menyudut), halus tanpa butiran seperti salep.
         SpoonPowderMoundVisual scoop = go.AddComponent<SpoonPowderMoundVisual>();
         scoop.Configure(
-            blobRadius * 1.4f,   // radiusX (sedikit lonjong mengikuti mata sudip)
+            blobRadius * 1.15f,  // radiusX (hampir bulat, sedikit mengikuti mata sudip)
             blobRadius * 1.0f,   // radiusZ
-            blobRadius * 0.18f,  // baseHeight (tipis)
-            blobRadius * 0.7f,   // moundHeight (pipih, tidak lancip)
-            blobRadius * 0.06f,  // noise lembut
+            blobRadius * 0.12f,  // baseHeight (dasar tipis menempel blade)
+            blobRadius * 1.6f,   // moundHeight (TINGGI → dollop menggunung, bukan pipih)
+            blobRadius * 0.05f,  // noise lembut
             mat);
 
         go.SetActive(false);

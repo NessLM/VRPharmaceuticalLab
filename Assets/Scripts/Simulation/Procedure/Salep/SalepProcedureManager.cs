@@ -989,7 +989,9 @@ public sealed class SalepProcedureManager : MonoBehaviour
         Vector3 bottom = new Vector3(0f, 0.006f, 0f);
 
         potFillVisual = go.AddComponent<PotSalepFillVisual>();
-        potFillVisual.Configure(bottom, 0.038f, 0.055f);
+        // fullHeight 0.045: dengan profil menggunung (faktor ~1.27) puncak ~0.057 dari dasar
+        // → tetap di bawah tutup pot (interior ~0.07) tapi jelas menggunung.
+        potFillVisual.Configure(bottom, 0.038f, 0.045f);
     }
 
     private void UpdateMixVisual(bool isVaselinPhase, float progress)

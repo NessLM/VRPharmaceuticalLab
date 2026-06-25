@@ -13,7 +13,9 @@ public sealed class PotSalepFillVisual : MonoBehaviour
 {
     [SerializeField] private float radius = 0.035f;       // jari-jari isi (meter dunia)
     [SerializeField] private float fullHeight = 0.05f;    // tinggi saat penuh (meter dunia)
-    [SerializeField] private Color creamColor = new Color(0.96f, 0.88f, 0.60f, 1f);
+    // Warna SAMA dengan Vaselin Album di toples (MAT_VaselinAlbumCream = 0.970, 0.935, 0.840):
+    // krim ivory hangat, bukan kuning emas.
+    [SerializeField] private Color creamColor = new Color(0.970f, 0.935f, 0.840f, 1f);
     [SerializeField] private Vector3 bottomLocalPos = new Vector3(0f, 0.03f, 0f);
 
     private Transform mound;
@@ -35,6 +37,16 @@ public sealed class PotSalepFillVisual : MonoBehaviour
         if (mound != null)
             return;
 
+        // Pakai ulang child yang sudah ada (mis. setelah domain reload / objek persisten di
+        // scene) supaya TIDAK membuat duplikat mesh yang menimbulkan isi "hantu" di pot.
+        Transform existing = transform.Find("PotSalepCreamFill");
+        if (existing != null)
+        {
+            mound = existing;
+            mound.gameObject.SetActive(false);
+            return;
+        }
+
         GameObject go = new GameObject("PotSalepCreamFill");
         go.AddComponent<MeshFilter>();
         go.AddComponent<MeshRenderer>();
@@ -51,10 +63,10 @@ public sealed class PotSalepFillVisual : MonoBehaviour
         if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", creamColor);
         if (material.HasProperty("_Color")) material.SetColor("_Color", creamColor);
 
-        // Kubah krim bergelombang lembut (wavy), lebar penuh menutup mulut pot, sedikit
-        // menggunung di tengah seperti permukaan salep pada referensi.
+        // Kubah krim MENGGUNUNG: puncak tinggi di tengah (mound dominan) dengan dasar tipis,
+        // bergelombang lembut seperti salep yang ditumpuk, bukan permukaan rata.
         var shape = go.AddComponent<SpoonPowderMoundVisual>();
-        shape.Configure(radius, radius, fullHeight * 0.22f, fullHeight * 0.78f, radius * 0.07f, material);
+        shape.Configure(radius, radius, fullHeight * 0.12f, fullHeight * 1.15f, radius * 0.10f, material);
 
         go.SetActive(false);
     }

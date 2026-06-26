@@ -89,6 +89,25 @@ public sealed class SalepProcedureManager : MonoBehaviour
     [Tooltip("VIS_MortarStirGuide — lingkaran + indikator memutar saat menggerus/mengaduk. Auto-resolve jika kosong.")]
     [SerializeField] private MortarStirGuide mortarStirGuide;
 
+    [Header("Etanol (Step 3 - membasahi Asam)")]
+    [Tooltip("Jarak ujung-tuang ke mortar agar tuangan dihitung membasahi Asam (m).")]
+    [SerializeField] private float ethanolWetRadius = 0.4f;
+    [Tooltip("Cairan (ml) yang perlu dituang ke mortar agar Asam dianggap basah. Sedikit saja.")]
+    [SerializeField] private float ethanolWetRequiredMl = 4f;
+    [Tooltip("Zona air mortar (Sirup). Selama Salep di-suppress agar tuangan tidak jadi air. Auto-resolve.")]
+    [SerializeField] private MortarWaterIntakeZone mortarWaterIntake;
+    [Tooltip("Visual air mortar (Sirup). Selama Salep di-suppress agar tidak muncul. Auto-resolve.")]
+    [SerializeField] private MortarWaterVisual mortarWaterVisual;
+
+    // Step 3: progres membasahi Asam (wajib sebelum step selesai). Deteksi container-agnostic:
+    // alat penuang APAPUN yang menuang dekat mortar dihitung (Gelas Pyrex utama; Gelas Ukur
+    // dll sebagai cadangan).
+    private bool asamWetted;
+    private float ethanolAppliedMl;
+    private LiquidPourer[] pourSources;
+    private LiquidContainer[] pourSourceContainers;
+    private float[] pourSourceLastMl;
+
     [Header("Etiket (Step 10)")]
     [SerializeField] private EtiketWorkflow etiketWorkflow;
     [SerializeField] private RectTransform etiketCanvasRoot;
@@ -331,6 +350,9 @@ public sealed class SalepProcedureManager : MonoBehaviour
         // Fallback runtime setup (visual bahan + HornSpoon). Idempotent.
         SalepIngredientRuntimeSetup.ConfigureScene();
 
+        // Etanol mulai KOSONG; baru terisi saat masuk Step 3 (Asam -> Mortar).
+        SalepIngredientRuntimeSetup.EmptyEthanolGlass();
+
         ResolveReferences();
 
         if (salepIngredientsRoot != null)
@@ -347,6 +369,16 @@ public sealed class SalepProcedureManager : MonoBehaviour
             mortarController.SetPowderVisualSuppressed(true);
             mortarController.ResetMortar();
         }
+
+        // Selama Salep, matikan penyerapan air mortar (Sirup) supaya tuangan di Step 3
+        // tidak masuk sistem air, DAN matikan visual air mortar (Sirup) agar tidak muncul
+        // sama sekali. Keduanya dipulihkan saat reset.
+        if (mortarWaterIntake != null)
+            mortarWaterIntake.SetSuppressed(true);
+        if (mortarWaterVisual != null)
+            mortarWaterVisual.SetSuppressed(true);
+        if (mortarController != null)
+            mortarController.SetMixtureVisualSuppressed(true);
 
         if (potContentVisual != null)
             potContentVisual.SetActive(false);
@@ -718,6 +750,25 @@ public sealed class SalepProcedureManager : MonoBehaviour
             return false;
         }
 
+        // Fase 1.5 (khusus Step 3 / Asam): WAJIB basahi Asam dengan Etanol sebelum reset.
+        if (currentStep == SalepStep.Step_03_MoveAsamToMortar && !asamWetted)
+        {
+            UpdateAsamEthanolWetting();
+            if (!asamWetted)
+            {
+                SetEthanolPourGuidance();
+                if (progressText != null)
+                {
+                    float w = ethanolWetRequiredMl > 0f
+                        ? Mathf.Clamp01(ethanolAppliedMl / ethanolWetRequiredMl)
+                        : 1f;
+                    progressText.text =
+                        $"{displayName} sudah di mortar.\nTuang sedikit Etanol (Gelas Pyrex) ke mortar untuk membasahi serbuk. ({w * 100f:0}%)";
+                }
+                return false;
+            }
+        }
+
         // Fase 2: bubuk sudah pindah → reset timbangan OTOMATIS (kembali sendiri).
         bool panCleared = IsRightPanCleared();
         if (!panCleared)
@@ -741,6 +792,96 @@ public sealed class SalepProcedureManager : MonoBehaviour
             return true;
 
         return rightWeighingZone.TotalGrams <= rightPanClearedGrams;
+    }
+
+    // Baseline volume semua alat penuang (dipanggil saat masuk Step 3) agar delta tuangan
+    // dihitung dari titik ini.
+    private void ResetPourBaselines()
+    {
+        if (pourSources == null)
+            return;
+
+        for (int i = 0; i < pourSources.Length; i++)
+            pourSourceLastMl[i] = pourSourceContainers[i] != null ? pourSourceContainers[i].CurrentMl : 0f;
+    }
+
+    // Hitung cairan yang dituang ke mortar dari alat penuang APAPUN (volume berkurang saat
+    // menuang dekat mortar) → basahi visual Asam bertahap. TIDAK menyentuh sistem air
+    // MortarController (Sirup); murni mengubah warna serbuk Asam Salep.
+    private void UpdateAsamEthanolWetting()
+    {
+        if (mortarController == null)
+        {
+            // Tanpa mortar tak bisa deteksi → jangan kunci step (safety).
+            asamWetted = true;
+            return;
+        }
+
+        // (A) Gelas tuang (LiquidPourer): deteksi via penurunan volume saat menuang dekat
+        //     mortar (intake zone di-suppress, jadi cairan menetes bebas, tidak jadi air mortar).
+        if (pourSources != null)
+        {
+            Vector3 mortarPos = mortarController.transform.position;
+            for (int i = 0; i < pourSources.Length; i++)
+            {
+                LiquidPourer pourer = pourSources[i];
+                LiquidContainer container = pourSourceContainers[i];
+                if (pourer == null || container == null)
+                    continue;
+
+                float now = container.CurrentMl;
+                bool pouring = pourer.IsPouring;
+                bool nearMortar = Vector3.Distance(pourer.PourPoint.position, mortarPos) <= ethanolWetRadius;
+
+                // Hanya hitung saat benar-benar menuang DI ATAS mortar (bukan tumpah lain).
+                if (pouring && nearMortar && now < pourSourceLastMl[i] - 0.0001f)
+                    ethanolAppliedMl += pourSourceLastMl[i] - now;
+
+                pourSourceLastMl[i] = now;
+            }
+        }
+
+        // (B) Pipet (RedPipetteController) & sumber lain yang menambah air LANGSUNG ke mortar
+        //     (AddWaterMl): deteksi via kenaikan air mortar, lalu LANGSUNG dikosongkan supaya
+        //     tidak jadi air sirup (visual mixture + MortarWaterVisual juga sudah di-suppress).
+        float water = mortarController.CurrentWaterMl;
+        if (water > 0.0001f)
+        {
+            ethanolAppliedMl += water;
+            mortarController.SetWaterMl(0f);
+        }
+
+        float wet01 = ethanolWetRequiredMl > 0f
+            ? Mathf.Clamp01(ethanolAppliedMl / ethanolWetRequiredMl)
+            : 1f;
+
+        if (bench != null)
+            bench.SetMortarAsamWet(wet01);
+
+        if (wet01 >= 1f)
+            asamWetted = true;
+    }
+
+    // Panduan menuang etanol: sorot mortar + arahkan arrow ke mortar.
+    private void SetEthanolPourGuidance()
+    {
+        int index = GetStepIndex(currentStep);
+
+        if (stepHighlights != null && index >= 0 && index < stepHighlights.Length && stepHighlights[index] != null)
+            SetHighlight(stepHighlights[index], true);
+
+        if (balanceResetHighlight != null)
+            balanceResetHighlight.enabled = false;
+
+        if (stepArrows == null || index < 0 || index >= stepArrows.Length || stepArrows[index] == null)
+            return;
+
+        if (mortarController != null)
+        {
+            WorldStepArrow arrow = stepArrows[index];
+            arrow.Configure(mortarController.transform, "↓\nTuang Etanol\nmembasahi Asam", new Vector3(0f, 0.42f, 0f));
+            arrow.SetVisible(true);
+        }
     }
 
     // Auto-reset timbangan saat step penimbangan selesai: anak timbangan kembali sendiri
@@ -1111,6 +1252,17 @@ public sealed class SalepProcedureManager : MonoBehaviour
         else if (SalepBench.Instance != null)
             SalepBench.Instance.ResetAll();
 
+        // Kosongkan kembali Etanol di Gelas Pyrex 500ml saat keluar/reset prosedur.
+        SalepIngredientRuntimeSetup.EmptyEthanolGlass();
+
+        // Pulihkan penyerapan & visual air mortar untuk prosedur Sirup.
+        if (mortarWaterIntake != null)
+            mortarWaterIntake.SetSuppressed(false);
+        if (mortarWaterVisual != null)
+            mortarWaterVisual.SetSuppressed(false);
+        if (mortarController != null)
+            mortarController.SetMixtureVisualSuppressed(false);
+
         if (mortarController != null)
             mortarController.ResetMortar();
 
@@ -1197,6 +1349,14 @@ public sealed class SalepProcedureManager : MonoBehaviour
                 // (lihat EvaluateTransferToMortar — visual tumbuh sesuai jumlah yang masuk).
                 bench?.SetMortarPhase(SalepMortarPhase.Empty, 0f);
                 ActivateMortarTransfer(AsamId);
+                // Etanol baru DISEDIAKAN di sini (Gelas Pyrex 500ml terisi) — bukan dari awal
+                // Play. Dipakai untuk membasahi Asam Salisilat setelah masuk mortar.
+                SalepIngredientRuntimeSetup.FillEthanolGlass();
+                // Reset progres "basahi Asam" (wajib sebelum step selesai) + baseline volume
+                // semua alat penuang.
+                asamWetted = false;
+                ethanolAppliedMl = 0f;
+                ResetPourBaselines();
                 break;
 
             case SalepStep.Step_04_WeighSulfurPP:
@@ -1606,6 +1766,27 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         if (etiketWorkflow == null)
             etiketWorkflow = GetComponent<EtiketWorkflow>();
+
+        if (mortarWaterIntake == null)
+            mortarWaterIntake = FindFirstObjectByType<MortarWaterIntakeZone>(FindObjectsInactive.Include);
+
+        if (mortarWaterVisual == null && mortarController != null)
+        {
+            mortarWaterVisual = mortarController.GetComponent<MortarWaterVisual>();
+            if (mortarWaterVisual == null)
+                mortarWaterVisual = mortarController.GetComponentInChildren<MortarWaterVisual>(true);
+        }
+
+        // Semua alat penuang cairan (Gelas Pyrex/ukur dll) untuk deteksi "basahi Asam"
+        // container-agnostic di Step 3. Di-cache sekali.
+        if (pourSources == null)
+        {
+            pourSources = FindObjectsByType<LiquidPourer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            pourSourceContainers = new LiquidContainer[pourSources.Length];
+            pourSourceLastMl = new float[pourSources.Length];
+            for (int i = 0; i < pourSources.Length; i++)
+                pourSourceContainers[i] = pourSources[i] != null ? pourSources[i].GetComponent<LiquidContainer>() : null;
+        }
 
         // --- Step 9 Sudip -> Pot workflow ---
         if (stamperResidue == null && stamper != null)

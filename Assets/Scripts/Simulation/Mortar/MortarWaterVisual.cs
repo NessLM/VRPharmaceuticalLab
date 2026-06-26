@@ -60,6 +60,24 @@ public class MortarWaterVisual : MonoBehaviour
     private float swirlAngle;
     private float rippleAngle;
 
+    // Dimatikan total selama prosedur SALEP (air mortar = punya Sirup). Dipulihkan saat reset.
+    private bool suppressed;
+
+    /// <summary>Matikan/aktifkan visual air mortar (dipakai Salep agar tidak bentrok Sirup).</summary>
+    public void SetSuppressed(bool value)
+    {
+        suppressed = value;
+        if (suppressed)
+            HideAllVisuals();
+    }
+
+    private void HideAllVisuals()
+    {
+        if (waterVisual != null) waterVisual.gameObject.SetActive(false);
+        if (particleRoot != null) particleRoot.gameObject.SetActive(false);
+        if (rippleVisual != null) rippleVisual.gameObject.SetActive(false);
+    }
+
     private void Awake()
     {
         ResolveReferences();
@@ -277,6 +295,12 @@ public class MortarWaterVisual : MonoBehaviour
 
     private void UpdateVisual(bool force)
     {
+        if (suppressed)
+        {
+            HideAllVisuals();
+            return;
+        }
+
         if (mortarController == null || waterVisual == null)
             return;
 

@@ -127,6 +127,19 @@ public class MortarController : MonoBehaviour
         RefreshVisuals();
     }
 
+    private bool mixtureVisualSuppressed;
+
+    /// <summary>
+    /// Saat true, visual cairan/mixture mortar (air Sirup) dimatikan total. Dipakai workflow
+    /// Salep agar tuangan/pipet (yang sempat menambah air mortar) tidak memunculkan visual
+    /// air sirup. Tidak memengaruhi data, hanya rendering mixture.
+    /// </summary>
+    public void SetMixtureVisualSuppressed(bool suppressed)
+    {
+        mixtureVisualSuppressed = suppressed;
+        RefreshVisuals();
+    }
+
     private void Awake()
     {
         CachePowderTransforms();
@@ -536,6 +549,13 @@ public class MortarController : MonoBehaviour
     {
         if (mixtureVisual == null)
             return;
+
+        // Salep: visual air mortar (Sirup) dimatikan total walau sempat ada air.
+        if (mixtureVisualSuppressed)
+        {
+            mixtureVisual.gameObject.SetActive(false);
+            return;
+        }
 
         bool show = mixtureVisibility > 0.03f && currentWaterMl > 0.1f;
         mixtureVisual.gameObject.SetActive(show);

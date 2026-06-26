@@ -56,7 +56,7 @@ public class SummaryUI : GameEventListener<SummaryData>
         form.AddField("score", score);
         form.AddField("lokasi", lokasi);
 
-        using (UnityWebRequest www = UnityWebRequest.Post("https://vrlabfarmasismkn5pkp.fun/simpan_quiz.php", form))
+        using (UnityWebRequest www = UnityWebRequest.Post("http://localhost/quizlab-station/simpan_quiz.php", form))
         {
             // Atasi error "Unable to complete SSL connection" di Quest/Android.
             www.certificateHandler = new BypassCertificate();

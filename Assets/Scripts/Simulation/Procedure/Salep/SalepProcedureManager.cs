@@ -359,7 +359,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
             salepIngredientsRoot.SetActive(true);
 
         if (stepUiRoot != null)
+        {
             stepUiRoot.SetActive(true);
+            ApplyStepUiLayout();
+        }
 
         if (mortarController != null)
         {
@@ -1682,6 +1685,55 @@ public sealed class SalepProcedureManager : MonoBehaviour
 
         if (balanceResetHighlight != null)
             balanceResetHighlight.enabled = active;
+    }
+
+    // VR: skala Canvas world-space (sama seperti Sirup). 1920px * 0.0012 ≈ 2.3m lebar.
+    private const float WorldStepCanvasScale = 0.0012f;
+
+    /// <summary>
+    /// VR FIX (pola Sirup): Canvas Screen Space - Overlay TIDAK terlihat di dalam headset VR.
+    /// Ubah panel step Salep jadi World Space lalu posisikan di depan kamera (HMD) memakai
+    /// WorldSpaceUIFollower, supaya teks step muncul dan sedikit di atas pandangan.
+    /// </summary>
+    private void ApplyStepUiLayout()
+    {
+        if (stepUiRoot == null)
+            return;
+
+        Canvas canvas = stepUiRoot.GetComponent<Canvas>();
+        if (canvas == null && instructionText != null && instructionText.canvas != null)
+            canvas = instructionText.canvas;
+        if (canvas == null)
+            return;
+
+        Camera hmdCamera = Camera.main;
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.worldCamera = hmdCamera;
+        canvas.sortingOrder = 100;
+
+        RectTransform canvasRect = canvas.transform as RectTransform;
+        if (canvasRect != null)
+        {
+            // Pivot top-center: konten step menggantung ke bawah dari sisi atas panel.
+            canvasRect.pivot = new Vector2(0.5f, 1f);
+            if (canvasRect.sizeDelta.x < 1f || canvasRect.sizeDelta.y < 1f)
+                canvasRect.sizeDelta = new Vector2(1920f, 1080f);
+            canvasRect.localScale = Vector3.one * WorldStepCanvasScale;
+        }
+
+        WorldSpaceUIFollower follower = canvas.GetComponent<WorldSpaceUIFollower>();
+        if (follower == null)
+            follower = canvas.gameObject.AddComponent<WorldSpaceUIFollower>();
+        follower.SetCamera(hmdCamera);
+        follower.enabled = true;
+
+        UnityEngine.UI.CanvasScaler scaler = canvas.GetComponent<UnityEngine.UI.CanvasScaler>();
+        if (scaler != null)
+        {
+            // World Space: scaler beroperasi via dynamicPixelsPerUnit, bukan screen size.
+            scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ConstantPixelSize;
+            scaler.dynamicPixelsPerUnit = 10f;
+        }
     }
 
     private void ResolveReferences()

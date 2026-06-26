@@ -44,6 +44,24 @@ public sealed class InternalPowderMeshVisual : MonoBehaviour
     private void OnEnable()
     {
         Rebuild();
+
+        // VR FIX: di build, renderer.bounds (dunia) milik Cylinder kadang BELUM valid saat
+        // Awake/OnEnable berjalan ketika scene baru dimuat. Auto-fit yang membaca bounds
+        // saat itu menghasilkan posisi "nyasar" jauh ke bawah → di VR bubuk tampak jatuh ke
+        // bawah meski di editor benar ([ExecuteAlways] terus regen dengan bounds valid).
+        // Build ulang mesh setelah frame pertama, saat bounds dunia sudah pasti valid.
+        if (Application.isPlaying && isActiveAndEnabled)
+        {
+            StopAllCoroutines();
+            StartCoroutine(RebuildAfterBoundsReady());
+        }
+    }
+
+    private System.Collections.IEnumerator RebuildAfterBoundsReady()
+    {
+        yield return null;                          // tunggu satu frame penuh
+        yield return new WaitForEndOfFrame();       // pastikan render pertama selesai → bounds valid
+        Rebuild();
     }
 
     public void GenerateMesh()
@@ -94,30 +112,71 @@ public sealed class InternalPowderMeshVisual : MonoBehaviour
     private PowderFit ResolveFit()
     {
         if (useManualFit)
-        {
-            return new PowderFit(
-                Mathf.Max(MinimumRadius, manualRadius),
-                Mathf.Max(MinimumHeight, manualHeight),
-                manualBaseY,
-                Vector3.zero);
-        }
+            return ManualFit();
 
         Transform reference = ResolveCylinderReference();
-        if (!TryGetBounds(reference, out Bounds bounds))
-        {
-            return new PowderFit(
-                Mathf.Max(MinimumRadius, manualRadius),
-                Mathf.Max(MinimumHeight, manualHeight),
-                manualBaseY,
-                Vector3.zero);
-        }
+
+        // VR SAFETY: di build, renderer.bounds (dunia) milik Cylinder kadang BELUM valid saat
+        // mesh dibangun di Awake/OnEnable (scene baru dimuat) → bounds berukuran ~0 atau
+        // ter-pusat di origin. Auto-fit dari bounds rusak itu menaruh bubuk jauh ke bawah
+        // (gejala "kebawah" di VR). Tolak bounds tak valid & pakai manual fit sementara; mesh
+        // dibangun ulang otomatis via RebuildAfterBoundsReady() begitu bounds sudah valid.
+        if (!TryGetBounds(reference, out Bounds bounds) || !AreWorldBoundsValid(bounds))
+            return ManualFit();
 
         Bounds localBounds = WorldBoundsToLocal(bounds);
         float radius = Mathf.Max(MinimumRadius, Mathf.Min(localBounds.extents.x, localBounds.extents.z) * radiusMultiplier);
         float height = Mathf.Max(MinimumHeight, localBounds.size.y * heightMultiplier);
         Vector3 localBaseCenter = new Vector3(localBounds.center.x, localBounds.min.y + bottomOffset, localBounds.center.z);
 
+        // Hanya tolak hasil yang benar-benar rusak (NaN / ekstrem). CATATAN: baseY yang dalam
+        // (mis. Difenhidramin ~-0.5) adalah SAH — PowderVisualRoot-nya dipasang tinggi dekat
+        // mulut botol sehingga bubuk memang digambar jauh di bawah origin. Jangan tolak itu.
+        if (!IsFitSane(radius, height, localBaseCenter))
+            return ManualFit();
+
         return new PowderFit(radius, height, localBaseCenter.y, localBaseCenter);
+    }
+
+    private static bool AreWorldBoundsValid(Bounds b)
+    {
+        Vector3 s = b.size;
+        if (float.IsNaN(s.x) || float.IsNaN(s.y) || float.IsNaN(s.z))
+            return false;
+        // Bounds belum siap (mesh/renderer belum ter-update) → berukuran ~0.
+        if (s.x < 0.0005f || s.y < 0.0005f || s.z < 0.0005f)
+            return false;
+        // Bounds absurd (data rusak).
+        if (s.x > 100f || s.y > 100f || s.z > 100f)
+            return false;
+        Vector3 c = b.center;
+        if (float.IsNaN(c.x) || float.IsNaN(c.y) || float.IsNaN(c.z))
+            return false;
+        return true;
+    }
+
+    private PowderFit ManualFit()
+    {
+        float baseY = manualBaseY;
+        return new PowderFit(
+            Mathf.Max(MinimumRadius, manualRadius),
+            Mathf.Max(MinimumHeight, manualHeight),
+            baseY,
+            new Vector3(0f, baseY, 0f)); // y selaras dengan BaseY agar tutup bawah & dinding tidak terpisah
+    }
+
+    private static bool IsFitSane(float radius, float height, Vector3 localBaseCenter)
+    {
+        if (float.IsNaN(localBaseCenter.x) || float.IsNaN(localBaseCenter.y) || float.IsNaN(localBaseCenter.z))
+            return false;
+        // Batas longgar: hanya menangkap nilai yang jelas rusak, bukan fit dalam yang sah.
+        if (Mathf.Abs(localBaseCenter.x) > 1f || Mathf.Abs(localBaseCenter.z) > 1f)
+            return false;
+        if (localBaseCenter.y < -2f || localBaseCenter.y > 2f)
+            return false;
+        if (radius > 1f || height > 3f)
+            return false;
+        return true;
     }
 
     private Bounds WorldBoundsToLocal(Bounds worldBounds)

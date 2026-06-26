@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 /// <summary>
 /// VR Pharmacy - Red Pipette Controller v15 Soft Snap Detach + Free Dispense
@@ -181,6 +183,11 @@ public class RedPipetteController : MonoBehaviour
     private Collider[] ignoredTargetColliders;
     private Component grabInteractable;
 
+    // VR: tombol activate (trigger) controller saat pipet digenggam = "pencet bulb".
+    // Tanpa ini, suck/dispense hanya jalan via mouse di editor dan MATI di headset VR.
+    private XRGrabInteractable activateInteractable;
+    private bool isBulbActivated;
+
     private SnapTarget activeTarget;
     private bool isSnapped;
     private bool isTransferring;
@@ -218,12 +225,60 @@ public class RedPipetteController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         pipetteColliders = GetComponentsInChildren<Collider>(true);
         grabInteractable = FindGrabInteractableComponent();
+        activateInteractable = grabInteractable as XRGrabInteractable;
+        if (activateInteractable == null)
+            activateInteractable = GetComponent<XRGrabInteractable>();
 
         AutoFindReferences();
         RepairLegacyFallback();
         AutoRepairSnapTargets();
         EnsureFreeDispenseLine();
         RefreshVisual();
+    }
+
+    private void OnEnable()
+    {
+        // VR FIX: dengarkan activate/deactivate (trigger controller) seperti pola Sendok
+        // (SpoonScoopActivator). Inilah input "pencet bulb" yang berfungsi di headset VR.
+        if (activateInteractable == null)
+            activateInteractable = GetComponent<XRGrabInteractable>();
+
+        if (activateInteractable != null)
+        {
+            activateInteractable.activated.AddListener(OnBulbActivated);
+            activateInteractable.deactivated.AddListener(OnBulbDeactivated);
+            activateInteractable.selectExited.AddListener(OnBulbSelectExited);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (activateInteractable != null)
+        {
+            activateInteractable.activated.RemoveListener(OnBulbActivated);
+            activateInteractable.deactivated.RemoveListener(OnBulbDeactivated);
+            activateInteractable.selectExited.RemoveListener(OnBulbSelectExited);
+        }
+
+        isBulbActivated = false;
+    }
+
+    // Trigger ditekan saat pipet digenggam → mulai menyedot/mengeluarkan air.
+    private void OnBulbActivated(ActivateEventArgs args)
+    {
+        isBulbActivated = true;
+    }
+
+    // Trigger dilepas → berhenti.
+    private void OnBulbDeactivated(DeactivateEventArgs args)
+    {
+        isBulbActivated = false;
+    }
+
+    // Pipet dilepas dari tangan → pastikan tidak ada state "tertekan" yang nyangkut.
+    private void OnBulbSelectExited(SelectExitEventArgs args)
+    {
+        isBulbActivated = false;
     }
 
     private void OnValidate()
@@ -1016,6 +1071,11 @@ public class RedPipetteController : MonoBehaviour
 
     private bool IsTransferInputHeld()
     {
+        // VR: trigger controller (activate) saat pipet digenggam = pencet bulb. Ini jalur
+        // utama di headset; mouse di bawah hanya untuk testing di editor.
+        if (isBulbActivated)
+            return true;
+
         bool mouseHeld = useLeftMouseInEditor && Input.GetMouseButton(0);
         if (!mouseHeld)
             return false;

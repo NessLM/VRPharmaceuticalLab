@@ -69,6 +69,16 @@ public class EtiketWorkflow : MonoBehaviour
     private bool labelIsAttached;
     private bool eventsBound;
 
+    // VR FIX: Syrup & Salep punya EtiketWorkflow MASING-MASING, tetapi keduanya menunjuk ke
+    // UI Etiket yang SAMA (createLabelButton, tombol pilih, dll). Setiap instance menambah
+    // listener-nya sendiri ke tombol bersama itu, jadi SATU klik "Buat Etiket" memicu KEDUA
+    // workflow → etiket dobel (satu di pot Salep, satu di botol Syrup). Penjaga ini memastikan
+    // hanya workflow yang sedang aktif (yang terakhir memulai BeginLabelSelection) yang
+    // merespons input UI bersama.
+    private static EtiketWorkflow s_activeWorkflow;
+
+    private bool IsActiveWorkflow => s_activeWorkflow == this;
+
     private static readonly Color WhiteEtiket = new Color(0.97f, 0.98f, 0.96f, 1f);
     private static readonly Color BlueEtiket = new Color(0.16f, 0.66f, 0.86f, 1f);
     private static readonly Color DarkInk = new Color(0.025f, 0.035f, 0.05f, 1f);
@@ -102,6 +112,10 @@ public class EtiketWorkflow : MonoBehaviour
 
     public void BeginLabelSelection(RectTransform unusedCanvasRoot, Transform bottleTarget)
     {
+        // Tandai workflow ini sebagai yang aktif: hanya dia yang boleh merespons klik UI
+        // Etiket bersama mulai sekarang (mencegah etiket dobel saat prosedur lain ikut ter-bind).
+        s_activeWorkflow = this;
+
         Initialize(unusedCanvasRoot, bottleTarget);
         DestroyCurrentLabel();
 
@@ -168,7 +182,11 @@ public class EtiketWorkflow : MonoBehaviour
         createLabelButton.onClick.AddListener(CreateWorldLabel);
 
         if (backButton != null)
-            backButton.onClick.AddListener(() => BackRequested?.Invoke());
+            backButton.onClick.AddListener(() =>
+            {
+                if (IsActiveWorkflow)
+                    BackRequested?.Invoke();
+            });
 
         BindInput(numberInput);
         BindInput(nameInput);
@@ -182,12 +200,23 @@ public class EtiketWorkflow : MonoBehaviour
         if (input == null)
             return;
 
-        input.onSelect.AddListener(_ => OpenKeyboard(input));
-        input.onValueChanged.AddListener(_ => RefreshFormPreview());
+        input.onSelect.AddListener(_ =>
+        {
+            if (IsActiveWorkflow)
+                OpenKeyboard(input);
+        });
+        input.onValueChanged.AddListener(_ =>
+        {
+            if (IsActiveWorkflow)
+                RefreshFormPreview();
+        });
     }
 
     private void SelectEtiketColor(bool useWhite)
     {
+        if (!IsActiveWorkflow)
+            return;
+
         whiteEtiket = useWhite;
 
         if (formTitle != null)
@@ -224,6 +253,10 @@ public class EtiketWorkflow : MonoBehaviour
 
     private void CreateWorldLabel()
     {
+        // Hanya workflow aktif yang membuat etiket (cegah spawn dobel dari prosedur lain).
+        if (!IsActiveWorkflow)
+            return;
+
         if (string.IsNullOrWhiteSpace(nameInput != null ? nameInput.text : null) ||
             string.IsNullOrWhiteSpace(usageInput != null ? usageInput.text : null))
         {
@@ -554,6 +587,9 @@ public class EtiketWorkflow : MonoBehaviour
 
     private void ShowChoice()
     {
+        if (!IsActiveWorkflow)
+            return;
+
         SetPanelState(true, false, false);
     }
 

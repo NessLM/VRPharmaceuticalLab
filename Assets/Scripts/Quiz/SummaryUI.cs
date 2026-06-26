@@ -1,7 +1,18 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
 using System.Collections;
+
+// Menerima sertifikat SSL apa pun. Diperlukan di perangkat Quest/Android
+// yang sering gagal memverifikasi rantai sertifikat (Unable to complete SSL connection).
+public class BypassCertificate : CertificateHandler
+{
+    protected override bool ValidateCertificate(byte[] certificateData)
+    {
+        return true;
+    }
+}
 
 public class SummaryUI : GameEventListener<SummaryData>
 {
@@ -35,13 +46,22 @@ public class SummaryUI : GameEventListener<SummaryData>
 
     IEnumerator KirimKeDatabase(string nama, string kelas, int score)
     {
+        // Nama scene aktif dipakai sebagai penanda lokasi/tempat quiz
+        // (VRLab, VRLabSimulation, VRLabSimulation_Padat) tanpa perlu mengubah scene.
+        string lokasi = SceneManager.GetActiveScene().name;
+
         WWWForm form = new WWWForm();
-        form.AddField("nama", nama);
-        form.AddField("kelas", kelas);
+        form.AddField("nama", string.IsNullOrEmpty(nama) ? "-" : nama);
+        form.AddField("kelas", string.IsNullOrEmpty(kelas) ? "-" : kelas);
         form.AddField("score", score);
+        form.AddField("lokasi", lokasi);
 
         using (UnityWebRequest www = UnityWebRequest.Post("https://vrlabfarmasismkn5pkp.fun/simpan_quiz.php", form))
         {
+            // Atasi error "Unable to complete SSL connection" di Quest/Android.
+            www.certificateHandler = new BypassCertificate();
+            www.timeout = 15;
+
             yield return www.SendWebRequest();
 
             if (www.result == UnityWebRequest.Result.Success)
@@ -50,7 +70,7 @@ public class SummaryUI : GameEventListener<SummaryData>
             }
             else
             {
-                Debug.LogError("Gagal kirim data: " + www.error);
+                Debug.LogError("Gagal kirim data: " + www.error + " | Code: " + www.responseCode);
             }
         }
     }

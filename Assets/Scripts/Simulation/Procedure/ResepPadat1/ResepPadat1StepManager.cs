@@ -23,6 +23,7 @@ public class ResepPadat1StepManager : MonoBehaviour
     [SerializeField] private MonoBehaviour tutupCTMInteractable;
     [SerializeField] private MonoBehaviour tutupParacetamolInteractable;
     [SerializeField] private MonoBehaviour tutupBotolKapsulInteractable;
+    [SerializeField] private MonoBehaviour stackGridPerkamenScript;
 
     [Header("Panels")]
     [SerializeField] private GameObject panelResep;
@@ -55,6 +56,7 @@ public class ResepPadat1StepManager : MonoBehaviour
         SetScript(tutupCTMInteractable, false);
         SetScript(tutupParacetamolInteractable, false);
         SetScript(tutupBotolKapsulInteractable, false);
+        SetScript(stackGridPerkamenScript, false);
 
         SetPanel(instruksiStep1, false);
         SetPanel(instruksiStep2, false);
@@ -86,6 +88,7 @@ public class ResepPadat1StepManager : MonoBehaviour
         SetScript(tutupCTMInteractable, false);
         SetScript(tutupParacetamolInteractable, false);
         SetScript(tutupBotolKapsulInteractable, false);
+        SetScript(stackGridPerkamenScript, false);
 
         SetPanel(instruksiStep1, false);
         SetPanel(instruksiStep2, false);
@@ -101,6 +104,9 @@ public class ResepPadat1StepManager : MonoBehaviour
             // Tutup Paracetamol tetap mati sampai CTM selesai.
             SetScript(tutupCTMInteractable, true);
             SetScript(tutupParacetamolInteractable, false);
+
+            SetScript(stackPerkamenScript, true);
+SetScript(stackGridPerkamenScript, false);
 
             SetPanel(instruksiStep1, true);
 
@@ -120,6 +126,8 @@ public class ResepPadat1StepManager : MonoBehaviour
 
             SetScript(botolKapsulScript, true);
             SetScript(tutupBotolKapsulInteractable, true);
+            SetScript(stackPerkamenScript, false);
+SetScript(stackGridPerkamenScript, true);
 
             SetPanel(instruksiStep3, true);
 

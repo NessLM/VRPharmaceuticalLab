@@ -16,6 +16,7 @@ public class MortarCircularGrindTrigger : MonoBehaviour
     [SerializeField] private GameObject progressPanel;
     [SerializeField] private TMP_Text progressText;
     [SerializeField] private Image progressFill;
+    [SerializeField] private PestleAutoCleanSequence pestleCleanSequence;
 
     [Header("Checklist Step 2")]
     [SerializeField] private Step2ChecklistManager checklistManager;
@@ -123,6 +124,9 @@ public class MortarCircularGrindTrigger : MonoBehaviour
 
         if (checklistManager != null)
             checklistManager.CheckGrinding();
+
+            if (pestleCleanSequence != null)
+    pestleCleanSequence.StartRestMode();
 
         Debug.Log("Penggerusan selesai. Bubuk homogen muncul.");
     }

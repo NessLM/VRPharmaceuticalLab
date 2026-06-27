@@ -350,8 +350,10 @@ public sealed class SalepProcedureManager : MonoBehaviour
         // Fallback runtime setup (visual bahan + HornSpoon). Idempotent.
         SalepIngredientRuntimeSetup.ConfigureScene();
 
-        // Etanol mulai KOSONG; baru terisi saat masuk Step 3 (Asam -> Mortar).
-        SalepIngredientRuntimeSetup.EmptyEthanolGlass();
+        // Etanol langsung TERISI di Gelas Pyrex saat MULAI SIMULASI Salep (permintaan:
+        // air Etanol muncul di GelasPyrex sejak awal prosedur Salep, bukan menunggu Step 3).
+        // Idempotent: hanya mengisi kalau gelas masih kosong. Tetap dikosongkan saat reset/keluar.
+        SalepIngredientRuntimeSetup.FillEthanolGlass();
 
         ResolveReferences();
 

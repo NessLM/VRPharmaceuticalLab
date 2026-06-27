@@ -12,6 +12,8 @@ public class PerkamenGridDispenser : MonoBehaviour
     [SerializeField] private float spreadDuration = 0.6f;
     [SerializeField] private float delayBetweenPapers = 0.05f;
 
+    [SerializeField] private Step3ChecklistManager checklistManager;
+
     private XRSimpleInteractable interactable;
     private bool hasSpawned = false;
 
@@ -68,7 +70,13 @@ public class PerkamenGridDispenser : MonoBehaviour
             StartCoroutine(MovePaper(paper.transform, gridPoints[i]));
 
             yield return new WaitForSeconds(delayBetweenPapers);
+
+            
         }
+
+         // TAMBAHKAN INI
+    if (checklistManager != null)
+        checklistManager.CheckGrid();
     }
 
     private IEnumerator MovePaper(Transform paper, Transform target)

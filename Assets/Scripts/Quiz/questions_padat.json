@@ -1,0 +1,77 @@
+{
+  "questions": [
+    {
+      "question": "Campuran kering bahan obat atau zat kimia yang dihaluskan, ditujukan untuk pemakaian oral disebut...",
+      "answers": [
+        { "text": "Puyer (Pulveres)", "isCorrect": true },
+        { "text": "Salep (Unguentum)", "isCorrect": false },
+        { "text": "Sirup (Syrupi)", "isCorrect": false },
+        { "text": "Emulsi", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Wadah atau cangkang keras/lunak yang dapat larut untuk menyimpan obat padat biasanya terbuat dari...",
+      "answers": [
+        { "text": "Gelatin", "isCorrect": true },
+        { "text": "Plastik", "isCorrect": false },
+        { "text": "Kertas perkamen", "isCorrect": false },
+        { "text": "Kaca", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Sediaan padat berbentuk bulat dengan massa antara 100 mg hingga 500 mg disebut...",
+      "answers": [
+        { "text": "Pil (Pilulae)", "isCorrect": true },
+        { "text": "Tablet", "isCorrect": false },
+        { "text": "Kapsul", "isCorrect": false },
+        { "text": "Granul", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada resep sediaan padat, bahan pembantu Saccharum Lactis (SL) biasanya berfungsi sebagai...",
+      "answers": [
+        { "text": "Zat pengisi atau pemanis", "isCorrect": true },
+        { "text": "Zat aktif utama", "isCorrect": false },
+        { "text": "Zat penghancur", "isCorrect": false },
+        { "text": "Zat pengawet", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat laboratorium yang digunakan untuk menghaluskan tablet zat aktif menjadi puyer adalah...",
+      "answers": [
+        { "text": "Mortar dan Stamper", "isCorrect": true },
+        { "text": "Gelas ukur", "isCorrect": false },
+        { "text": "Corong kaca", "isCorrect": false },
+        { "text": "Erlenmeyer", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Kertas yang digunakan sebagai pembungkus puyer sekaligus alas timbang adalah...",
+      "answers": [
+        { "text": "Kertas perkamen", "isCorrect": true },
+        { "text": "Kertas saring", "isCorrect": false },
+        { "text": "Kertas lakmus", "isCorrect": false },
+        { "text": "Kertas koran", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Sediaan padat untuk penggunaan oral (diminum) wajib menggunakan etiket berwarna...",
+      "answers": [
+        { "text": "Putih", "isCorrect": true },
+        { "text": "Biru", "isCorrect": false },
+        { "text": "Kuning", "isCorrect": false },
+        { "text": "Merah", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Gerakan menggerus obat di dalam mortar menggunakan stamper sebaiknya dilakukan dengan cara...",
+      "answers": [
+        { "text": "Memutar berlawanan arah jarum jam", "isCorrect": true },
+        { "text": "Menumbuk searah jarum jam", "isCorrect": false },
+        { "text": "Mengocok secara vertikal", "isCorrect": false },
+        { "text": "Dibiarkan saja tanpa digerakkan", "isCorrect": false }
+      ]
+    }
+    
+  ]
+}

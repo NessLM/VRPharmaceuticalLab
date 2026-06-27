@@ -282,6 +282,14 @@ public sealed class SalepBench : MonoBehaviour
             mortarVisual.SetPowderPiles(asam01, sulfur01, homogeneity01);
     }
 
+    /// <summary>Basahi visual serbuk Asam dengan etanol (tint gelap tipis). 0=kering, 1=basah.</summary>
+    public void SetMortarAsamWet(float wet01)
+    {
+        EnsureVisuals();
+        if (mortarVisual != null)
+            mortarVisual.SetAsamWetness(wet01);
+    }
+
     public void ResetAll()
     {
         ClearPan();

@@ -16,6 +16,10 @@ public static class SalepIngredientRuntimeSetup
     private const float VaselinScoopMg = 1000f;    // 1 g per scoop
     private const float VaselinTargetMg = 10000f;  // 10 g sesuai resep
 
+    // Gelas pelarut Etanol untuk salep (object scene, bukan prefab).
+    private const string EthanolGlassName = "Gelas pyrex 500ml";
+    private static LiquidData ethanolLiquidCache;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoConfigureOnPlay()
     {
@@ -76,6 +80,11 @@ public static class SalepIngredientRuntimeSetup
         }
 
         BindBench(spoon, creamMaterial);
+
+        // CATATAN: Etanol di Gelas Pyrex 500ml TIDAK diisi di sini. ConfigureScene jalan
+        // tiap Play (auto) untuk SEMUA prosedur, jadi mengisi di sini membuat air muncul
+        // dari awal. Pengisian dilakukan SalepProcedureManager saat masuk Step 3
+        // (Asam Salisilat -> Mortar) lewat FillEthanolGlass(). Lihat juga EmptyEthanolGlass().
     }
 
     private static void BindBench(HornSpoon spoon, Material creamMaterial)
@@ -122,6 +131,77 @@ public static class SalepIngredientRuntimeSetup
             $"depositZone={(depositZone != null ? "OK" : "MISSING")}, " +
             $"spoon={(spoon != null ? "OK" : "MISSING")}, " +
             $"mortar={(mortar != null ? "OK" : "MISSING")}.");
+    }
+
+    // Isi Gelas Pyrex 500ml penuh dengan Etanol & beri label "Etanol".
+    // Dipanggil saat masuk Step 3 (Asam Salisilat -> Mortar), BUKAN saat ConfigureScene,
+    // supaya air baru muncul di tahap yang benar (bukan dari awal Play). Idempotent.
+    public static void FillEthanolGlass()
+    {
+        LiquidContainer container = ResolveEthanolContainer();
+        if (container == null)
+            return;
+
+        // Sudah terisi (mis. step di-replay) → jangan reset ke penuh, biarkan apa adanya.
+        if (!container.IsEmpty)
+            return;
+
+        LiquidData ethanol = GetEthanolLiquid();
+        container.SetLiquid(container.CapacityMl, ethanol);
+
+        Debug.Log(
+            $"[SalepIngredientRuntimeSetup] Etanol disiapkan penuh di '{EthanolGlassName}' " +
+            $"({container.CapacityMl} ml).");
+    }
+
+    // Kosongkan Gelas Pyrex 500ml (dipakai saat mulai/keluar prosedur Salep agar air
+    // tidak ada sampai tiba di Step 3).
+    public static void EmptyEthanolGlass()
+    {
+        LiquidContainer container = ResolveEthanolContainer();
+        if (container != null)
+            container.EmptyLiquid();
+    }
+
+    private static LiquidContainer ResolveEthanolContainer()
+    {
+        GameObject glass = FindObjectByName(EthanolGlassName);
+        if (glass == null)
+        {
+            Debug.LogWarning(
+                $"[SalepIngredientRuntimeSetup] '{EthanolGlassName}' tidak ditemukan; Etanol tidak disiapkan.");
+            return null;
+        }
+
+        LiquidContainer container = glass.GetComponent<LiquidContainer>();
+        if (container == null)
+            Debug.LogWarning(
+                $"[SalepIngredientRuntimeSetup] '{EthanolGlassName}' tidak punya LiquidContainer.");
+
+        return container;
+    }
+
+    private static LiquidData GetEthanolLiquid()
+    {
+        if (ethanolLiquidCache != null)
+            return ethanolLiquidCache;
+
+        // Pakai asset Resources/Ethanol kalau ada (bisa diedit di Inspector),
+        // selain itu buat instance runtime ringan.
+        LiquidData asset = Resources.Load<LiquidData>("Ethanol");
+        if (asset != null)
+        {
+            ethanolLiquidCache = asset;
+            return asset;
+        }
+
+        LiquidData runtime = ScriptableObject.CreateInstance<LiquidData>();
+        runtime.name = "Etanol";
+        runtime.liquidName = "Etanol";
+        // Etanol bening: tint dingin sangat tipis dengan alpha rendah.
+        runtime.liquidColor = new Color(0.85f, 0.92f, 1f, 0.28f);
+        ethanolLiquidCache = runtime;
+        return runtime;
     }
 
     private static IngredientVisualProfile GetProfile(string jarName)

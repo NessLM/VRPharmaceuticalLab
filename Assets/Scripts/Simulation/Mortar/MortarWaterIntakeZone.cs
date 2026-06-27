@@ -16,7 +16,17 @@ public class MortarWaterIntakeZone : MonoBehaviour
 
     private Collider triggerCollider;
 
+    // Dimatikan selama prosedur SALEP supaya tuangan Etanol tidak terserap ke sistem air
+    // Sirup (yang bisa memunculkan visual mixture sirup di mortar). Dipulihkan saat reset.
+    private bool suppressed;
+
     public Transform ReceiverPoint => receiverPoint != null ? receiverPoint : transform;
+
+    /// <summary>Matikan/aktifkan penerimaan cairan (dipakai Salep agar tidak bentrok Sirup).</summary>
+    public void SetSuppressed(bool value)
+    {
+        suppressed = value;
+    }
 
     private void Awake()
     {
@@ -38,7 +48,7 @@ public class MortarWaterIntakeZone : MonoBehaviour
 
     public bool CanReceiveFrom(LiquidContainer source)
     {
-        if (mortar == null || source == null || source.IsEmpty)
+        if (suppressed || mortar == null || source == null || source.IsEmpty)
             return false;
 
         return mortar.RemainingWaterMlForCurrentPhase > 0.001f;

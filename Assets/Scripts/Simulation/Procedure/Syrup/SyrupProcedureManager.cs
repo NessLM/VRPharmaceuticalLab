@@ -190,6 +190,8 @@ public class SyrupProcedureManager : MonoBehaviour
         "PourPoint"
     };
 
+    // VR: skala Canvas world-space. 1920px * 0.0012 = ~2.3m lebar panel di world.
+    private const float WorldCanvasScale = 0.0012f;
     private static readonly Vector2 TopBackdropPosition = new Vector2(0f, -28f);
     private static readonly Vector2 TopBackdropSize = new Vector2(1200f, 176f);
     private static readonly Vector2 InstructionPosition = new Vector2(0f, -38f);
@@ -2166,17 +2168,37 @@ public class SyrupProcedureManager : MonoBehaviour
         Canvas canvas = stepCanvasRoot != null ? stepCanvasRoot.GetComponent<Canvas>() : null;
         if (canvas != null)
         {
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            // VR FIX: Screen Space - Overlay TIDAK terlihat di dalam headset VR (hanya muncul
+            // di Game view editor / XR Device Simulator). Pakai World Space lalu tempatkan
+            // panel di depan kamera (HMD) memakai WorldSpaceUIFollower.
+            Camera hmdCamera = Camera.main;
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.worldCamera = hmdCamera;
             canvas.sortingOrder = 100;
+
+            RectTransform canvasRect = canvas.transform as RectTransform;
+            if (canvasRect != null)
+            {
+                // Pivot top-center: posisi transform = sisi atas-tengah panel, konten menggantung
+                // ke bawah dari situ (sesuai layout top-anchored di bawah).
+                canvasRect.pivot = new Vector2(0.5f, 1f);
+                canvasRect.sizeDelta = new Vector2(1920f, 1080f);
+                canvasRect.localScale = Vector3.one * WorldCanvasScale;
+            }
+
+            WorldSpaceUIFollower follower = canvas.GetComponent<WorldSpaceUIFollower>();
+            if (follower == null)
+                follower = canvas.gameObject.AddComponent<WorldSpaceUIFollower>();
+            follower.SetCamera(hmdCamera);
+            follower.enabled = true;
         }
 
         CanvasScaler scaler = stepCanvasRoot != null ? stepCanvasRoot.GetComponent<CanvasScaler>() : null;
         if (scaler != null)
         {
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
+            // World Space: CanvasScaler beroperasi via dynamicPixelsPerUnit, bukan screen size.
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            scaler.dynamicPixelsPerUnit = 10f;
         }
 
         EnsureTopBackdrop();

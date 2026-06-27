@@ -30,8 +30,8 @@
     {
       "question": "Dalam resep salep 10 g dengan Asam Salisilat 200 mg dan Sulfur PP 400 mg, berapa Vaselin Album yang dibutuhkan?",
       "answers": [
-        { "text": "9,4 g", "isCorrect": true },
-        { "text": "10 g", "isCorrect": false },
+        { "text": "9,4 g", "isCorrect": false },
+        { "text": "10 g", "isCorrect": true },
         { "text": "6 g", "isCorrect": false },
         { "text": "0,6 g", "isCorrect": false }
       ]

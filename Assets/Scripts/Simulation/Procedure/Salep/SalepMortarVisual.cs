@@ -74,6 +74,14 @@ public sealed class SalepMortarVisual : MonoBehaviour
     // Salep 2-4 final: kuning pucat agak kehijauan seperti referensi
     [SerializeField] private Color salepIvory = new Color(0.90f, 0.89f, 0.58f, 1f);
 
+    [Header("Asam basah (etanol, Step 3)")]
+    [Tooltip("Warna Asam saat dibasahi etanol — tint gelap tipis. Di-lerp dari asamWhite sesuai jumlah etanol (0=kering, 1=basah).")]
+    [SerializeField] private Color asamWetTint = new Color(0.76f, 0.77f, 0.75f, 1f);
+
+    // 0 = Asam kering; 1 = Asam dibasahi etanol (tint gelap tipis). Hanya memengaruhi WARNA
+    // tumpukan Asam, tidak mengubah bentuk/ukuran. Persisten sampai Clear()/reset.
+    private float asamWet01;
+
     [Header("Mesh bubuk (butiran)")]
     [Tooltip("Skala mound saat memakai mesh granul asli proyek (Pile_03_M_Granules).")]
     [SerializeField] private float granuleMoundScale = 0.34f;
@@ -481,7 +489,9 @@ public sealed class SalepMortarVisual : MonoBehaviour
         salepPowder.gameObject.SetActive(hasAsam);
         if (hasAsam)
         {
-            ApplyColor(salepPowderMat, Color.Lerp(asamWhite, powderMixColor, h));
+            // Basahi dulu (tint gelap tipis), lalu baur ke campuran saat digerus.
+            Color asamBase = Color.Lerp(asamWhite, asamWetTint, asamWet01);
+            ApplyColor(salepPowderMat, Color.Lerp(asamBase, powderMixColor, h));
             GetLevelPose(asam01, TwoColorFit, out Vector3 pos, out Vector3 scale);
             salepPowder.localPosition = pos + new Vector3(-sep, 0f, 0f);
             salepPowder.localScale = scale;
@@ -819,7 +829,18 @@ public sealed class SalepMortarVisual : MonoBehaviour
 
     public void Clear()
     {
+        asamWet01 = 0f;
         SetPhase(SalepMortarPhase.Empty, 0f);
+    }
+
+    /// <summary>
+    /// Basahi serbuk Asam dengan etanol: tint gelap tipis. wet01 = 0 (kering) .. 1 (basah).
+    /// HANYA mengubah warna tumpukan Asam (putih), tidak mengubah bentuk/ukuran/alur.
+    /// </summary>
+    public void SetAsamWetness(float wet01)
+    {
+        asamWet01 = Mathf.Clamp01(wet01);
+        Refresh();
     }
 
     private void Refresh()

@@ -15,6 +15,9 @@ public class ResepPadat1StepManager : MonoBehaviour
     [Header("Barang Step 3")]
     [SerializeField] private XRGrabInteractable[] step3GrabItems;
 
+    [Header("Barang Step 4")]
+[SerializeField] private XRGrabInteractable[] step4GrabItems;
+
     [Header("Script Khusus")]
     [SerializeField] private MonoBehaviour stackPerkamenScript;
     [SerializeField] private MonoBehaviour botolKapsulScript;
@@ -30,6 +33,7 @@ public class ResepPadat1StepManager : MonoBehaviour
     [SerializeField] private GameObject instruksiStep1;
     [SerializeField] private GameObject instruksiStep2;
     [SerializeField] private GameObject instruksiStep3;
+    [SerializeField] private GameObject instruksiStep4;
 
     private bool simulationStarted = false;
 
@@ -61,6 +65,7 @@ public class ResepPadat1StepManager : MonoBehaviour
         SetPanel(instruksiStep1, false);
         SetPanel(instruksiStep2, false);
         SetPanel(instruksiStep3, false);
+        SetPanel(instruksiStep4, false);
 
         Debug.Log("Sebelum Mulai: semua grab dan script khusus dimatikan.");
     }
@@ -93,6 +98,7 @@ public class ResepPadat1StepManager : MonoBehaviour
         SetPanel(instruksiStep1, false);
         SetPanel(instruksiStep2, false);
         SetPanel(instruksiStep3, false);
+        SetPanel(instruksiStep4, false);
 
         if (step == 1)
         {
@@ -124,8 +130,6 @@ SetScript(stackGridPerkamenScript, false);
         {
             UnlockItems(step3GrabItems);
 
-            SetScript(botolKapsulScript, true);
-            SetScript(tutupBotolKapsulInteractable, true);
             SetScript(stackPerkamenScript, false);
 SetScript(stackGridPerkamenScript, true);
 
@@ -133,6 +137,17 @@ SetScript(stackGridPerkamenScript, true);
 
             Debug.Log("Step 3 aktif.");
         }
+        else if (step == 4)
+{
+    UnlockItems(step4GrabItems);
+
+    SetScript(botolKapsulScript, true);
+    SetScript(tutupBotolKapsulInteractable, true);
+
+    SetPanel(instruksiStep4, true);
+
+    Debug.Log("Step 4 aktif.");
+}
     }
 
     private void LockItems(XRGrabInteractable[] items)

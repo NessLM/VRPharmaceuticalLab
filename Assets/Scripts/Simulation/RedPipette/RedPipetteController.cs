@@ -205,6 +205,7 @@ public class RedPipetteController : MonoBehaviour
 
     private MeshFilter liquidMeshFilter;
     private Mesh generatedLiquidMesh;
+    private Material runtimeLiquidMaterial;
     private bool warnedAddLiquidMissing;
 
     private LineRenderer freeDispenseLine;
@@ -1230,20 +1231,86 @@ public class RedPipetteController : MonoBehaviour
         if (liquidRenderer == null)
             return;
 
+        // VR FIX: LiquidMesh tidak punya material di scene (liquidMaterial & sharedMaterial = NULL).
+        // Material NULL dirender sebagai shader "missing" MAGENTA/ungu di build VR (di editor
+        // kadang masih kelihatan wajar). Itu juga yang membuat cairan terlihat seperti batang
+        // solid yang "keluar dari tempatnya". Pastikan SELALU ada material URP yang valid:
+        // pakai liquidMaterial dari Inspector kalau ada, kalau tidak buat material runtime.
+        Material mat;
         if (liquidMaterial != null)
-            liquidRenderer.sharedMaterial = liquidMaterial;
+        {
+            if (liquidRenderer.sharedMaterial != liquidMaterial)
+                liquidRenderer.sharedMaterial = liquidMaterial;
+            mat = liquidMaterial;
+        }
+        else
+        {
+            if (runtimeLiquidMaterial == null)
+                runtimeLiquidMaterial = CreateRuntimeLiquidMaterial();
 
-        Material mat = Application.isPlaying ? liquidRenderer.material : liquidRenderer.sharedMaterial;
+            if (runtimeLiquidMaterial != null && liquidRenderer.sharedMaterial != runtimeLiquidMaterial)
+                liquidRenderer.sharedMaterial = runtimeLiquidMaterial;
+
+            mat = runtimeLiquidMaterial;
+        }
+
         if (mat == null)
             return;
 
         Color color = pipetteLiquid != null ? pipetteLiquid.liquidColor : fallbackVisualColor;
+
+        // Jaga agar cairan tetap terlihat walau LiquidData-nya hampir bening.
+        if (color.a < 0.2f)
+            color.a = 0.55f;
 
         if (mat.HasProperty("_BaseColor"))
             mat.SetColor("_BaseColor", color);
 
         if (mat.HasProperty("_Color"))
             mat.SetColor("_Color", color);
+    }
+
+    // Membuat material cairan runtime yang valid di URP (hindari magenta saat material kosong).
+    // Dikonfigurasi transparan supaya cairan terlihat seperti air di dalam pipet.
+    private Material CreateRuntimeLiquidMaterial()
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null)
+            shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null)
+            shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+            shader = Shader.Find("Unlit/Color");
+        if (shader == null)
+            return null;
+
+        Material material = new Material(shader) { name = "Runtime_RedPipette_LiquidMaterial" };
+        ConfigureTransparent(material);
+        return material;
+    }
+
+    // Set blending transparan standar (URP). Aman dipanggil pada shader apa pun: hanya
+    // menyentuh properti yang tersedia.
+    private static void ConfigureTransparent(Material material)
+    {
+        if (material == null)
+            return;
+
+        if (material.HasProperty("_Surface"))
+            material.SetFloat("_Surface", 1f); // 0 = Opaque, 1 = Transparent (URP)
+        if (material.HasProperty("_Blend"))
+            material.SetFloat("_Blend", 0f);   // 0 = Alpha
+        if (material.HasProperty("_SrcBlend"))
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (material.HasProperty("_DstBlend"))
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        if (material.HasProperty("_ZWrite"))
+            material.SetFloat("_ZWrite", 0f);
+
+        material.SetOverrideTag("RenderType", "Transparent");
+        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
     }
 
     private void HandleCollisionIgnore(SnapTarget candidate)

@@ -9684,7 +9684,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_InteractionManager: {fileID: 0}
-  m_Colliders: []
+  m_Colliders:
+  - {fileID: 295488025}
   m_InteractionLayers:
     m_Bits: 1
   m_DistanceCalculationMode: 1
@@ -9770,7 +9771,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_InteractionManager: {fileID: 0}
-  m_Colliders: []
+  m_Colliders:
+  - {fileID: 295488026}
   m_InteractionLayers:
     m_Bits: 1
   m_DistanceCalculationMode: 1
@@ -9973,7 +9975,7 @@ MonoBehaviour:
   lidLiftHeight: 0.25
   lidHiddenDelay: 0.2
   bottleGrab: {fileID: 295488024}
-  bottleRigidbody: {fileID: 0}
+  bottleRigidbody: {fileID: 295488027}
   pillPrefab: {fileID: 710577000}
   pillSpawnPoint: {fileID: 1885477168}
   requiredPillCount: 3

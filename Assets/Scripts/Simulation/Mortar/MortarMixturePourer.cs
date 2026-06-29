@@ -12,6 +12,7 @@ public class MortarMixturePourer : MonoBehaviour
     [SerializeField] private Transform receiverPoint;
     [SerializeField] private LiquidData mixtureLiquid;
     [SerializeField] private XRGrabInteractable grabInteractable;
+    [SerializeField] private MortarWaterVisual waterVisual;
 
     [Header("Pour Rules")]
     [SerializeField] private bool transferEnabled;
@@ -124,6 +125,13 @@ public class MortarMixturePourer : MonoBehaviour
         }
 
         mortar.RemoveMixtureMl(accepted);
+
+        // Samakan warna cairan DI DALAM BOTOL dengan warna cairan yang terlihat di Mortar
+        // (single source of truth). Tanpa ini, isi botol memakai warna asset LiquidData yang
+        // bisa berbeda dari isi mortar. Memakai warna live mortar PENUH (termasuk alpha-nya)
+        // agar material isi botol benar-benar sama dengan material isi mortar.
+        targetContainer.SetLiquidColorOverride(ResolveBottleLiquidColor());
+
         DrawStream(start, end);
     }
 
@@ -206,6 +214,9 @@ public class MortarMixturePourer : MonoBehaviour
         if (mortar == null)
             mortar = GetComponent<MortarController>();
 
+        if (waterVisual == null)
+            waterVisual = GetComponent<MortarWaterVisual>();
+
         if (grabInteractable == null)
             grabInteractable = GetComponent<XRGrabInteractable>();
 
@@ -229,6 +240,43 @@ public class MortarMixturePourer : MonoBehaviour
         }
     }
 
+    // Warna stream = warna campuran FINAL di mortar. Diambil dari LiquidData yang SAMA
+    // (mixtureLiquid / DifenhidraminMixture) yang juga mengisi botol, jadi warna stream
+    // selalu cocok dengan isi mortar & isi botol (bukan putih). Alpha stream tetap dari
+    // streamColor agar terlihat jelas saat menuang.
+    private Color ResolveStreamColor()
+    {
+        // Prioritas: warna AIR mortar yang benar-benar terlihat (Runtime_MortarLiquid),
+        // supaya aliran tuang ke botol persis sama dengan isi mortar final.
+        if (waterVisual != null)
+        {
+            Color w = waterVisual.CurrentLiquidColor;
+            return new Color(w.r, w.g, w.b, streamColor.a);
+        }
+
+        if (mixtureLiquid != null)
+        {
+            Color c = mixtureLiquid.liquidColor;
+            return new Color(c.r, c.g, c.b, streamColor.a);
+        }
+
+        return streamColor;
+    }
+
+    // Warna untuk ISI BOTOL = warna cairan mortar yang BENAR-BENAR terlihat, lengkap dengan
+    // alpha-nya, supaya material isi botol sama persis dengan material isi mortar. Berbeda
+    // dari ResolveStreamColor() yang memaksa alpha stream agar aliran tampak jelas.
+    private Color ResolveBottleLiquidColor()
+    {
+        if (waterVisual != null)
+            return waterVisual.CurrentLiquidColor;
+
+        if (mixtureLiquid != null)
+            return mixtureLiquid.liquidColor;
+
+        return streamColor;
+    }
+
     private void EnsureStreamVisual()
     {
         if (streamLine == null)
@@ -238,42 +286,81 @@ public class MortarMixturePourer : MonoBehaviour
             streamLine = visual.AddComponent<LineRenderer>();
         }
 
+        Color color = ResolveStreamColor();
+
         streamLine.useWorldSpace = true;
         streamLine.positionCount = Mathf.Max(3, streamSegments);
         streamLine.startWidth = streamStartWidth;
         streamLine.endWidth = streamEndWidth;
-        streamLine.startColor = streamColor;
-        streamLine.endColor = new Color(streamColor.r, streamColor.g, streamColor.b, streamColor.a * 0.4f);
+        streamLine.startColor = color;
+        streamLine.endColor = new Color(color.r, color.g, color.b, color.a * 0.4f);
         streamLine.numCapVertices = 2;
 
         if (streamMaterial == null)
-        {
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-
-            if (shader == null)
-                shader = Shader.Find("Sprites/Default");
-
-            if (shader != null)
-            {
-                streamMaterial = new Material(shader);
-                streamMaterial.name = "Runtime_MortarMixtureStream";
-                streamMaterial.hideFlags = HideFlags.DontSave;
-
-                if (streamMaterial.HasProperty("_BaseColor"))
-                    streamMaterial.SetColor("_BaseColor", streamColor);
-
-                if (streamMaterial.HasProperty("_Color"))
-                    streamMaterial.SetColor("_Color", streamColor);
-
-                if (streamMaterial.HasProperty("_Surface"))
-                    streamMaterial.SetFloat("_Surface", 1f);
-
-                streamMaterial.renderQueue = 3000;
-            }
-        }
+            streamMaterial = CreateStreamMaterial(color);
 
         if (streamMaterial != null)
+        {
+            ApplyMaterialColor(streamMaterial, color);
             streamLine.sharedMaterial = streamMaterial;
+        }
+    }
+
+    // Material transparan yang benar (meniru MortarWaterVisual.CreateTransparentMaterial).
+    // Tanpa setup blend/keyword yang lengkap, LineRenderer bisa jatuh ke material default
+    // putih → itulah sebab stream tampak putih sebelumnya.
+    private Material CreateStreamMaterial(Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        if (shader == null)
+            shader = Shader.Find("Sprites/Default");
+
+        if (shader == null)
+            shader = Shader.Find("Standard");
+
+        if (shader == null)
+            return null;
+
+        Material mat = new Material(shader);
+        mat.name = "Runtime_MortarMixtureStream";
+        mat.hideFlags = HideFlags.DontSave;
+
+        ApplyMaterialColor(mat, color);
+
+        if (mat.HasProperty("_Surface"))
+            mat.SetFloat("_Surface", 1f);
+
+        if (mat.HasProperty("_Blend"))
+            mat.SetFloat("_Blend", 0f);
+
+        if (mat.HasProperty("_SrcBlend"))
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+
+        if (mat.HasProperty("_DstBlend"))
+            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+
+        if (mat.HasProperty("_ZWrite"))
+            mat.SetFloat("_ZWrite", 0f);
+
+        if (mat.HasProperty("_Cull"))
+            mat.SetFloat("_Cull", 0f);
+
+        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        mat.renderQueue = 3000;
+        return mat;
+    }
+
+    private static void ApplyMaterialColor(Material mat, Color color)
+    {
+        if (mat == null)
+            return;
+
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", color);
+
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", color);
     }
 
     private void DrawStream(Vector3 start, Vector3 end)

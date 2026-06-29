@@ -63,6 +63,31 @@ public class MortarWaterVisual : MonoBehaviour
     // Dimatikan total selama prosedur SALEP (air mortar = punya Sirup). Dipulihkan saat reset.
     private bool suppressed;
 
+    /// <summary>
+    /// Warna AIR/cairan mortar yang BENAR-BENAR terlihat (material Runtime_MortarLiquid).
+    /// Dipakai pourer agar warna aliran tuang ke botol sama persis dengan isi mortar final
+    /// (mis. biru muda firstWaterColor), bukan menebak dari asset lain.
+    /// </summary>
+    public Color CurrentLiquidColor
+    {
+        get
+        {
+            Material mat = waterRenderer != null ? waterRenderer.sharedMaterial : null;
+            if (mat == null)
+                mat = runtimeWaterMaterial != null ? runtimeWaterMaterial : waterMaterial;
+
+            if (mat != null)
+            {
+                if (mat.HasProperty("_BaseColor"))
+                    return mat.GetColor("_BaseColor");
+                if (mat.HasProperty("_Color"))
+                    return mat.GetColor("_Color");
+            }
+
+            return firstWaterColor;
+        }
+    }
+
     /// <summary>Matikan/aktifkan visual air mortar (dipakai Salep agar tidak bentrok Sirup).</summary>
     public void SetSuppressed(bool value)
     {

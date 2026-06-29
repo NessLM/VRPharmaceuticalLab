@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -33,6 +33,13 @@ public class WeightingZone : MonoBehaviour
     [SerializeField] private bool requireParchmentBeforeCounting;
     [SerializeField] private PerkamenSnapTarget parchmentSnapTarget;
     [SerializeField] private AcceptedPanContent acceptedContent = AcceptedPanContent.Any;
+
+    [Tooltip("Margin (m) tambahan untuk deteksi overlap anak timbangan. Volume trigger piring " +
+             "sangat tipis, dan anak timbangan bisa beristirahat tepat di tepi/sedikit di bawah " +
+             "permukaan piring sehingga tidak terdeteksi. Margin ini memperluas kotak deteksi " +
+             "(khusus anak timbangan) supaya yang benar-benar ada di atas piring selalu terhitung. " +
+             "Tetap kecil agar tidak menangkap anak timbangan di baki/piring sebelah.")]
+    [SerializeField] private float weightDetectionMargin = 0.05f;
 
     [Header("Debug")]
     [SerializeField] private float debugTotalGrams;
@@ -119,7 +126,12 @@ public class WeightingZone : MonoBehaviour
         bool changed = false;
 
         WeightItem w = other.GetComponentInParent<WeightItem>();
-        if (w != null && TrackWeightCollider(w, other)) changed = true;
+        if (w != null)
+        {
+            if (TrackWeightCollider(w, other)) changed = true;
+            // Area piring neraca: aktifkan gravity agar anak timbangan jatuh tepat ke piring.
+            w.SetGravityArea(true);
+        }
 
         HornSpoon s = other.GetComponentInParent<HornSpoon>();
         if (s != null && trackedSpoons.Add(s)) changed = true;
@@ -138,7 +150,12 @@ public class WeightingZone : MonoBehaviour
         bool changed = false;
 
         WeightItem w = other.GetComponentInParent<WeightItem>();
-        if (w != null && UntrackWeightCollider(w, other)) changed = true;
+        if (w != null && UntrackWeightCollider(w, other))
+        {
+            changed = true;
+            // Keluar area piring: kembali "nempel" (kinematic) supaya tidak nyelep/mental.
+            w.SetGravityArea(false);
+        }
 
         HornSpoon s = other.GetComponentInParent<HornSpoon>();
         if (s != null && trackedSpoons.Remove(s)) changed = true;
@@ -154,11 +171,108 @@ public class WeightingZone : MonoBehaviour
 
     private void Update()
     {
+        // BUG FIX (peringatan "taruh anak timbangan" muncul padahal sudah ditaruh):
+        // Callback trigger (OnTriggerEnter/Stay) ternyata TIDAK selalu terpicu untuk anak
+        // timbangan setelah perubahan grab kinematic + transisi gravity saat dilepas
+        // (rigidbody bisa tidur / teleport sehingga event trigger terlewat). Padahal
+        // Physics.OverlapBox SELALU mendeteksi collider yang benar-benar tumpang tindih.
+        // Maka deteksi anak timbangan & BalanceMassSource dibuat berbasis overlap (otoritatif)
+        // tiap frame. Jalur bubuk (HornSpoon/PowderPayload) tetap memakai trigger lama.
+        ReconcileWeightOverlaps();
+
         // Poll for continuously-changing values (e.g. HornSpoon amount changing while inside zone)
         ClearInvalidItemsInternal();
         float current = ComputeTotalGrams(true);
         if (Mathf.Abs(current - lastReportedMass) >= massChangeThreshold)
             NotifyMassChange(current);
+    }
+
+    private static readonly Collider[] _overlapBuffer = new Collider[64];
+    private readonly HashSet<WeightItem> _overlapSeenWeights = new HashSet<WeightItem>();
+    private readonly HashSet<BalanceMassSource> _overlapSeenSources = new HashSet<BalanceMassSource>();
+    private readonly List<WeightItem> _weightsToRemove = new List<WeightItem>();
+    private readonly List<BalanceMassSource> _sourcesToRemove = new List<BalanceMassSource>();
+
+    private void ReconcileWeightOverlaps()
+    {
+        BoxCollider box = GetComponent<BoxCollider>();
+        if (box == null)
+            return;
+
+        Vector3 worldCenter = box.transform.TransformPoint(box.center);
+        Vector3 lossy = box.transform.lossyScale;
+        float margin = Mathf.Max(0f, weightDetectionMargin);
+        Vector3 half = new Vector3(
+            Mathf.Abs(box.size.x * 0.5f * lossy.x) + margin,
+            Mathf.Abs(box.size.y * 0.5f * lossy.y) + margin,
+            Mathf.Abs(box.size.z * 0.5f * lossy.z) + margin);
+
+        int count = Physics.OverlapBoxNonAlloc(
+            worldCenter, half, _overlapBuffer, box.transform.rotation, ~0, QueryTriggerInteraction.Collide);
+
+        _overlapSeenWeights.Clear();
+        _overlapSeenSources.Clear();
+
+        bool changed = false;
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider other = _overlapBuffer[i];
+            if (other == null || other.isTrigger || !CanTrackCollider(other))
+                continue;
+
+            WeightItem w = other.GetComponentInParent<WeightItem>();
+            if (w != null)
+            {
+                _overlapSeenWeights.Add(w);
+                if (TrackWeightCollider(w, other))
+                    changed = true;
+                w.SetGravityArea(true);
+            }
+
+            BalanceMassSource b = other.GetComponentInParent<BalanceMassSource>();
+            if (b != null)
+            {
+                _overlapSeenSources.Add(b);
+                if (trackedMassSources.Add(b))
+                    changed = true;
+            }
+        }
+
+        // Hapus anak timbangan yang SUDAH TIDAK tumpang tindih lagi (otoritatif by overlap).
+        if (trackedWeights.Count > 0)
+        {
+            _weightsToRemove.Clear();
+            foreach (WeightItem w in trackedWeights)
+                if (w == null || !_overlapSeenWeights.Contains(w))
+                    _weightsToRemove.Add(w);
+
+            foreach (WeightItem w in _weightsToRemove)
+            {
+                trackedWeights.Remove(w);
+                trackedWeightColliders.Remove(w);
+                if (w != null)
+                    w.SetGravityArea(false);
+                changed = true;
+            }
+        }
+
+        if (trackedMassSources.Count > 0)
+        {
+            _sourcesToRemove.Clear();
+            foreach (BalanceMassSource b in trackedMassSources)
+                if (b == null || !_overlapSeenSources.Contains(b))
+                    _sourcesToRemove.Add(b);
+
+            foreach (BalanceMassSource b in _sourcesToRemove)
+            {
+                trackedMassSources.Remove(b);
+                changed = true;
+            }
+        }
+
+        if (changed)
+            NotifyMassChange();
     }
 
     private void NotifyMassChange()

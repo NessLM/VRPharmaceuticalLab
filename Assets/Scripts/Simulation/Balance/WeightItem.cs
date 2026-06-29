@@ -26,8 +26,26 @@ public class WeightItem : MonoBehaviour
     [Tooltip("Only for VR physics feel. This is NOT the balance gram value.")]
     [SerializeField] private float physicsMassKg = 0.05f;
 
+    [Tooltip("Paksa XRGrabInteractable memakai movementType = Kinematic saat digenggam. " +
+             "Saat kinematic, PhysX TIDAK memberi impuls depenetration -> anak timbangan " +
+             "tidak 'terbang/mental/nyelep' walau pose awalnya menembus collider piring " +
+             "neraca. Gravity tetap aktif saat dilepas, jadi tetap jatuh ke area piring.")]
+    [SerializeField] private bool useKinematicGrabMovement = true;
+
     [SerializeField] private bool useGravityWhenFree = true;
     [SerializeField] private bool keepKinematicWhenReleased = false;
+
+    [Tooltip("Default ON. Saat dilepas DI LUAR area piring neraca, anak timbangan dibuat " +
+             "kinematic (diam di tempat) BUKAN dijatuhkan dengan gravity. Ini menghapus dua " +
+             "bug: (1) 'nyelep' tembus baki (tabrakan baki diabaikan resetter), dan (2) " +
+             "'mental' depenetration. Gravity HANYA aktif saat anak timbangan masuk area " +
+             "piring (WeightingZone) -> jatuh tepat ke piring, sesuai permintaan.")]
+    [SerializeField] private bool stickWhenReleasedOutsidePan = true;
+
+    // True selama anak timbangan berada di dalam area piring (WeightingZone). Di-set oleh
+    // WeightingZone lewat SetGravityArea(). Saat true, pelepasan -> dinamis + gravity (jatuh
+    // ke piring). Saat false, pelepasan -> kinematic (diam di tempat, tidak nyelep/mental).
+    private bool inGravityArea;
 
     [Header("Tray Storage")]
     [Tooltip("Keeps the weight frozen in the tray until grabbed once.")]
@@ -79,12 +97,26 @@ public class WeightItem : MonoBehaviour
         grabInteractable = GetComponent<XRGrabInteractable>();
 
         ConfigureRigidbody();
+        ConfigureGrabMovement();
         ConfigureGrabHelperCollider();
 
         if (startsLockedInTray && !hasBeenPickedUp)
             LockInTray();
         else
             ApplyReleasedPhysics();
+    }
+
+    // Memaksa movementType = Kinematic agar saat digenggam rigidbody tetap kinematic
+    // (digerakkan via MovePosition mengikuti tangan), sehingga PhysX tidak pernah
+    // memberi impuls depenetration besar yang membuat anak timbangan terlempar/menyusup
+    // saat lepas dari piring neraca. Tidak mengubah sistem penimbangan (berbasis trigger).
+    private void ConfigureGrabMovement()
+    {
+        if (!useKinematicGrabMovement || grabInteractable == null)
+            return;
+
+        grabInteractable.movementType =
+            UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable.MovementType.Kinematic;
     }
 
     private void OnEnable()
@@ -122,6 +154,16 @@ public class WeightItem : MonoBehaviour
         rb.mass = physicsMassKg;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+
+        // BUG FIX ("terbang/mental" saat digrab dari piring neraca):
+        // Anak timbangan yang pose awalnya berada DI ATAS piring timbanganNeraca biasanya
+        // sedikit menembus (overlap) collider piring. Saat di-grab, rb berubah jadi
+        // non-kinematic -> PhysX menyelesaikan overlap dengan impuls depenetration besar ->
+        // objek terlempar. Membatasi maxDepenetrationVelocity membuat PhysX memisahkan
+        // overlap secara perlahan (bukan "meledak"), TANPA mengubah gravity/mass/feel atau
+        // sistem penimbangan (deteksi massa tetap lewat trigger WeightingZone, collision
+        // piring tetap aktif agar anak timbangan tetap bisa diletakkan untuk menimbang).
+        rb.maxDepenetrationVelocity = 1f;
     }
 
     private void OnGrabbed(SelectEnterEventArgs args)
@@ -130,10 +172,18 @@ public class WeightItem : MonoBehaviour
 
         if (rb != null)
         {
-            rb.isKinematic = false;
-            rb.useGravity = false;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
+
+            // Saat memakai Kinematic grab movement, biarkan XRGrabInteractable yang mengatur
+            // isKinematic (ia set kinematic=true selama digenggam). Memaksa non-kinematic di
+            // sini justru memicu depenetration impuls -> 'terbang/nyelep'. Untuk mode lama
+            // (VelocityTracking) tetap dipaksa dinamis seperti semula.
+            if (!useKinematicGrabMovement)
+            {
+                rb.isKinematic = false;
+                rb.useGravity = false;
+            }
         }
 
         SetGrabHelperEnabled(!disableGrabHelperWhileHeld);
@@ -148,8 +198,19 @@ public class WeightItem : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
 
-            keepKinematicWhenReleased = false;
-            useGravityWhenFree = useGravityAfterFirstRelease;
+            if (stickWhenReleasedOutsidePan && !inGravityArea)
+            {
+                // Di luar area piring: diam di tempat (kinematic). Tidak jatuh tembus baki
+                // (nyelep) dan tidak mental.
+                keepKinematicWhenReleased = true;
+                useGravityWhenFree = false;
+            }
+            else
+            {
+                // Di dalam area piring: jatuh dengan gravity tepat ke piring.
+                keepKinematicWhenReleased = false;
+                useGravityWhenFree = useGravityAfterFirstRelease;
+            }
 
             ApplyReleasedPhysics();
         }
@@ -215,9 +276,41 @@ public class WeightItem : MonoBehaviour
             ApplyReleasedPhysics();
     }
 
+    /// <summary>
+    /// Dipanggil WeightingZone (area piring neraca). Saat di dalam area, anak timbangan
+    /// memakai gravity ketika dilepas (jatuh tepat ke piring). Di luar area, anak timbangan
+    /// kinematic ("nempel" di tempat) sehingga tidak nyelep tembus baki maupun mental.
+    /// </summary>
+    public void SetGravityArea(bool inArea)
+    {
+        if (inGravityArea == inArea)
+            return;
+
+        inGravityArea = inArea;
+
+        // Hanya terapkan langsung kalau sedang TIDAK digenggam. Kalau digenggam, biarkan
+        // OnReleased yang menentukan berdasarkan inGravityArea saat dilepas.
+        if (rb == null || IsHeld)
+            return;
+
+        if (stickWhenReleasedOutsidePan && !inArea)
+        {
+            keepKinematicWhenReleased = true;
+            useGravityWhenFree = false;
+        }
+        else
+        {
+            keepKinematicWhenReleased = false;
+            useGravityWhenFree = useGravityAfterFirstRelease;
+        }
+
+        ApplyReleasedPhysics();
+    }
+
     public void ResetInteractionState()
     {
         hasBeenPickedUp = false;
+        inGravityArea = false;
 
         if (startsLockedInTray)
             LockInTray();

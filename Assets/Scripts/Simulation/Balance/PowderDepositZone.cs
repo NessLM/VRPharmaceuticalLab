@@ -23,6 +23,12 @@ public class PowderDepositZone : MonoBehaviour
     [SerializeField] private bool allowPhysicalRightPanTarget = true;
     [SerializeField] private float minimumRightPanTargetGrams = 0.001f;
 
+    [Tooltip("Margin (m) untuk deteksi LANGSUNG anak timbangan di piring kanan. Peringatan " +
+             "'taruh anak timbangan' memakai overlap fisik langsung ke area piring kanan " +
+             "(deterministik, tidak terpengaruh status kinematic/tidur rigidbody) sehingga " +
+             "anak timbangan yang BENAR-BENAR ada di piring selalu terdeteksi.")]
+    [SerializeField] private float rightPanWeightDetectionMargin = 0.05f;
+
     [Header("Powder Visual on Left Pan")]
     [SerializeField] private PowderVisualLevelSwitcher depositVisual;
 
@@ -273,12 +279,68 @@ public class PowderDepositZone : MonoBehaviour
         onDepositChanged?.Invoke(DepositedGrams);
     }
 
+    private static readonly Collider[] _rightPanOverlapBuffer = new Collider[32];
+
     private bool HasAcceptedTarget()
     {
         if (!allowPhysicalRightPanTarget)
             return true;
 
-        return rightZone != null && rightZone.TotalGrams >= minimumRightPanTargetGrams;
+        // Peringatan "taruh anak timbangan dulu" HANYA boleh muncul kalau memang BELUM ada
+        // anak timbangan sama sekali di piring kanan.
+        //
+        // PENTING: deteksi memakai OVERLAP FISIK LANGSUNG ke area piring kanan, BUKAN
+        // WeightingZone.TrackedWeightCount maupun TotalGrams. Alasan:
+        //  - TotalGrams di-gate perkamen (requireParchmentBeforeCounting) -> bisa 0 walau
+        //    anak timbangan sudah ditaruh.
+        //  - TrackedWeightCount bergantung callback trigger / reconcile yang TERNYATA flaky
+        //    untuk anak timbangan dinamis yang tidur (sleeping rigidbody tidak memicu
+        //    OnTriggerStay, dan kadang reconcile telat) -> peringatan salah muncul.
+        // Physics.OverlapBox bersifat deterministik dan TIDAK terpengaruh status
+        // kinematic/tidur, jadi anak timbangan yang benar-benar ada di piring SELALU terdeteksi.
+        return HasPhysicalWeightOnRightPan();
+    }
+
+    private bool HasPhysicalWeightOnRightPan()
+    {
+        if (rightZone == null)
+            return false;
+
+        BoxCollider box = rightZone.GetComponent<BoxCollider>();
+        if (box == null)
+            return rightZone.TrackedWeightCount > 0; // fallback aman bila bukan BoxCollider
+
+        Vector3 center = box.transform.TransformPoint(box.center);
+        Vector3 lossy = box.transform.lossyScale;
+        float margin = Mathf.Max(0f, rightPanWeightDetectionMargin);
+        Vector3 half = new Vector3(
+            Mathf.Abs(box.size.x * 0.5f * lossy.x) + margin,
+            Mathf.Abs(box.size.y * 0.5f * lossy.y) + margin,
+            Mathf.Abs(box.size.z * 0.5f * lossy.z) + margin);
+
+        // QueryTriggerInteraction.Ignore -> hanya collider solid anak timbangan, abaikan
+        // semua trigger (grab assist, snap zone, dll) supaya bersih & deterministik.
+        int count = Physics.OverlapBoxNonAlloc(
+            center, half, _rightPanOverlapBuffer, box.transform.rotation, ~0, QueryTriggerInteraction.Ignore);
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider c = _rightPanOverlapBuffer[i];
+            if (c == null || c.isTrigger)
+                continue;
+
+            WeightItem weight = c.GetComponentInParent<WeightItem>();
+            if (weight == null || !weight.isActiveAndEnabled)
+                continue;
+
+            // Perkamen bukan anak timbangan -> jangan dihitung sebagai target.
+            if (weight.IsParchment)
+                continue;
+
+            return true;
+        }
+
+        return false;
     }
 
     private bool IsSpoonHeld(HornSpoon spoon)

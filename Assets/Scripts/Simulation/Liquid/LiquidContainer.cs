@@ -40,6 +40,13 @@ public class LiquidContainer : MonoBehaviour
     [SerializeField] private Material liquidMaterial;
     [SerializeField] private bool hideWhenEmpty = true;
 
+    // Override warna cairan (opsional). Bila aktif, warna ini MENGGANTIKAN
+    // currentLiquid.liquidColor saat mewarnai material cairan. Dipakai agar isi botol bisa
+    // disamakan PERSIS dengan warna cairan yang terlihat di Mortar (single source of truth),
+    // bukan warna asset LiquidData yang bisa berbeda.
+    private bool hasLiquidColorOverride;
+    private Color liquidColorOverride = Color.white;
+
     [Header("Visual Size - Legacy Container Local")]
     [Tooltip("Offset from container pivot to internal liquid bottom, along Fill Axis Local.")]
     [SerializeField] private float bottomLocalY = 0.02f;
@@ -155,6 +162,36 @@ public class LiquidContainer : MonoBehaviour
 
     public LiquidData CurrentLiquid => currentLiquid;
     public LiquidData LiquidType => currentLiquid;
+
+    /// <summary>
+    /// Paksa warna cairan agar sama persis dengan warna tertentu (mis. warna cairan Mortar),
+    /// mengabaikan currentLiquid.liquidColor. Berguna agar isi botol cocok dengan isi mortar.
+    /// </summary>
+    public void SetLiquidColorOverride(Color color)
+    {
+        hasLiquidColorOverride = true;
+        liquidColorOverride = color;
+        ApplyLiquidMaterialColor();
+    }
+
+    /// <summary>Hapus override warna; kembali memakai warna dari LiquidData.</summary>
+    public void ClearLiquidColorOverride()
+    {
+        if (!hasLiquidColorOverride)
+            return;
+
+        hasLiquidColorOverride = false;
+        ApplyLiquidMaterialColor();
+    }
+
+    /// <summary>Warna efektif cairan saat ini (override bila aktif, jika tidak dari LiquidData).</summary>
+    private Color GetEffectiveLiquidColor()
+    {
+        if (hasLiquidColorOverride)
+            return liquidColorOverride;
+
+        return currentLiquid != null ? currentLiquid.liquidColor : new Color(0.25f, 0.65f, 1f, 0.45f);
+    }
     public float CurrentMl => currentMl;
     public float CurrentVolumeMl => currentMl;
     public float CapacityMl => capacityMl;
@@ -1406,7 +1443,7 @@ public class LiquidContainer : MonoBehaviour
         if (mat == null)
             return;
 
-        Color color = currentLiquid != null ? currentLiquid.liquidColor : new Color(0.25f, 0.65f, 1f, 0.45f);
+        Color color = GetEffectiveLiquidColor();
 
         if (mat.HasProperty("_BaseColor"))
             mat.SetColor("_BaseColor", color);
@@ -1427,7 +1464,7 @@ public class LiquidContainer : MonoBehaviour
         Material mat = new Material(shader);
         mat.name = "Runtime_Water_Material";
 
-        Color color = currentLiquid != null ? currentLiquid.liquidColor : new Color(0.25f, 0.65f, 1f, 0.45f);
+        Color color = GetEffectiveLiquidColor();
 
         if (mat.HasProperty("_BaseColor"))
             mat.SetColor("_BaseColor", color);

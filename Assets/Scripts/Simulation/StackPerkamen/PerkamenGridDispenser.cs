@@ -84,6 +84,20 @@ public class PerkamenGridDispenser : MonoBehaviour
         Vector3 startPos = paper.position;
         Quaternion startRot = paper.rotation;
 
+        // While the paper is being teleported into position via transform lerp,
+        // keep its Rigidbody kinematic so it generates NO collision forces.
+        // Otherwise the freshly spawned (non-kinematic) papers briefly stack at
+        // the spawn point and shove nearby free-body tools (e.g. sendokTanduk),
+        // knocking them out of place.
+        Rigidbody paperRb = paper.GetComponent<Rigidbody>();
+        bool hadRb = paperRb != null;
+        if (hadRb)
+        {
+            paperRb.linearVelocity = Vector3.zero;
+            paperRb.angularVelocity = Vector3.zero;
+            paperRb.isKinematic = true;
+        }
+
         float timer = 0f;
 
         while (timer < spreadDuration)
@@ -100,5 +114,19 @@ public class PerkamenGridDispenser : MonoBehaviour
         paper.position = target.position;
         paper.rotation = target.rotation;
         paper.SetParent(target, true);
+
+        // Settle the paper at its grid point. Prefer the snapped (kinematic) state
+        // from PerkamenNoGravity so it rests neatly until the player grabs it;
+        // grabbing re-enables free physics via PerkamenNoGravity.OnGrabbed.
+        PerkamenNoGravity noGravity = paper.GetComponent<PerkamenNoGravity>();
+        if (noGravity != null)
+        {
+            noGravity.ApplySnappedPhysics();
+        }
+        else if (hadRb)
+        {
+            paperRb.isKinematic = true;
+            paperRb.useGravity = false;
+        }
     }
 }

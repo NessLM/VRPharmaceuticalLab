@@ -34,6 +34,7 @@ public class ResepPadat1StepManager : MonoBehaviour
     [SerializeField] private GameObject instruksiStep2;
     [SerializeField] private GameObject instruksiStep3;
     [SerializeField] private GameObject instruksiStep4;
+    [SerializeField] private GameObject instruksiStep5;
 
     private bool simulationStarted = false;
 
@@ -66,6 +67,7 @@ public class ResepPadat1StepManager : MonoBehaviour
         SetPanel(instruksiStep2, false);
         SetPanel(instruksiStep3, false);
         SetPanel(instruksiStep4, false);
+        SetPanel(instruksiStep5, false);
 
         Debug.Log("Sebelum Mulai: semua grab dan script khusus dimatikan.");
     }
@@ -99,6 +101,7 @@ public class ResepPadat1StepManager : MonoBehaviour
         SetPanel(instruksiStep2, false);
         SetPanel(instruksiStep3, false);
         SetPanel(instruksiStep4, false);
+        SetPanel(instruksiStep5, false);
 
         if (step == 1)
         {
@@ -148,6 +151,11 @@ SetScript(stackGridPerkamenScript, true);
 
     Debug.Log("Step 4 aktif.");
 }
+        else if (step == 5)
+        {
+            SetPanel(instruksiStep5, true);
+            Debug.Log("Step 5 aktif.");
+        }
     }
 
     private void LockItems(XRGrabInteractable[] items)

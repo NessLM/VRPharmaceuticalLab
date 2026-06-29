@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -24,6 +25,24 @@ public class PillBottleController : MonoBehaviour
 
     [Header("Pour Detection")]
     [SerializeField] private float pourAngleThreshold = 80f;
+
+    [Header("Step 4 Auto Fill")]
+    [Tooltip("Notified once the pills have finished pouring so it can show the auto-fill panel.")]
+    [SerializeField] private Step4AutoFillManager autoFillManager;
+
+    [Header("Step 4 Checklist")]
+    [Tooltip("Notified the moment the bottle lid is opened so 'Buka botol kapsul' turns to [OK].")]
+    [SerializeField] private Step4ChecklistManager checklistManager;
+
+    [Header("Release Behaviour")]
+    [Tooltip("If true, the bottle keeps gravity and stays where it is dropped instead of returning to its start position.")]
+    [SerializeField] private bool dropAndStayOnRelease = true;
+
+    [Header("Spawned Pill Settling")]
+    [Tooltip("After a pill tumbles out, freeze it in place after this delay so it stays put and is stable for the auto-fill animation.")]
+    [SerializeField] private float pillSettleDelay = 1.2f;
+
+    private readonly List<GameObject> spawnedPills = new List<GameObject>();
 
 private Vector3 bottleStartPosition;
 private Quaternion bottleStartRotation;
@@ -133,6 +152,9 @@ bottleStartRotation = transform.rotation;
         }
 
         Debug.Log("Botol terbuka. Botol sekarang bisa digrab.");
+
+        if (checklistManager != null)
+            checklistManager.CheckBottleOpened();
     }
 
   private void OnBottleGrabbed(SelectEnterEventArgs args)
@@ -160,6 +182,18 @@ bottleStartRotation = transform.rotation;
     if (returnRoutine != null)
     {
         StopCoroutine(returnRoutine);
+        returnRoutine = null;
+    }
+
+    if (dropAndStayOnRelease)
+    {
+        // Let the (now opened) bottle fall under gravity and stay where it lands.
+        if (bottleRigidbody != null)
+        {
+            bottleRigidbody.isKinematic = false;
+            bottleRigidbody.useGravity = true;
+        }
+        return;
     }
 
     returnRoutine = StartCoroutine(ReturnBottleToStart());
@@ -199,6 +233,7 @@ private IEnumerator ReturnBottleToStart()
     private IEnumerator SpawnPills()
     {
         isPouring = true;
+        spawnedPills.Clear();
 
         for (int i = 0; i < requiredPillCount; i++)
         {
@@ -210,6 +245,13 @@ private IEnumerator ReturnBottleToStart()
         isPouring = false;
 
         Debug.Log("Pil keluar sesuai jumlah resep.");
+
+        // Pills are out -> show the auto-fill panel for the capsule animation step.
+        // Pass a snapshot copy so the manager never enumerates the live list.
+        if (autoFillManager != null)
+        {
+            autoFillManager.OnPillsPoured(new List<GameObject>(spawnedPills));
+        }
     }
 
     private void SpawnOnePill()
@@ -227,11 +269,61 @@ private IEnumerator ReturnBottleToStart()
         );
 
         newPill.SetActive(true);
+        spawnedPills.Add(newPill);
 
         Rigidbody rb = newPill.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.AddForce(pillSpawnPoint.forward * 0.1f, ForceMode.Impulse);
+            // Make sure the pill actually falls under gravity. A tiny nudge frees it
+            // from the bottle mouth; a little damping keeps it from drifting away.
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.linearDamping = 0.3f;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.AddForce(pillSpawnPoint.forward * 0.04f, ForceMode.Impulse);
+            StartCoroutine(SettlePill(rb));
         }
+    }
+
+    private IEnumerator SettlePill(Rigidbody rb)
+    {
+        // Let the pill fall and actually land before freezing it. Freezing on a
+        // fixed timer (the old behaviour) caught pills still in mid-air, making
+        // them look like they were floating/flying. Instead we wait until the pill
+        // is resting (low velocity / asleep) and only then lock it in place.
+        if (rb == null)
+            yield break;
+
+        // Give it a moment to leave the bottle mouth first.
+        yield return new WaitForSeconds(Mathf.Max(0.2f, pillSettleDelay * 0.25f));
+
+        float maxWait = 6f;
+        float elapsed = 0f;
+        while (rb != null && elapsed < maxWait)
+        {
+            XRGrabInteractable held = rb.GetComponent<XRGrabInteractable>();
+            if (held != null && held.isSelected)
+                yield break; // player picked it up - leave physics alone
+
+            if (rb.IsSleeping() || rb.linearVelocity.magnitude < 0.04f)
+                break; // it has come to rest on the surface
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (rb == null)
+            yield break;
+
+        XRGrabInteractable grabNow = rb.GetComponent<XRGrabInteractable>();
+        if (grabNow != null && grabNow.isSelected)
+            yield break;
+
+        // Lock the rested pill so it stays put and is stable for the next step.
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.useGravity = false;
+        rb.isKinematic = true;
     }
 }

@@ -1,77 +1,229 @@
 {
   "questions": [
     {
-      "question": "Campuran kering bahan obat atau zat kimia yang dihaluskan, ditujukan untuk pemakaian oral disebut...",
+      "question": "Sebelum melakukan proses peracikan obat berdasarkan resep, langkah pertama yang dilakukan adalah ...",
       "answers": [
-        { "text": "Puyer (Pulveres)", "isCorrect": true },
-        { "text": "Salep (Unguentum)", "isCorrect": false },
-        { "text": "Sirup (Syrupi)", "isCorrect": false },
-        { "text": "Emulsi", "isCorrect": false }
+        { "text": "A. Memeriksa kelengkapan resep", "isCorrect": true },
+        { "text": "B. Langsung mencampurkan bahan obat", "isCorrect": false },
+        { "text": "C. Mengemas obat terlebih dahulu", "isCorrect": false },
+        { "text": "D. Menyimpan obat ke tempat penyimpanan", "isCorrect": false }
       ]
     },
     {
-      "question": "Wadah atau cangkang keras/lunak yang dapat larut untuk menyimpan obat padat biasanya terbuat dari...",
+      "question": "Alat yang digunakan untuk menghaluskan bahan obat menjadi serbuk adalah ...",
       "answers": [
-        { "text": "Gelatin", "isCorrect": true },
-        { "text": "Plastik", "isCorrect": false },
-        { "text": "Kertas perkamen", "isCorrect": false },
-        { "text": "Kaca", "isCorrect": false }
+        { "text": "A. Mortar dan stamper", "isCorrect": true },
+        { "text": "B. Gelas ukur", "isCorrect": false },
+        { "text": "C. Pipet tetes", "isCorrect": false },
+        { "text": "D. Spuit", "isCorrect": false }
       ]
     },
     {
-      "question": "Sediaan padat berbentuk bulat dengan massa antara 100 mg hingga 500 mg disebut...",
+      "question": "Fungsi mortar pada proses peracikan obat adalah ...",
       "answers": [
-        { "text": "Pil (Pilulae)", "isCorrect": true },
-        { "text": "Tablet", "isCorrect": false },
-        { "text": "Kapsul", "isCorrect": false },
-        { "text": "Granul", "isCorrect": false }
+        { "text": "A. Menghaluskan dan mencampurkan bahan obat", "isCorrect": true },
+        { "text": "B. Menimbang bahan obat", "isCorrect": false },
+        { "text": "C. Mengukur volume cairan", "isCorrect": false },
+        { "text": "D. Menyimpan bahan obat", "isCorrect": false }
       ]
     },
     {
-      "question": "Pada resep sediaan padat, bahan pembantu Saccharum Lactis (SL) biasanya berfungsi sebagai...",
+      "question": "Penimbangan bahan obat dilakukan agar ...",
       "answers": [
-        { "text": "Zat pengisi atau pemanis", "isCorrect": true },
-        { "text": "Zat aktif utama", "isCorrect": false },
-        { "text": "Zat penghancur", "isCorrect": false },
-        { "text": "Zat pengawet", "isCorrect": false }
+        { "text": "A. Jumlah bahan sesuai dengan resep", "isCorrect": true },
+        { "text": "B. Warna obat menjadi lebih menarik", "isCorrect": false },
+        { "text": "C. Proses pembuatan lebih cepat", "isCorrect": false },
+        { "text": "D. Kemasan obat terlihat bagus", "isCorrect": false }
       ]
     },
     {
-      "question": "Alat laboratorium yang digunakan untuk menghaluskan tablet zat aktif menjadi puyer adalah...",
+      "question": "Alat yang digunakan untuk menimbang bahan obat dengan tepat adalah ...",
       "answers": [
-        { "text": "Mortar dan Stamper", "isCorrect": true },
-        { "text": "Gelas ukur", "isCorrect": false },
-        { "text": "Corong kaca", "isCorrect": false },
-        { "text": "Erlenmeyer", "isCorrect": false }
+        { "text": "A. Neraca obat", "isCorrect": true },
+        { "text": "B. Mortar", "isCorrect": false },
+        { "text": "C. Spatula", "isCorrect": false },
+        { "text": "D. Gelas kimia", "isCorrect": false }
       ]
     },
     {
-      "question": "Kertas yang digunakan sebagai pembungkus puyer sekaligus alas timbang adalah...",
+      "question": "Setelah bahan obat ditimbang, langkah berikutnya dalam pembuatan serbuk adalah ...",
       "answers": [
-        { "text": "Kertas perkamen", "isCorrect": true },
-        { "text": "Kertas saring", "isCorrect": false },
-        { "text": "Kertas lakmus", "isCorrect": false },
-        { "text": "Kertas koran", "isCorrect": false }
+        { "text": "A. Menghaluskan bahan obat", "isCorrect": true },
+        { "text": "B. Memberikan etiket", "isCorrect": false },
+        { "text": "C. Mengemas obat", "isCorrect": false },
+        { "text": "D. Menyimpan obat", "isCorrect": false }
       ]
     },
     {
-      "question": "Sediaan padat untuk penggunaan oral (diminum) wajib menggunakan etiket berwarna...",
+      "question": "Tujuan mencampurkan bahan obat hingga homogen adalah ...",
       "answers": [
-        { "text": "Putih", "isCorrect": true },
-        { "text": "Biru", "isCorrect": false },
-        { "text": "Kuning", "isCorrect": false },
-        { "text": "Merah", "isCorrect": false }
+        { "text": "A. Agar kandungan obat tercampur secara merata", "isCorrect": true },
+        { "text": "B. Agar obat berubah warna", "isCorrect": false },
+        { "text": "C. Agar jumlah obat bertambah", "isCorrect": false },
+        { "text": "D. Agar obat menjadi cair", "isCorrect": false }
       ]
     },
     {
-      "question": "Gerakan menggerus obat di dalam mortar menggunakan stamper sebaiknya dilakukan dengan cara...",
+      "question": "Alat yang digunakan untuk mengambil bahan obat dalam jumlah kecil adalah ...",
       "answers": [
-        { "text": "Memutar berlawanan arah jarum jam", "isCorrect": true },
-        { "text": "Menumbuk searah jarum jam", "isCorrect": false },
-        { "text": "Mengocok secara vertikal", "isCorrect": false },
-        { "text": "Dibiarkan saja tanpa digerakkan", "isCorrect": false }
+        { "text": "A. Spatula", "isCorrect": true },
+        { "text": "B. Neraca", "isCorrect": false },
+        { "text": "C. Mortar", "isCorrect": false },
+        { "text": "D. Corong", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Sediaan obat berbentuk serbuk dan kapsul termasuk ke dalam sediaan ...",
+      "answers": [
+        { "text": "A. Padat", "isCorrect": true },
+        { "text": "B. Cair", "isCorrect": false },
+        { "text": "C. Semi padat", "isCorrect": false },
+        { "text": "D. Gas", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada pembuatan kapsul, serbuk obat dimasukkan ke dalam ...",
+      "answers": [
+        { "text": "A. Cangkang kapsul", "isCorrect": true },
+        { "text": "B. Gelas ukur", "isCorrect": false },
+        { "text": "C. Botol sirup", "isCorrect": false },
+        { "text": "D. Ampul", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Penggunaan jas laboratorium dan sarung tangan saat praktik bertujuan untuk ...",
+      "answers": [
+        { "text": "A. Menjaga keselamatan selama bekerja", "isCorrect": true },
+        { "text": "B. Mempercepat proses peracikan", "isCorrect": false },
+        { "text": "C. Mengubah kualitas obat", "isCorrect": false },
+        { "text": "D. Mengurangi jumlah bahan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Sebelum menggunakan alat laboratorium, siswa harus memastikan alat dalam kondisi ...",
+      "answers": [
+        { "text": "A. Bersih dan siap digunakan", "isCorrect": true },
+        { "text": "B. Sudah digunakan sebelumnya", "isCorrect": false },
+        { "text": "C. Tidak perlu diperiksa", "isCorrect": false },
+        { "text": "D. Diletakkan sembarangan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Proses memperkecil ukuran partikel bahan obat disebut ...",
+      "answers": [
+        { "text": "A. Penghalusan", "isCorrect": true },
+        { "text": "B. Pengemasan", "isCorrect": false },
+        { "text": "C. Penyimpanan", "isCorrect": false },
+        { "text": "D. Pelabelan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada pembuatan sediaan serbuk, pengayakan dilakukan untuk ...",
+      "answers": [
+        { "text": "A. Mendapatkan ukuran serbuk yang lebih seragam", "isCorrect": true },
+        { "text": "B. Mengubah obat menjadi cair", "isCorrect": false },
+        { "text": "C. Menambah jumlah bahan", "isCorrect": false },
+        { "text": "D. Menghilangkan zat aktif obat", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Kesalahan dalam proses penimbangan bahan obat dapat menyebabkan ...",
+      "answers": [
+        { "text": "A. Ketidaksesuaian dosis obat", "isCorrect": true },
+        { "text": "B. Obat menjadi lebih aman", "isCorrect": false },
+        { "text": "C. Kemasan menjadi lebih baik", "isCorrect": false },
+        { "text": "D. Proses menjadi lebih mudah", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Kebersihan alat sebelum dan sesudah praktik diperlukan untuk mencegah ...",
+      "answers": [
+        { "text": "A. Kontaminasi bahan obat", "isCorrect": true },
+        { "text": "B. Kerusakan aplikasi", "isCorrect": false },
+        { "text": "C. Perubahan warna ruangan", "isCorrect": false },
+        { "text": "D. Bertambahnya bahan obat", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Setelah obat selesai diracik, tahap selanjutnya adalah ...",
+      "answers": [
+        { "text": "A. Pengemasan dan pemberian etiket", "isCorrect": true },
+        { "text": "B. Mengganti bahan obat", "isCorrect": false },
+        { "text": "C. Mengulang resep", "isCorrect": false },
+        { "text": "D. Membuang alat", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Etiket pada kemasan obat berfungsi untuk memberikan informasi tentang ...",
+      "answers": [
+        { "text": "A. Aturan penggunaan obat", "isCorrect": true },
+        { "text": "B. Harga bahan obat", "isCorrect": false },
+        { "text": "C. Nama alat laboratorium", "isCorrect": false },
+        { "text": "D. Jumlah siswa praktik", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Laboratorium virtual dalam pembelajaran farmasi digunakan untuk ...",
+      "answers": [
+        { "text": "A. Melakukan simulasi praktik secara digital", "isCorrect": true },
+        { "text": "B. Menggantikan semua kegiatan belajar", "isCorrect": false },
+        { "text": "C. Menghilangkan penggunaan alat", "isCorrect": false },
+        { "text": "D. Mengurangi pemahaman siswa", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Teknologi yang dapat membuat simulasi laboratorium terlihat seperti nyata adalah ...",
+      "answers": [
+        { "text": "A. Virtual Reality", "isCorrect": true },
+        { "text": "B. Spreadsheet", "isCorrect": false },
+        { "text": "C. Kalkulator", "isCorrect": false },
+        { "text": "D. Printer", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Salah satu manfaat laboratorium virtual bagi siswa SMK Farmasi adalah ...",
+      "answers": [
+        { "text": "A. Dapat berlatih prosedur praktik sebelum menggunakan alat nyata", "isCorrect": true },
+        { "text": "B. Tidak perlu mempelajari alat laboratorium", "isCorrect": false },
+        { "text": "C. Tidak perlu memahami resep obat", "isCorrect": false },
+        { "text": "D. Tidak membutuhkan aturan kerja", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Dalam proses racik obat, resep digunakan sebagai pedoman untuk menentukan ...",
+      "answers": [
+        { "text": "A. Jenis dan jumlah bahan yang digunakan", "isCorrect": true },
+        { "text": "B. Warna obat yang dibuat", "isCorrect": false },
+        { "text": "C. Bentuk ruangan laboratorium", "isCorrect": false },
+        { "text": "D. Jumlah komputer yang tersedia", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Setelah menggunakan alat praktik, tindakan yang benar adalah ...",
+      "answers": [
+        { "text": "A. Membersihkan dan menyimpan alat kembali", "isCorrect": true },
+        { "text": "B. Membiarkan alat tetap di meja", "isCorrect": false },
+        { "text": "C. Menyimpan alat tanpa dibersihkan", "isCorrect": false },
+        { "text": "D. Menggunakan alat untuk bahan lain", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tujuan utama pengembangan laboratorium virtual simulasi racik obat adalah ...",
+      "answers": [
+        { "text": "A. Membantu meningkatkan pemahaman dan keterampilan praktik siswa", "isCorrect": true },
+        { "text": "B. Menggantikan laboratorium nyata sepenuhnya", "isCorrect": false },
+        { "text": "C. Mengurangi kegiatan pembelajaran", "isCorrect": false },
+        { "text": "D. Menghilangkan proses praktik farmasi", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pembelajaran menggunakan laboratorium virtual diharapkan dapat membuat siswa lebih memahami ...",
+      "answers": [
+        { "text": "A. Tahapan dan prosedur peracikan obat", "isCorrect": true },
+        { "text": "B. Harga alat laboratorium", "isCorrect": false },
+        { "text": "C. Tempat membeli bahan obat", "isCorrect": false },
+        { "text": "D. Jumlah alat di laboratorium", "isCorrect": false }
       ]
     }
-    
   ]
 }

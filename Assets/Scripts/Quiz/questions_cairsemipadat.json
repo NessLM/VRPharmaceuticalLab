@@ -1,93 +1,273 @@
 {
   "questions": [
     {
+      "question": "Sediaan obat berbentuk cair, umumnya memiliki rasa manis, dan digunakan dengan cara diminum disebut...",
+      "answers": [
+        { "text": "A. Sirup", "isCorrect": true },
+        { "text": "B. Salep", "isCorrect": false },
+        { "text": "C. Tablet", "isCorrect": false },
+        { "text": "D. Kapsul", "isCorrect": false }
+      ]
+    },
+    {
       "question": "Sediaan obat berbentuk setengah padat yang digunakan untuk pemakaian luar pada kulit disebut...",
       "answers": [
-        { "text": "Salep (unguentum)", "isCorrect": true },
-        { "text": "Sirup", "isCorrect": false },
-        { "text": "Tablet", "isCorrect": false },
-        { "text": "Kapsul", "isCorrect": false }
+        { "text": "A. Salep", "isCorrect": true },
+        { "text": "B. Sirup", "isCorrect": false },
+        { "text": "C. Larutan oral", "isCorrect": false },
+        { "text": "D. Suspensi", "isCorrect": false }
       ]
     },
     {
-      "question": "Pada resep salep, singkatan 'm.f. unguentum' berarti...",
+      "question": "Langkah pertama sebelum melakukan pembuatan sediaan obat adalah...",
       "answers": [
-        { "text": "Campur dan buatlah salep", "isCorrect": true },
-        { "text": "Minum sebelum makan", "isCorrect": false },
-        { "text": "Gunakan untuk mata", "isCorrect": false },
-        { "text": "Larutkan dalam air", "isCorrect": false }
+        { "text": "A. Membaca dan memahami resep terlebih dahulu", "isCorrect": true },
+        { "text": "B. Langsung mengambil bahan", "isCorrect": false },
+        { "text": "C. Langsung memasukkan bahan ke wadah", "isCorrect": false },
+        { "text": "D. Menempelkan etiket sebelum obat dibuat", "isCorrect": false }
       ]
     },
     {
-      "question": "Pada resep salep, 'Vaselin Album ad 10 g' artinya Vaselin Album ditambahkan...",
+      "question": "Dalam pembuatan Sirup Difenhidramin, Difenhidramin berfungsi sebagai...",
       "answers": [
-        { "text": "Hingga bobot total sediaan menjadi 10 g", "isCorrect": true },
-        { "text": "Sebanyak 10 g murni", "isCorrect": false },
-        { "text": "Sebanyak 10 tetes", "isCorrect": false },
-        { "text": "Dikurangi 10 g", "isCorrect": false }
+        { "text": "A. Zat aktif", "isCorrect": true },
+        { "text": "B. Basis salep", "isCorrect": false },
+        { "text": "C. Wadah obat", "isCorrect": false },
+        { "text": "D. Alat pengukur", "isCorrect": false }
       ]
     },
     {
-      "question": "Dalam resep salep 10 g dengan Asam Salisilat 200 mg dan Sulfur PP 400 mg, berapa Vaselin Album yang dibutuhkan?",
+      "question": "Alat yang tepat untuk mengukur volume cairan seperti aquadest adalah...",
       "answers": [
-        { "text": "9,4 g", "isCorrect": false },
-        { "text": "10 g", "isCorrect": true },
-        { "text": "6 g", "isCorrect": false },
-        { "text": "0,6 g", "isCorrect": false }
+        { "text": "A. Gelas ukur", "isCorrect": true },
+        { "text": "B. Mortar", "isCorrect": false },
+        { "text": "C. Stamper", "isCorrect": false },
+        { "text": "D. Pot salep", "isCorrect": false }
       ]
     },
     {
-      "question": "Vaselin Album pada sediaan salep berfungsi sebagai...",
+      "question": "Bahan padat dalam jumlah kecil sebaiknya ditimbang menggunakan...",
       "answers": [
-        { "text": "Basis salep (pembawa)", "isCorrect": true },
-        { "text": "Zat aktif utama", "isCorrect": false },
-        { "text": "Pengawet", "isCorrect": false },
-        { "text": "Pewarna", "isCorrect": false }
+        { "text": "A. Timbangan atau neraca", "isCorrect": true },
+        { "text": "B. Gelas ukur", "isCorrect": false },
+        { "text": "C. Sendok makan", "isCorrect": false },
+        { "text": "D. Tangan langsung", "isCorrect": false }
       ]
     },
     {
-      "question": "Alat yang digunakan untuk menggerus dan mencampur bahan salep hingga homogen adalah...",
+      "question": "Alas yang biasa digunakan saat menimbang bahan serbuk adalah...",
       "answers": [
-        { "text": "Mortar dan stamper", "isCorrect": true },
-        { "text": "Gelas ukur", "isCorrect": false },
-        { "text": "Buret", "isCorrect": false },
-        { "text": "Tabung reaksi", "isCorrect": false }
+        { "text": "A. Kertas perkamen", "isCorrect": true },
+        { "text": "B. Tutup botol", "isCorrect": false },
+        { "text": "C. Pot salep", "isCorrect": false },
+        { "text": "D. Meja langsung", "isCorrect": false }
       ]
     },
     {
-      "question": "Pada pembuatan sirup, gula berfungsi terutama sebagai...",
+      "question": "Wadah akhir yang tepat untuk sediaan Sirup Difenhidramin adalah...",
       "answers": [
-        { "text": "Pemanis sekaligus pengawet", "isCorrect": true },
-        { "text": "Zat aktif", "isCorrect": false },
-        { "text": "Basis salep", "isCorrect": false },
-        { "text": "Pelarut nonpolar", "isCorrect": false }
+        { "text": "A. Botol obat", "isCorrect": true },
+        { "text": "B. Pot salep", "isCorrect": false },
+        { "text": "C. Kertas perkamen", "isCorrect": false },
+        { "text": "D. Mortar", "isCorrect": false }
       ]
     },
     {
-      "question": "Sediaan cair berupa larutan dengan kadar gula tinggi yang diminum disebut...",
+      "question": "Etiket untuk sediaan obat yang diminum termasuk etiket...",
       "answers": [
-        { "text": "Sirup", "isCorrect": true },
-        { "text": "Salep", "isCorrect": false },
-        { "text": "Suppositoria", "isCorrect": false },
-        { "text": "Krim mata", "isCorrect": false }
+        { "text": "A. Obat dalam", "isCorrect": true },
+        { "text": "B. Obat luar", "isCorrect": false },
+        { "text": "C. Bahan mentah", "isCorrect": false },
+        { "text": "D. Alat praktik", "isCorrect": false }
       ]
     },
     {
-      "question": "Asam Salisilat dan Sulfur PP dalam resep salep tersebut berperan sebagai...",
+      "question": "Informasi yang tepat untuk penggunaan Sirup Difenhidramin adalah...",
       "answers": [
-        { "text": "Zat aktif (bahan berkhasiat)", "isCorrect": true },
-        { "text": "Basis salep", "isCorrect": false },
-        { "text": "Pelarut", "isCorrect": false },
-        { "text": "Perasa", "isCorrect": false }
+        { "text": "A. Diminum sesuai aturan pakai pada etiket", "isCorrect": true },
+        { "text": "B. Dioleskan pada kulit", "isCorrect": false },
+        { "text": "C. Dimasukkan ke pot salep", "isCorrect": false },
+        { "text": "D. Digunakan sebagai bahan pengaduk", "isCorrect": false }
       ]
     },
     {
-      "question": "Penimbangan bahan padat dalam jumlah kecil seperti 200 mg sebaiknya dilakukan dengan...",
+      "question": "Difenhidramin dikenal dapat menyebabkan efek samping berupa...",
       "answers": [
-        { "text": "Timbangan gram halus / neraca dengan kertas perkamen", "isCorrect": true },
-        { "text": "Tangan langsung", "isCorrect": false },
-        { "text": "Gelas ukur", "isCorrect": false },
-        { "text": "Sendok makan", "isCorrect": false }
+        { "text": "A. Mengantuk", "isCorrect": true },
+        { "text": "B. Kulit menjadi berminyak", "isCorrect": false },
+        { "text": "C. Luka langsung sembuh", "isCorrect": false },
+        { "text": "D. Warna obat berubah", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat yang digunakan untuk membantu menuangkan sirup ke dalam botol agar tidak tumpah adalah...",
+      "answers": [
+        { "text": "A. Corong", "isCorrect": true },
+        { "text": "B. Stamper", "isCorrect": false },
+        { "text": "C. Anak timbangan", "isCorrect": false },
+        { "text": "D. Pot salep", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Formula Salep 2-4 menunjukkan adanya kandungan...",
+      "answers": [
+        { "text": "A. Asam Salisilat 2% dan Sulfur PP 4%", "isCorrect": true },
+        { "text": "B. Asam Salisilat 4% dan Sulfur PP 2%", "isCorrect": false },
+        { "text": "C. Difenhidramin 2% dan Aquadest 4%", "isCorrect": false },
+        { "text": "D. Sirup 2% dan Vaselin 4%", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada pembuatan Salep 2-4, Asam Salisilat berperan sebagai...",
+      "answers": [
+        { "text": "A. Zat aktif", "isCorrect": true },
+        { "text": "B. Basis salep", "isCorrect": false },
+        { "text": "C. Pelarut utama", "isCorrect": false },
+        { "text": "D. Pemanis", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada pembuatan Salep 2-4, Sulfur PP berperan sebagai...",
+      "answers": [
+        { "text": "A. Zat aktif", "isCorrect": true },
+        { "text": "B. Wadah salep", "isCorrect": false },
+        { "text": "C. Etiket", "isCorrect": false },
+        { "text": "D. Alat pengukur volume", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pada pembuatan Salep 2-4, Vaselin Album berfungsi sebagai...",
+      "answers": [
+        { "text": "A. Basis salep", "isCorrect": true },
+        { "text": "B. Zat aktif utama", "isCorrect": false },
+        { "text": "C. Pemanis", "isCorrect": false },
+        { "text": "D. Pelarut air", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jumlah Vaselin Album yang digunakan pada formula Salep 2-4 adalah...",
+      "answers": [
+        { "text": "A. 10 g", "isCorrect": true },
+        { "text": "B. 9,4 g", "isCorrect": false },
+        { "text": "C. 0,4 g", "isCorrect": false },
+        { "text": "D. 0,2 g", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika dibuat Salep 2-4 dengan basis Vaselin Album 10 g, maka jumlah Asam Salisilat 2% yang digunakan adalah...",
+      "answers": [
+        { "text": "A. 0,2 g atau 200 mg", "isCorrect": true },
+        { "text": "B. 2 g atau 2000 mg", "isCorrect": false },
+        { "text": "C. 0,02 g atau 20 mg", "isCorrect": false },
+        { "text": "D. 4 g atau 4000 mg", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika dibuat Salep 2-4 dengan basis Vaselin Album 10 g, maka jumlah Sulfur PP 4% yang digunakan adalah...",
+      "answers": [
+        { "text": "A. 0,4 g atau 400 mg", "isCorrect": true },
+        { "text": "B. 4 g atau 4000 mg", "isCorrect": false },
+        { "text": "C. 0,04 g atau 40 mg", "isCorrect": false },
+        { "text": "D. 2 g atau 2000 mg", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat utama yang digunakan untuk menggerus dan mencampur bahan salep adalah...",
+      "answers": [
+        { "text": "A. Mortar dan stamper", "isCorrect": true },
+        { "text": "B. Gelas ukur dan corong", "isCorrect": false },
+        { "text": "C. Botol dan pipet", "isCorrect": false },
+        { "text": "D. Kertas etiket dan botol", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tujuan menggerus bahan serbuk pada pembuatan salep adalah...",
+      "answers": [
+        { "text": "A. Menghaluskan dan meratakan bahan", "isCorrect": true },
+        { "text": "B. Membuat bahan menjadi cair", "isCorrect": false },
+        { "text": "C. Menghilangkan zat aktif", "isCorrect": false },
+        { "text": "D. Mengubah salep menjadi sirup", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Vaselin Album sebaiknya ditambahkan sedikit demi sedikit saat membuat salep agar...",
+      "answers": [
+        { "text": "A. Campuran menjadi lebih homogen", "isCorrect": true },
+        { "text": "B. Warna etiket berubah", "isCorrect": false },
+        { "text": "C. Bahan aktif menghilang", "isCorrect": false },
+        { "text": "D. Timbangan menjadi rusak", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Ciri salep yang sudah tercampur dengan baik adalah...",
+      "answers": [
+        { "text": "A. Tekstur dan warna tampak merata", "isCorrect": true },
+        { "text": "B. Masih terdapat gumpalan besar", "isCorrect": false },
+        { "text": "C. Serbuk masih terpisah", "isCorrect": false },
+        { "text": "D. Salep masih berada di kertas perkamen", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Wadah akhir yang tepat untuk sediaan Salep 2-4 adalah...",
+      "answers": [
+        { "text": "A. Pot salep", "isCorrect": true },
+        { "text": "B. Botol sirup", "isCorrect": false },
+        { "text": "C. Gelas ukur", "isCorrect": false },
+        { "text": "D. Kertas perkamen", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Etiket pada sediaan Salep 2-4 harus menunjukkan bahwa obat tersebut digunakan untuk...",
+      "answers": [
+        { "text": "A. Pemakaian luar", "isCorrect": true },
+        { "text": "B. Diminum setiap hari", "isCorrect": false },
+        { "text": "C. Dicampur ke minuman", "isCorrect": false },
+        { "text": "D. Diteteskan ke mata tanpa aturan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Informasi yang tepat untuk penggunaan Salep 2-4 adalah...",
+      "answers": [
+        { "text": "A. Oleskan tipis pada bagian kulit sesuai aturan pakai", "isCorrect": true },
+        { "text": "B. Minum satu sendok makan", "isCorrect": false },
+        { "text": "C. Campurkan ke dalam air", "isCorrect": false },
+        { "text": "D. Gunakan sebagai obat kumur", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika tutup botol bahan masih terpasang, tindakan yang benar sebelum mengambil bahan adalah...",
+      "answers": [
+        { "text": "A. Membuka tutup botol terlebih dahulu", "isCorrect": true },
+        { "text": "B. Tetap mengambil bahan tanpa membuka tutup", "isCorrect": false },
+        { "text": "C. Menimbang tutup botol sebagai bahan", "isCorrect": false },
+        { "text": "D. Memasukkan botol langsung ke mortar", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika bahan yang ditimbang melebihi jumlah yang dibutuhkan, tindakan yang paling tepat adalah...",
+      "answers": [
+        { "text": "A. Mengurangi bahan sampai sesuai kebutuhan", "isCorrect": true },
+        { "text": "B. Tetap lanjut tanpa memperbaiki", "isCorrect": false },
+        { "text": "C. Menambahkan bahan lebih banyak lagi", "isCorrect": false },
+        { "text": "D. Mengganti etiket agar terlihat benar", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Urutan umum pembuatan Salep 2-4 yang benar adalah...",
+      "answers": [
+        { "text": "A. Timbang bahan, gerus bahan aktif, tambahkan Vaselin Album bertahap, masukkan ke pot salep", "isCorrect": true },
+        { "text": "B. Tempel etiket, masukkan ke pot, baru timbang bahan", "isCorrect": false },
+        { "text": "C. Masukkan semua bahan ke botol lalu dikocok", "isCorrect": false },
+        { "text": "D. Ukur aquadest, masukkan ke pot salep, lalu diminum", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pasangan sediaan dan wadah akhir yang benar adalah...",
+      "answers": [
+        { "text": "A. Sirup di botol obat, salep di pot salep", "isCorrect": true },
+        { "text": "B. Sirup di pot salep, salep di botol obat", "isCorrect": false },
+        { "text": "C. Sirup di mortar, salep di gelas ukur", "isCorrect": false },
+        { "text": "D. Sirup dan salep sama-sama di kertas perkamen", "isCorrect": false }
       ]
     }
   ]

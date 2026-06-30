@@ -14,6 +14,9 @@ TagManager:
   - penumbuk
   - Penumbuk
   - Sudip
+  - CubeBackSpace
+  - CubeSpace
+  - Capsule
   layers:
   - Default
   - TransparentFX

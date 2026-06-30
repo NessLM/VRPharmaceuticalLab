@@ -18,6 +18,9 @@ public class ResepPadat1StepManager : MonoBehaviour
     [Header("Barang Step 4")]
 [SerializeField] private XRGrabInteractable[] step4GrabItems;
 
+    [Header("Barang Step 5")]
+    [SerializeField] private XRGrabInteractable[] step5GrabItems;
+
     [Header("Script Khusus")]
     [SerializeField] private MonoBehaviour stackPerkamenScript;
     [SerializeField] private MonoBehaviour botolKapsulScript;
@@ -151,11 +154,14 @@ SetScript(stackGridPerkamenScript, true);
 
     Debug.Log("Step 4 aktif.");
 }
-        else if (step == 5)
-        {
-            SetPanel(instruksiStep5, true);
-            Debug.Log("Step 5 aktif.");
-        }
+        else if(step == 5)
+{
+    UnlockItems(step5GrabItems);
+
+    SetPanel(instruksiStep5, true);
+
+    Debug.Log("Step 5 aktif.");
+}
     }
 
     private void LockItems(XRGrabInteractable[] items)

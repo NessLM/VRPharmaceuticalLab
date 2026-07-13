@@ -23,7 +23,7 @@ public class QuizManager : GameEventListener<bool>
     int wrongAnswer = 0;
 
     // 0 = belum dipilih (pakai questionData default), 1..3 = level.
-    private int selectedLevel = 0;
+    [SerializeField] private int selectedLevel = 0;
 
     /// <summary>Dipanggil oleh tombol level (QuizLevelSelector). 1 = Mudah, 2 = Sedang, 3 = Sulit.</summary>
     public void SetLevel(int level)

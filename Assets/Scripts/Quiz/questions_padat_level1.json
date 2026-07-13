@@ -1,7 +1,7 @@
 {
   "questions": [
     {
-      "question": "Level 1 (Mudah) - Bentuk sediaan padat berupa campuran kering bahan obat yang telah dihaluskan disebut ...",
+      "question": "Bentuk sediaan padat berupa campuran kering bahan obat yang telah dihaluskan disebut ...",
       "answers": [
         { "text": "A. Serbuk", "isCorrect": true },
         { "text": "B. Larutan", "isCorrect": false },

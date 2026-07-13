@@ -1275,6 +1275,7 @@ GameObject:
   - component: {fileID: 20266300}
   - component: {fileID: 20266299}
   - component: {fileID: 20266298}
+  - component: {fileID: 20266305}
   m_Layer: 5
   m_Name: Button_Back
   m_TagString: Untagged
@@ -1298,10 +1299,10 @@ RectTransform:
   - {fileID: 1369728834}
   m_Father: {fileID: 499819286}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.4, y: -186.7}
-  m_SizeDelta: {x: 177.16, y: 60}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 158.0143, y: -320}
+  m_SizeDelta: {x: 268.0286, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &20266298
 MonoBehaviour:
@@ -1564,6 +1565,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 20266296}
   m_CullTransparentMesh: 0
+--- !u!114 &20266305
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 20266296}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 240
+  m_PreferredHeight: 60
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &21110984
 GameObject:
   m_ObjectHideFlags: 0
@@ -27419,10 +27440,10 @@ RectTransform:
   - {fileID: 962008403}
   m_Father: {fileID: 1247835281}
   m_LocalEulerAnglesHint: {x: 0, y: 180.954, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 6.1712, y: -0.21399996}
-  m_SizeDelta: {x: 316.0286, y: 381.9169}
+  m_SizeDelta: {x: 316.0286, y: 374}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &499819287
 MonoBehaviour:
@@ -27458,13 +27479,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 499819285}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_HorizontalFit: 0
-  m_VerticalFit: 1
+  m_VerticalFit: 2
 --- !u!114 &499819289
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27472,7 +27493,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 499819285}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
   m_Name: 
@@ -27484,10 +27505,10 @@ MonoBehaviour:
     m_Bottom: 24
   m_ChildAlignment: 4
   m_Spacing: 14
-  m_ChildForceExpandWidth: 0
+  m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
+  m_ChildControlWidth: 1
+  m_ChildControlHeight: 1
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
@@ -28270,6 +28291,7 @@ GameObject:
   - component: {fileID: 520669704}
   - component: {fileID: 520669703}
   - component: {fileID: 520669702}
+  - component: {fileID: 520669709}
   m_Layer: 5
   m_Name: Button_Level3
   m_TagString: Untagged
@@ -28293,10 +28315,10 @@ RectTransform:
   - {fileID: 429106337}
   m_Father: {fileID: 499819286}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 2.7, y: -103.7}
-  m_SizeDelta: {x: 239.71, y: 60}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 158.0143, y: -246}
+  m_SizeDelta: {x: 268.0286, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &520669702
 MonoBehaviour:
@@ -28561,6 +28583,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 520669700}
   m_CullTransparentMesh: 0
+--- !u!114 &520669709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 520669700}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 240
+  m_PreferredHeight: 60
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &522159525
 GameObject:
   m_ObjectHideFlags: 0
@@ -42532,6 +42574,7 @@ GameObject:
   - component: {fileID: 888237626}
   - component: {fileID: 888237625}
   - component: {fileID: 888237624}
+  - component: {fileID: 888237631}
   m_Layer: 5
   m_Name: Button_Level2
   m_TagString: Untagged
@@ -42555,10 +42598,10 @@ RectTransform:
   - {fileID: 763818683}
   m_Father: {fileID: 499819286}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 2.7, y: -20.6}
-  m_SizeDelta: {x: 239.71, y: 60}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 158.0143, y: -172}
+  m_SizeDelta: {x: 268.0286, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &888237624
 MonoBehaviour:
@@ -42823,6 +42866,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 888237622}
   m_CullTransparentMesh: 0
+--- !u!114 &888237631
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 888237622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 240
+  m_PreferredHeight: 60
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1001 &894966638
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -46627,8 +46690,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -31.99}
-  m_SizeDelta: {x: 0, y: 33.53}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &962008404
 MonoBehaviour:
@@ -51206,8 +51269,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -31.99}
-  m_SizeDelta: {x: 0, y: 33.53}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1060722628
 MonoBehaviour:
@@ -54935,6 +54998,7 @@ GameObject:
   - component: {fileID: 1135965742}
   - component: {fileID: 1135965741}
   - component: {fileID: 1135965740}
+  - component: {fileID: 1135965747}
   m_Layer: 5
   m_Name: Button_Level1
   m_TagString: Untagged
@@ -54958,10 +55022,10 @@ RectTransform:
   - {fileID: 880442102}
   m_Father: {fileID: 499819286}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 2.7, y: 63.5}
-  m_SizeDelta: {x: 239.71, y: 60}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 158.0143, y: -98}
+  m_SizeDelta: {x: 268.0286, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1135965740
 MonoBehaviour:
@@ -55226,6 +55290,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1135965738}
   m_CullTransparentMesh: 0
+--- !u!114 &1135965747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1135965738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 240
+  m_PreferredHeight: 60
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &1136911665
 GameObject:
   m_ObjectHideFlags: 0
@@ -81122,6 +81206,7 @@ GameObject:
   - component: {fileID: 1492329471}
   - component: {fileID: 1492329470}
   - component: {fileID: 1492329469}
+  - component: {fileID: 1492329472}
   m_Layer: 5
   m_Name: Modal Text
   m_TagString: Untagged
@@ -81143,11 +81228,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 499819286}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 1}
-  m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 2.7, y: -46}
-  m_SizeDelta: {x: 165.01, y: 22.64}
-  m_Pivot: {x: 0.5, y: 1}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 158.0143, y: -39}
+  m_SizeDelta: {x: 268.0286, y: 30}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1492329469
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -81262,6 +81347,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1492329467}
   m_CullTransparentMesh: 0
+--- !u!114 &1492329472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1492329467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 240
+  m_PreferredHeight: 30
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &1493241543
 GameObject:
   m_ObjectHideFlags: 0
@@ -84015,7 +84120,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6598815579406187037, guid: 18ddb545287c546e19cc77dc9fbb2189, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -104506,7 +104611,281 @@ MonoBehaviour:
   questionEvent: {fileID: 11400000, guid: 32a4721812c41964ba10574671b1902f, type: 2}
   summaryEvent: {fileID: 11400000, guid: 66d88d8bd8c07064f91a1b36a08f0e95, type: 2}
   panelEvent: {fileID: 11400000, guid: 3de2bd6e324cabb4c820739f2df5e1f9, type: 2}
-  randomizedQuestions: []
+  randomizedQuestions:
+  - question: Bahan aktif yang jumlahnya sangat kecil (di bawah batas penimbangan
+      neraca) sebaiknya dibuat dalam bentuk ...
+    answers:
+    - text: A. Pengenceran serbuk (serbuk berkadar / trituratio)
+      isCorrect: 1
+    - text: B. Ditimbang paksa apa adanya
+      isCorrect: 0
+    - text: C. Dikira-kira jumlahnya
+      isCorrect: 0
+    - text: D. Dilipatgandakan dosisnya
+      isCorrect: 0
+  - question: Resep 10 bungkus meminta CTM 4 mg tiap bungkus. Total CTM yang dibutuhkan
+      adalah ...
+    answers:
+    - text: A. 40 mg
+      isCorrect: 1
+    - text: B. 4 mg
+      isCorrect: 0
+    - text: C. 400 mg
+      isCorrect: 0
+    - text: D. 0,4 mg
+      isCorrect: 0
+  - question: 'Level 3 (Sulit) - Resep: Paracetamol 250 mg, m.f. pulv dtd No. X.
+      Berapa total paracetamol yang dibutuhkan?'
+    answers:
+    - text: A. 2,5 gram
+      isCorrect: 1
+    - text: B. 250 mg
+      isCorrect: 0
+    - text: C. 25 gram
+      isCorrect: 0
+    - text: D. 0,25 gram
+      isCorrect: 0
+  - question: Bahan yang sangat higroskopis seperti ekstrak kental sebaiknya ditangani
+      dengan cara ...
+    answers:
+    - text: A. Ditambah bahan pengering (mis. bolus alba / laktosa) dan dikerjakan
+        cepat
+      isCorrect: 1
+    - text: B. Dibiarkan terbuka lama
+      isCorrect: 0
+    - text: C. Ditambah air
+      isCorrect: 0
+    - text: D. Dipanaskan lama
+      isCorrect: 0
+  - question: Campuran dua bahan yang menjadi basah atau mencair ketika digerus bersama
+      disebut ...
+    answers:
+    - text: A. Campuran eutektik
+      isCorrect: 1
+    - text: B. Emulsi
+      isCorrect: 0
+    - text: C. Suspensi
+      isCorrect: 0
+    - text: D. Larutan jenuh
+      isCorrect: 0
+  - question: Camphora sulit digerus karena cenderung menggumpal. Cara mengatasinya
+      adalah ...
+    answers:
+    - text: A. Ditetesi sedikit etanol / spiritus fortior
+      isCorrect: 1
+    - text: B. Ditambah air
+      isCorrect: 0
+    - text: C. Dipanaskan
+      isCorrect: 0
+    - text: D. Didinginkan di kulkas
+      isCorrect: 0
+  - question: Resep 15 bungkus dengan bobot 0,6 g tiap bungkus. Total serbuk yang
+      disiapkan adalah ...
+    answers:
+    - text: A. 9 gram
+      isCorrect: 1
+    - text: B. 6 gram
+      isCorrect: 0
+    - text: C. 15 gram
+      isCorrect: 0
+    - text: D. 90 gram
+      isCorrect: 0
+  - question: Cara mengatasi campuran eutektik saat membuat serbuk adalah ...
+    answers:
+    - text: A. Menambahkan bahan penyerap inert (mis. laktosa / talk)
+      isCorrect: 1
+    - text: B. Menambahkan air
+      isCorrect: 0
+    - text: C. Memanaskannya
+      isCorrect: 0
+    - text: D. Mengaduk secepat mungkin saja
+      isCorrect: 0
+  - question: Jika resep meminta 1/4 tablet dari tablet 200 mg, maka dosis per bungkus
+      adalah ...
+    answers:
+    - text: A. 50 mg
+      isCorrect: 1
+    - text: B. 100 mg
+      isCorrect: 0
+    - text: C. 25 mg
+      isCorrect: 0
+    - text: D. 200 mg
+      isCorrect: 0
+  - question: Batas terkecil penimbangan pada timbangan gram halus di apotek umumnya
+      sekitar ...
+    answers:
+    - text: A. 50 mg
+      isCorrect: 1
+    - text: B. 5 gram
+      isCorrect: 0
+    - text: C. 500 mg
+      isCorrect: 0
+    - text: D. 1 gram
+      isCorrect: 0
+  - question: Bila diperlukan bahan aktif 10 mg per bungkus untuk 10 bungkus (total
+      100 mg) sementara neraca hanya akurat pada >= 50 mg, solusinya adalah ...
+    answers:
+    - text: A. Membuat pengenceran, mis. 100 mg bahan + 900 mg laktosa, lalu ditimbang
+        porsinya
+      isCorrect: 1
+    - text: B. Menimbang 10 mg langsung tiap bungkus
+      isCorrect: 0
+    - text: C. Mengabaikan ketelitian
+      isCorrect: 0
+    - text: D. Menambahkan air
+      isCorrect: 0
+  - question: Tujuan penambahan bahan pengisi (mis. laktosa) pada serbuk berdosis
+      kecil adalah ...
+    answers:
+    - text: A. Menambah bobot agar mudah dibagi dan ditakar
+      isCorrect: 1
+    - text: B. Menambah khasiat obat
+      isCorrect: 0
+    - text: C. Memberi warna
+      isCorrect: 0
+    - text: D. Mengurangi dosis
+      isCorrect: 0
+  - question: Untuk memperoleh CTM 40 mg total menggunakan tablet CTM 4 mg, jumlah
+      tablet yang digerus adalah ...
+    answers:
+    - text: A. 10 tablet
+      isCorrect: 1
+    - text: B. 1 tablet
+      isCorrect: 0
+    - text: C. 4 tablet
+      isCorrect: 0
+    - text: D. 40 tablet
+      isCorrect: 0
+  - question: Jika 5 tablet (@500 mg) digerus untuk 10 bungkus, maka kandungan tiap
+      bungkus adalah ...
+    answers:
+    - text: A. 250 mg
+      isCorrect: 1
+    - text: B. 500 mg
+      isCorrect: 0
+    - text: C. 125 mg
+      isCorrect: 0
+    - text: D. 50 mg
+      isCorrect: 0
+  - question: Menggerus bahan berwarna kuat (mis. rifampisin) sebaiknya menggunakan
+      mortar yang ...
+    answers:
+    - text: A. Khusus atau dibersihkan sangat baik untuk mencegah kontaminasi dan
+        noda
+      isCorrect: 1
+    - text: B. Sama tanpa dibersihkan
+      isCorrect: 0
+    - text: C. Dalam keadaan basah
+      isCorrect: 0
+    - text: D. Dalam keadaan panas
+      isCorrect: 0
+  - question: Jika resep tertulis 'm.f. pulv No. X' (tanpa dtd) dengan Paracetamol
+      250 mg, maka 250 mg tersebut adalah untuk ...
+    answers:
+    - text: A. Total keseluruhan, kemudian dibagi menjadi 10 bungkus
+      isCorrect: 1
+    - text: B. Tiap bungkus
+      isCorrect: 0
+    - text: C. Sekali pakai saja
+      isCorrect: 0
+    - text: D. Tidak dibagi
+      isCorrect: 0
+  - question: Singkatan 'p.r.n.' pada aturan pakai berarti ...
+    answers:
+    - text: A. Bila perlu (pro re nata)
+      isCorrect: 1
+    - text: B. Setiap jam
+      isCorrect: 0
+    - text: C. Sesudah makan
+      isCorrect: 0
+    - text: D. Sebelum tidur
+      isCorrect: 0
+  - question: Bahan pengoksidasi kuat (mis. KMnO4) yang digerus bersama bahan organik
+      mudah terbakar dapat menyebabkan ...
+    answers:
+    - text: A. Percikan / ledakan, sehingga tidak boleh digerus bersama
+      isCorrect: 1
+    - text: B. Selalu aman
+      isCorrect: 0
+    - text: C. Warna memudar saja
+      isCorrect: 0
+    - text: D. Menjadi cair biasa
+      isCorrect: 0
+  - question: Contoh pasangan bahan yang dapat membentuk campuran eutektik adalah
+      ...
+    answers:
+    - text: A. Menthol dan camphora
+      isCorrect: 1
+    - text: B. Gula dan garam
+      isCorrect: 0
+    - text: C. Pati dan laktosa
+      isCorrect: 0
+    - text: D. Talk dan seng oksida
+      isCorrect: 0
+  - question: Contoh inkompatibilitas fisika pada serbuk adalah ...
+    answers:
+    - text: A. Serbuk menjadi lembab / mencair (deliquescence)
+      isCorrect: 1
+    - text: B. Terjadi reaksi oksidasi kimia
+      isCorrect: 0
+    - text: C. Terbentuk gas beracun
+      isCorrect: 0
+    - text: D. Terjadi ledakan
+      isCorrect: 0
+  - question: Metode terbaik untuk membagi serbuk zat berkhasiat keras secara akurat
+      adalah ...
+    answers:
+    - text: A. Menimbang tiap bungkus satu per satu
+      isCorrect: 1
+    - text: B. Membagi dengan perkiraan mata
+      isCorrect: 0
+    - text: C. Membagi menjadi 2 tumpukan besar saja
+      isCorrect: 0
+    - text: D. Tanpa alat ukur
+      isCorrect: 0
+  - question: Singkatan 'm.f. pulv dtd No. X' pada resep berarti ...
+    answers:
+    - text: A. Buatlah serbuk, dengan dosis tiap bungkus, sebanyak 10
+      isCorrect: 1
+    - text: B. Campur 10 gram bahan
+      isCorrect: 0
+    - text: C. Buat 1 serbuk seberat 10 gram
+      isCorrect: 0
+    - text: D. Larutkan sebanyak 10 kali
+      isCorrect: 0
+  - question: Singkatan 's.t.d.d.' pada resep berarti ...
+    answers:
+    - text: A. Sehari tiga kali
+      isCorrect: 1
+    - text: B. Sekali sehari
+      isCorrect: 0
+    - text: C. Bila perlu
+      isCorrect: 0
+    - text: D. Sebelum makan
+      isCorrect: 0
+  - question: Tersedia tablet 500 mg. Resep membutuhkan 2500 mg total bahan. Jumlah
+      tablet yang harus digerus adalah ...
+    answers:
+    - text: A. 5 tablet
+      isCorrect: 1
+    - text: B. 2,5 tablet
+      isCorrect: 0
+    - text: C. 10 tablet
+      isCorrect: 0
+    - text: D. 25 tablet
+      isCorrect: 0
+  - question: Jika total serbuk 3 g untuk 12 bungkus tetapi bahan aktif hanya 300
+      mg, maka sisanya sebanyak 2,7 g adalah ...
+    answers:
+    - text: A. Bahan pengisi / pembawa
+      isCorrect: 1
+    - text: B. Air
+      isCorrect: 0
+    - text: C. Tidak ada
+      isCorrect: 0
+    - text: D. Bahan aktif tambahan
+      isCorrect: 0
+  selectedLevel: 3
 --- !u!1 &1802055102
 GameObject:
   m_ObjectHideFlags: 0

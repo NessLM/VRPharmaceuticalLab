@@ -1,7 +1,7 @@
 {
   "questions": [
     {
-      "question": "Level 3 (Sulit) - Resep: Paracetamol 250 mg, m.f. pulv dtd No. X. Berapa total paracetamol yang dibutuhkan?",
+      "question": "Resep: Paracetamol 250 mg, m.f. pulv dtd No. X. Berapa total paracetamol yang dibutuhkan?",
       "answers": [
         { "text": "A. 2,5 gram", "isCorrect": true },
         { "text": "B. 250 mg", "isCorrect": false },

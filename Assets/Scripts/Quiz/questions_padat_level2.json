@@ -1,7 +1,7 @@
 {
   "questions": [
     {
-      "question": "Level 2 (Sedang) - Saat mencampur bahan yang jumlahnya banyak dengan bahan yang jumlahnya sedikit, cara yang benar adalah ...",
+      "question": "Saat mencampur bahan yang jumlahnya banyak dengan bahan yang jumlahnya sedikit, cara yang benar adalah ...",
       "answers": [
         { "text": "A. Dicampur sedikit demi sedikit / geometris", "isCorrect": true },
         { "text": "B. Dimasukkan semua sekaligus", "isCorrect": false },

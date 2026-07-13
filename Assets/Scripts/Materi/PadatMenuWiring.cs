@@ -86,7 +86,14 @@ public static class PadatMenuWiring
         EnsureSummaryPanel(panels, 5);
 
         int quizStartId = GetQuizTriggerPanelId();
-        int menuTargetIndex = introIndex >= 0 ? introIndex : quizStartId;
+
+        // Alur baru: Button_Quiz membuka panel pilih Level (PanelQuiz_Padat) lebih dulu,
+        // baru dari sana ke panel Intro (Nama/Kelas). Jika panel level tidak ada,
+        // fallback ke panel intro seperti sebelumnya.
+        int levelMenuIndex = GetPanelIndexByName(panels, "PanelQuiz_Padat");
+        int menuTargetIndex = levelMenuIndex >= 0
+            ? levelMenuIndex
+            : (introIndex >= 0 ? introIndex : quizStartId);
 
         Button quizButton = FindMenuButton("Button_Quiz");
         if (quizButton != null)
@@ -147,6 +154,19 @@ public static class PadatMenuWiring
             return id;
 
         return 3;
+    }
+
+    private static int GetPanelIndexByName(List<GameObject> panels, string panelName)
+    {
+        if (panels == null)
+            return -1;
+
+        for (int i = 0; i < panels.Count; i++)
+        {
+            if (panels[i] != null && panels[i].name == panelName)
+                return i;
+        }
+        return -1;
     }
 
     private static List<GameObject> GetPanels(PanelManager panelManager)

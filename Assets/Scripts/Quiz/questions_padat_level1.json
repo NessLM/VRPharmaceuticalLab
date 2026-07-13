@@ -1,0 +1,229 @@
+{
+  "questions": [
+    {
+      "question": "Level 1 (Mudah) - Bentuk sediaan padat berupa campuran kering bahan obat yang telah dihaluskan disebut ...",
+      "answers": [
+        { "text": "A. Serbuk", "isCorrect": true },
+        { "text": "B. Larutan", "isCorrect": false },
+        { "text": "C. Salep", "isCorrect": false },
+        { "text": "D. Emulsi", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat yang digunakan untuk menghaluskan bahan obat menjadi serbuk adalah ...",
+      "answers": [
+        { "text": "A. Mortar dan stamper", "isCorrect": true },
+        { "text": "B. Gelas ukur", "isCorrect": false },
+        { "text": "C. Corong", "isCorrect": false },
+        { "text": "D. Termometer", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat yang digunakan untuk menimbang bahan obat adalah ...",
+      "answers": [
+        { "text": "A. Neraca / timbangan", "isCorrect": true },
+        { "text": "B. Mortar", "isCorrect": false },
+        { "text": "C. Sudip", "isCorrect": false },
+        { "text": "D. Pipet", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Serbuk yang dibagi menjadi beberapa bungkus dengan bobot yang sama disebut ...",
+      "answers": [
+        { "text": "A. Pulveres", "isCorrect": true },
+        { "text": "B. Pulvis", "isCorrect": false },
+        { "text": "C. Kapsul", "isCorrect": false },
+        { "text": "D. Tablet", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Serbuk tidak terbagi yang umumnya digunakan untuk pemakaian luar disebut ...",
+      "answers": [
+        { "text": "A. Pulvis", "isCorrect": true },
+        { "text": "B. Pulveres", "isCorrect": false },
+        { "text": "C. Pil", "isCorrect": false },
+        { "text": "D. Sirup", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat kecil untuk mengambil dan meratakan serbuk saat pembungkusan disebut ...",
+      "answers": [
+        { "text": "A. Sudip / spatula", "isCorrect": true },
+        { "text": "B. Buret", "isCorrect": false },
+        { "text": "C. Pipet", "isCorrect": false },
+        { "text": "D. Corong", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Kertas yang biasa dipakai untuk membungkus serbuk adalah ...",
+      "answers": [
+        { "text": "A. Kertas perkamen", "isCorrect": true },
+        { "text": "B. Kertas koran", "isCorrect": false },
+        { "text": "C. Kertas HVS", "isCorrect": false },
+        { "text": "D. Kertas karbon", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Sebelum meracik obat, tangan dan alat sebaiknya dalam keadaan ...",
+      "answers": [
+        { "text": "A. Bersih", "isCorrect": true },
+        { "text": "B. Basah", "isCorrect": false },
+        { "text": "C. Kotor", "isCorrect": false },
+        { "text": "D. Berminyak", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Label yang ditempel pada kemasan obat untuk menuliskan aturan pakai disebut ...",
+      "answers": [
+        { "text": "A. Etiket", "isCorrect": true },
+        { "text": "B. Brosur", "isCorrect": false },
+        { "text": "C. Faktur", "isCorrect": false },
+        { "text": "D. Kwitansi", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Etiket berwarna putih digunakan untuk obat ...",
+      "answers": [
+        { "text": "A. Dalam (diminum)", "isCorrect": true },
+        { "text": "B. Luar", "isCorrect": false },
+        { "text": "C. Suntik", "isCorrect": false },
+        { "text": "D. Kumur saja", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Etiket berwarna biru digunakan untuk obat ...",
+      "answers": [
+        { "text": "A. Luar", "isCorrect": true },
+        { "text": "B. Dalam", "isCorrect": false },
+        { "text": "C. Oral", "isCorrect": false },
+        { "text": "D. Diminum", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Dokumen permintaan obat dari dokter kepada apoteker disebut ...",
+      "answers": [
+        { "text": "A. Resep", "isCorrect": true },
+        { "text": "B. Kwitansi", "isCorrect": false },
+        { "text": "C. Etiket", "isCorrect": false },
+        { "text": "D. Brosur", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bagian mortar tempat bahan obat dihaluskan adalah bagian ...",
+      "answers": [
+        { "text": "A. Cekungan dalam", "isCorrect": true },
+        { "text": "B. Bagian luar", "isCorrect": false },
+        { "text": "C. Gagang", "isCorrect": false },
+        { "text": "D. Tutup", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Stamper berfungsi untuk ...",
+      "answers": [
+        { "text": "A. Menggerus dan menekan bahan", "isCorrect": true },
+        { "text": "B. Menimbang bahan", "isCorrect": false },
+        { "text": "C. Mengukur volume", "isCorrect": false },
+        { "text": "D. Menyaring cairan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Setelah selesai meracik obat, alat yang digunakan sebaiknya ...",
+      "answers": [
+        { "text": "A. Dibersihkan", "isCorrect": true },
+        { "text": "B. Dibiarkan kotor", "isCorrect": false },
+        { "text": "C. Dibuang", "isCorrect": false },
+        { "text": "D. Disimpan tanpa dicuci", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Kapsul adalah sediaan padat yang bahan obatnya dibungkus dengan cangkang dari ...",
+      "answers": [
+        { "text": "A. Gelatin", "isCorrect": true },
+        { "text": "B. Kaca", "isCorrect": false },
+        { "text": "C. Logam", "isCorrect": false },
+        { "text": "D. Plastik keras", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tujuan utama membuat serbuk menjadi halus adalah agar obat ...",
+      "answers": [
+        { "text": "A. Mudah larut dan tercampur merata", "isCorrect": true },
+        { "text": "B. Berwarna lebih cerah", "isCorrect": false },
+        { "text": "C. Menjadi lebih berat", "isCorrect": false },
+        { "text": "D. Menjadi lebih mahal", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bahan obat ditimbang terlebih dahulu agar jumlahnya ...",
+      "answers": [
+        { "text": "A. Sesuai dengan resep", "isCorrect": true },
+        { "text": "B. Selalu berlebih", "isCorrect": false },
+        { "text": "C. Selalu berkurang", "isCorrect": false },
+        { "text": "D. Acak", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Setelah menimbang dan menghaluskan serta mencampur bahan, langkah berikutnya adalah ...",
+      "answers": [
+        { "text": "A. Membungkus / mengemas", "isCorrect": true },
+        { "text": "B. Menimbang ulang", "isCorrect": false },
+        { "text": "C. Membuang bahan", "isCorrect": false },
+        { "text": "D. Menyimpan resep", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Serbuk terbagi yang sudah dibungkus biasanya disimpan dalam ...",
+      "answers": [
+        { "text": "A. Kemasan / amplop obat", "isCorrect": true },
+        { "text": "B. Gelas terbuka", "isCorrect": false },
+        { "text": "C. Ember", "isCorrect": false },
+        { "text": "D. Kantong sampah", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alat pelindung diri dasar yang sebaiknya dipakai saat meracik obat adalah ...",
+      "answers": [
+        { "text": "A. Masker dan sarung tangan", "isCorrect": true },
+        { "text": "B. Helm", "isCorrect": false },
+        { "text": "C. Kacamata renang", "isCorrect": false },
+        { "text": "D. Sepatu bot", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Serbuk dikatakan homogen apabila ...",
+      "answers": [
+        { "text": "A. Tercampur merata di semua bagian", "isCorrect": true },
+        { "text": "B. Menggumpal", "isCorrect": false },
+        { "text": "C. Terpisah-pisah", "isCorrect": false },
+        { "text": "D. Basah sebagian", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Membaca resep dengan teliti bertujuan untuk menghindari ...",
+      "answers": [
+        { "text": "A. Kesalahan jenis obat atau dosis", "isCorrect": true },
+        { "text": "B. Warna yang pudar", "isCorrect": false },
+        { "text": "C. Bau yang harum", "isCorrect": false },
+        { "text": "D. Kemasan yang bagus", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Menuliskan nama pasien pada etiket berguna untuk ...",
+      "answers": [
+        { "text": "A. Memastikan obat diberikan kepada pasien yang tepat", "isCorrect": true },
+        { "text": "B. Hiasan kemasan", "isCorrect": false },
+        { "text": "C. Menambah harga obat", "isCorrect": false },
+        { "text": "D. Tidak ada gunanya", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Aturan pakai '3 x 1 sehari' pada etiket serbuk artinya diminum ...",
+      "answers": [
+        { "text": "A. Tiga kali sehari, satu bungkus tiap kali", "isCorrect": true },
+        { "text": "B. Satu kali sehari", "isCorrect": false },
+        { "text": "C. Tiga hari sekali", "isCorrect": false },
+        { "text": "D. Satu kali tiga bungkus", "isCorrect": false }
+      ]
+    }
+  ]
+}

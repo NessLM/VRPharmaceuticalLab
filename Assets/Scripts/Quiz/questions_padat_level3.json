@@ -1,0 +1,229 @@
+{
+  "questions": [
+    {
+      "question": "Level 3 (Sulit) - Resep: Paracetamol 250 mg, m.f. pulv dtd No. X. Berapa total paracetamol yang dibutuhkan?",
+      "answers": [
+        { "text": "A. 2,5 gram", "isCorrect": true },
+        { "text": "B. 250 mg", "isCorrect": false },
+        { "text": "C. 25 gram", "isCorrect": false },
+        { "text": "D. 0,25 gram", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Singkatan 'm.f. pulv dtd No. X' pada resep berarti ...",
+      "answers": [
+        { "text": "A. Buatlah serbuk, dengan dosis tiap bungkus, sebanyak 10", "isCorrect": true },
+        { "text": "B. Campur 10 gram bahan", "isCorrect": false },
+        { "text": "C. Buat 1 serbuk seberat 10 gram", "isCorrect": false },
+        { "text": "D. Larutkan sebanyak 10 kali", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika resep tertulis 'm.f. pulv No. X' (tanpa dtd) dengan Paracetamol 250 mg, maka 250 mg tersebut adalah untuk ...",
+      "answers": [
+        { "text": "A. Total keseluruhan, kemudian dibagi menjadi 10 bungkus", "isCorrect": true },
+        { "text": "B. Tiap bungkus", "isCorrect": false },
+        { "text": "C. Sekali pakai saja", "isCorrect": false },
+        { "text": "D. Tidak dibagi", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tersedia tablet 500 mg. Resep membutuhkan 2500 mg total bahan. Jumlah tablet yang harus digerus adalah ...",
+      "answers": [
+        { "text": "A. 5 tablet", "isCorrect": true },
+        { "text": "B. 2,5 tablet", "isCorrect": false },
+        { "text": "C. 10 tablet", "isCorrect": false },
+        { "text": "D. 25 tablet", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika 5 tablet (@500 mg) digerus untuk 10 bungkus, maka kandungan tiap bungkus adalah ...",
+      "answers": [
+        { "text": "A. 250 mg", "isCorrect": true },
+        { "text": "B. 500 mg", "isCorrect": false },
+        { "text": "C. 125 mg", "isCorrect": false },
+        { "text": "D. 50 mg", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Camphora sulit digerus karena cenderung menggumpal. Cara mengatasinya adalah ...",
+      "answers": [
+        { "text": "A. Ditetesi sedikit etanol / spiritus fortior", "isCorrect": true },
+        { "text": "B. Ditambah air", "isCorrect": false },
+        { "text": "C. Dipanaskan", "isCorrect": false },
+        { "text": "D. Didinginkan di kulkas", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Campuran dua bahan yang menjadi basah atau mencair ketika digerus bersama disebut ...",
+      "answers": [
+        { "text": "A. Campuran eutektik", "isCorrect": true },
+        { "text": "B. Emulsi", "isCorrect": false },
+        { "text": "C. Suspensi", "isCorrect": false },
+        { "text": "D. Larutan jenuh", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Contoh pasangan bahan yang dapat membentuk campuran eutektik adalah ...",
+      "answers": [
+        { "text": "A. Menthol dan camphora", "isCorrect": true },
+        { "text": "B. Gula dan garam", "isCorrect": false },
+        { "text": "C. Pati dan laktosa", "isCorrect": false },
+        { "text": "D. Talk dan seng oksida", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Cara mengatasi campuran eutektik saat membuat serbuk adalah ...",
+      "answers": [
+        { "text": "A. Menambahkan bahan penyerap inert (mis. laktosa / talk)", "isCorrect": true },
+        { "text": "B. Menambahkan air", "isCorrect": false },
+        { "text": "C. Memanaskannya", "isCorrect": false },
+        { "text": "D. Mengaduk secepat mungkin saja", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bahan aktif yang jumlahnya sangat kecil (di bawah batas penimbangan neraca) sebaiknya dibuat dalam bentuk ...",
+      "answers": [
+        { "text": "A. Pengenceran serbuk (serbuk berkadar / trituratio)", "isCorrect": true },
+        { "text": "B. Ditimbang paksa apa adanya", "isCorrect": false },
+        { "text": "C. Dikira-kira jumlahnya", "isCorrect": false },
+        { "text": "D. Dilipatgandakan dosisnya", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Batas terkecil penimbangan pada timbangan gram halus di apotek umumnya sekitar ...",
+      "answers": [
+        { "text": "A. 50 mg", "isCorrect": true },
+        { "text": "B. 5 gram", "isCorrect": false },
+        { "text": "C. 500 mg", "isCorrect": false },
+        { "text": "D. 1 gram", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bila diperlukan bahan aktif 10 mg per bungkus untuk 10 bungkus (total 100 mg) sementara neraca hanya akurat pada >= 50 mg, solusinya adalah ...",
+      "answers": [
+        { "text": "A. Membuat pengenceran, mis. 100 mg bahan + 900 mg laktosa, lalu ditimbang porsinya", "isCorrect": true },
+        { "text": "B. Menimbang 10 mg langsung tiap bungkus", "isCorrect": false },
+        { "text": "C. Mengabaikan ketelitian", "isCorrect": false },
+        { "text": "D. Menambahkan air", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Resep 15 bungkus dengan bobot 0,6 g tiap bungkus. Total serbuk yang disiapkan adalah ...",
+      "answers": [
+        { "text": "A. 9 gram", "isCorrect": true },
+        { "text": "B. 6 gram", "isCorrect": false },
+        { "text": "C. 15 gram", "isCorrect": false },
+        { "text": "D. 90 gram", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Contoh inkompatibilitas fisika pada serbuk adalah ...",
+      "answers": [
+        { "text": "A. Serbuk menjadi lembab / mencair (deliquescence)", "isCorrect": true },
+        { "text": "B. Terjadi reaksi oksidasi kimia", "isCorrect": false },
+        { "text": "C. Terbentuk gas beracun", "isCorrect": false },
+        { "text": "D. Terjadi ledakan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bahan yang sangat higroskopis seperti ekstrak kental sebaiknya ditangani dengan cara ...",
+      "answers": [
+        { "text": "A. Ditambah bahan pengering (mis. bolus alba / laktosa) dan dikerjakan cepat", "isCorrect": true },
+        { "text": "B. Dibiarkan terbuka lama", "isCorrect": false },
+        { "text": "C. Ditambah air", "isCorrect": false },
+        { "text": "D. Dipanaskan lama", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika resep meminta 1/4 tablet dari tablet 200 mg, maka dosis per bungkus adalah ...",
+      "answers": [
+        { "text": "A. 50 mg", "isCorrect": true },
+        { "text": "B. 100 mg", "isCorrect": false },
+        { "text": "C. 25 mg", "isCorrect": false },
+        { "text": "D. 200 mg", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Metode terbaik untuk membagi serbuk zat berkhasiat keras secara akurat adalah ...",
+      "answers": [
+        { "text": "A. Menimbang tiap bungkus satu per satu", "isCorrect": true },
+        { "text": "B. Membagi dengan perkiraan mata", "isCorrect": false },
+        { "text": "C. Membagi menjadi 2 tumpukan besar saja", "isCorrect": false },
+        { "text": "D. Tanpa alat ukur", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Singkatan 's.t.d.d.' pada resep berarti ...",
+      "answers": [
+        { "text": "A. Sehari tiga kali", "isCorrect": true },
+        { "text": "B. Sekali sehari", "isCorrect": false },
+        { "text": "C. Bila perlu", "isCorrect": false },
+        { "text": "D. Sebelum makan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Singkatan 'p.r.n.' pada aturan pakai berarti ...",
+      "answers": [
+        { "text": "A. Bila perlu (pro re nata)", "isCorrect": true },
+        { "text": "B. Setiap jam", "isCorrect": false },
+        { "text": "C. Sesudah makan", "isCorrect": false },
+        { "text": "D. Sebelum tidur", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Menggerus bahan berwarna kuat (mis. rifampisin) sebaiknya menggunakan mortar yang ...",
+      "answers": [
+        { "text": "A. Khusus atau dibersihkan sangat baik untuk mencegah kontaminasi dan noda", "isCorrect": true },
+        { "text": "B. Sama tanpa dibersihkan", "isCorrect": false },
+        { "text": "C. Dalam keadaan basah", "isCorrect": false },
+        { "text": "D. Dalam keadaan panas", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika total serbuk 3 g untuk 12 bungkus tetapi bahan aktif hanya 300 mg, maka sisanya sebanyak 2,7 g adalah ...",
+      "answers": [
+        { "text": "A. Bahan pengisi / pembawa", "isCorrect": true },
+        { "text": "B. Air", "isCorrect": false },
+        { "text": "C. Tidak ada", "isCorrect": false },
+        { "text": "D. Bahan aktif tambahan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tujuan penambahan bahan pengisi (mis. laktosa) pada serbuk berdosis kecil adalah ...",
+      "answers": [
+        { "text": "A. Menambah bobot agar mudah dibagi dan ditakar", "isCorrect": true },
+        { "text": "B. Menambah khasiat obat", "isCorrect": false },
+        { "text": "C. Memberi warna", "isCorrect": false },
+        { "text": "D. Mengurangi dosis", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bahan pengoksidasi kuat (mis. KMnO4) yang digerus bersama bahan organik mudah terbakar dapat menyebabkan ...",
+      "answers": [
+        { "text": "A. Percikan / ledakan, sehingga tidak boleh digerus bersama", "isCorrect": true },
+        { "text": "B. Selalu aman", "isCorrect": false },
+        { "text": "C. Warna memudar saja", "isCorrect": false },
+        { "text": "D. Menjadi cair biasa", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Resep 10 bungkus meminta CTM 4 mg tiap bungkus. Total CTM yang dibutuhkan adalah ...",
+      "answers": [
+        { "text": "A. 40 mg", "isCorrect": true },
+        { "text": "B. 4 mg", "isCorrect": false },
+        { "text": "C. 400 mg", "isCorrect": false },
+        { "text": "D. 0,4 mg", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Untuk memperoleh CTM 40 mg total menggunakan tablet CTM 4 mg, jumlah tablet yang digerus adalah ...",
+      "answers": [
+        { "text": "A. 10 tablet", "isCorrect": true },
+        { "text": "B. 1 tablet", "isCorrect": false },
+        { "text": "C. 4 tablet", "isCorrect": false },
+        { "text": "D. 40 tablet", "isCorrect": false }
+      ]
+    }
+  ]
+}

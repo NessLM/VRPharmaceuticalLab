@@ -1,0 +1,229 @@
+{
+  "questions": [
+    {
+      "question": "Level 2 (Sedang) - Saat mencampur bahan yang jumlahnya banyak dengan bahan yang jumlahnya sedikit, cara yang benar adalah ...",
+      "answers": [
+        { "text": "A. Dicampur sedikit demi sedikit / geometris", "isCorrect": true },
+        { "text": "B. Dimasukkan semua sekaligus", "isCorrect": false },
+        { "text": "C. Bahan terbanyak dimasukkan seluruhnya lebih dulu", "isCorrect": false },
+        { "text": "D. Tidak perlu dicampur", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tujuan pencampuran secara geometris (sedikit demi sedikit) adalah ...",
+      "answers": [
+        { "text": "A. Agar bahan aktif yang sedikit tersebar merata", "isCorrect": true },
+        { "text": "B. Mempercepat alat kotor", "isCorrect": false },
+        { "text": "C. Menghemat kertas", "isCorrect": false },
+        { "text": "D. Menambah bobot serbuk", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bila total bobot serbuk 5 gram dibagi menjadi 10 bungkus sama rata, tiap bungkus berisi ...",
+      "answers": [
+        { "text": "A. 0,5 gram", "isCorrect": true },
+        { "text": "B. 5 gram", "isCorrect": false },
+        { "text": "C. 2 gram", "isCorrect": false },
+        { "text": "D. 50 gram", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Sebelum menimbang bahan, neraca harus terlebih dahulu di ...",
+      "answers": [
+        { "text": "A. Setarakan / nol-kan (tara)", "isCorrect": true },
+        { "text": "B. Basahi", "isCorrect": false },
+        { "text": "C. Panaskan", "isCorrect": false },
+        { "text": "D. Miringkan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Bahan obat yang bersifat higroskopis sebaiknya ...",
+      "answers": [
+        { "text": "A. Ditangani cepat dan disimpan dalam wadah tertutup", "isCorrect": true },
+        { "text": "B. Dibiarkan terbuka lama", "isCorrect": false },
+        { "text": "C. Dijemur di bawah matahari", "isCorrect": false },
+        { "text": "D. Disiram air", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika resep meminta 250 mg suatu bahan, maka jumlah tersebut setara dengan ...",
+      "answers": [
+        { "text": "A. 0,25 gram", "isCorrect": true },
+        { "text": "B. 2,5 gram", "isCorrect": false },
+        { "text": "C. 25 gram", "isCorrect": false },
+        { "text": "D. 0,025 gram", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alasan bahan dihaluskan terlebih dahulu sebelum dicampur adalah ...",
+      "answers": [
+        { "text": "A. Memperkecil ukuran partikel agar mudah homogen", "isCorrect": true },
+        { "text": "B. Menambah warna", "isCorrect": false },
+        { "text": "C. Menaikkan harga", "isCorrect": false },
+        { "text": "D. Mengurangi khasiat", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Kesetaraan satuan yang benar adalah 1 gram sama dengan ...",
+      "answers": [
+        { "text": "A. 1000 mg", "isCorrect": true },
+        { "text": "B. 100 mg", "isCorrect": false },
+        { "text": "C. 10 mg", "isCorrect": false },
+        { "text": "D. 10.000 mg", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tersedia tablet 500 mg, sedangkan resep membutuhkan 250 mg per bungkus. Tiap bungkus memerlukan ...",
+      "answers": [
+        { "text": "A. 1/2 tablet", "isCorrect": true },
+        { "text": "B. 2 tablet", "isCorrect": false },
+        { "text": "C. 1 tablet", "isCorrect": false },
+        { "text": "D. 4 tablet", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Untuk zat berkhasiat keras, penimbangan tiap bagian serbuk dilakukan agar ...",
+      "answers": [
+        { "text": "A. Dosis tiap bungkus tetap akurat", "isCorrect": true },
+        { "text": "B. Prosesnya lebih cepat", "isCorrect": false },
+        { "text": "C. Menghemat kertas", "isCorrect": false },
+        { "text": "D. Warnanya rata", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Corong gelas dalam peracikan sediaan berfungsi untuk ...",
+      "answers": [
+        { "text": "A. Membantu menuang bahan tanpa tumpah", "isCorrect": true },
+        { "text": "B. Menghaluskan bahan", "isCorrect": false },
+        { "text": "C. Menimbang bahan", "isCorrect": false },
+        { "text": "D. Membungkus serbuk", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Homogenitas serbuk secara sederhana dapat dinilai dari ...",
+      "answers": [
+        { "text": "A. Warna dan tekstur yang seragam", "isCorrect": true },
+        { "text": "B. Berat total serbuk", "isCorrect": false },
+        { "text": "C. Jumlah bungkus", "isCorrect": false },
+        { "text": "D. Harga bahan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika bahan A sebanyak 2 g dan bahan B sebanyak 0,2 g dicampur, urutan memasukkan ke mortar yang tepat adalah ...",
+      "answers": [
+        { "text": "A. Bahan B (sedikit) dulu, lalu bahan A ditambah bertahap", "isCorrect": true },
+        { "text": "B. Bahan A seluruhnya dulu", "isCorrect": false },
+        { "text": "C. Dicampur di luar mortar", "isCorrect": false },
+        { "text": "D. Tidak berurutan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Menuliskan tanggal pada etiket berguna untuk ...",
+      "answers": [
+        { "text": "A. Menandai kapan obat dibuat / diserahkan", "isCorrect": true },
+        { "text": "B. Sekadar hiasan", "isCorrect": false },
+        { "text": "C. Menambah bobot", "isCorrect": false },
+        { "text": "D. Tidak berguna", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Nilai 0,5 gram setara dengan ...",
+      "answers": [
+        { "text": "A. 500 mg", "isCorrect": true },
+        { "text": "B. 50 mg", "isCorrect": false },
+        { "text": "C. 5 mg", "isCorrect": false },
+        { "text": "D. 5000 mg", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika serbuk terlalu lembab saat dibungkus, kemungkinan penyebabnya adalah ...",
+      "answers": [
+        { "text": "A. Bahan bersifat higroskopis atau ruangan lembab", "isCorrect": true },
+        { "text": "B. Bahan terlalu kering", "isCorrect": false },
+        { "text": "C. Serbuk terlalu ringan", "isCorrect": false },
+        { "text": "D. Kertas terlalu tebal", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Membersihkan mortar saat berganti bahan bertujuan untuk mencegah ...",
+      "answers": [
+        { "text": "A. Kontaminasi silang antar bahan", "isCorrect": true },
+        { "text": "B. Warna memudar", "isCorrect": false },
+        { "text": "C. Bau harum", "isCorrect": false },
+        { "text": "D. Bobot bertambah", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Resep meminta 12 bungkus dengan bobot 0,4 g tiap bungkus. Total serbuk yang harus disiapkan adalah ...",
+      "answers": [
+        { "text": "A. 4,8 gram", "isCorrect": true },
+        { "text": "B. 12 gram", "isCorrect": false },
+        { "text": "C. 0,4 gram", "isCorrect": false },
+        { "text": "D. 48 gram", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Untuk meratakan sedikit zat warna dalam serbuk, teknik pencampuran yang tepat adalah ...",
+      "answers": [
+        { "text": "A. Geometris agar warna tersebar merata", "isCorrect": true },
+        { "text": "B. Diaduk sekali saja", "isCorrect": false },
+        { "text": "C. Dituang sekaligus", "isCorrect": false },
+        { "text": "D. Tidak diaduk", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Alasan serbuk harus dibagi sama rata adalah agar tiap dosis ...",
+      "answers": [
+        { "text": "A. Mengandung jumlah obat yang sama", "isCorrect": true },
+        { "text": "B. Terlihat lebih banyak", "isCorrect": false },
+        { "text": "C. Lebih murah", "isCorrect": false },
+        { "text": "D. Lebih ringan", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Serbuk yang sudah jadi sebaiknya disimpan di tempat yang ...",
+      "answers": [
+        { "text": "A. Kering dan terlindung dari lembab serta cahaya", "isCorrect": true },
+        { "text": "B. Basah", "isCorrect": false },
+        { "text": "C. Terkena sinar matahari langsung", "isCorrect": false },
+        { "text": "D. Terbuka", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Jika neraca menunjukkan angka yang tidak stabil, tindakan pertama yang tepat adalah ...",
+      "answers": [
+        { "text": "A. Memastikan neraca datar, bebas getaran, lalu tara ulang", "isCorrect": true },
+        { "text": "B. Langsung dipakai", "isCorrect": false },
+        { "text": "C. Dipukul-pukul", "isCorrect": false },
+        { "text": "D. Ditambah beban", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Tujuan penambahan zat pengering / bahan inert pada serbuk yang bahannya menyerap lembab adalah ...",
+      "answers": [
+        { "text": "A. Menjaga serbuk tetap kering dan mudah dibungkus", "isCorrect": true },
+        { "text": "B. Menambah khasiat obat", "isCorrect": false },
+        { "text": "C. Memberi rasa manis", "isCorrect": false },
+        { "text": "D. Mempercepat kadaluarsa", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Pembagian serbuk pada zat berkhasiat keras sebaiknya dilakukan dengan cara ...",
+      "answers": [
+        { "text": "A. Menimbang tiap bagian dengan teliti", "isCorrect": true },
+        { "text": "B. Ditebak asal rata", "isCorrect": false },
+        { "text": "C. Sebagian besar di satu bungkus", "isCorrect": false },
+        { "text": "D. Tanpa ditimbang", "isCorrect": false }
+      ]
+    },
+    {
+      "question": "Resep membutuhkan 6 gram serbuk untuk 15 bungkus. Bobot tiap bungkus adalah ...",
+      "answers": [
+        { "text": "A. 0,4 gram", "isCorrect": true },
+        { "text": "B. 4 gram", "isCorrect": false },
+        { "text": "C. 0,6 gram", "isCorrect": false },
+        { "text": "D. 1,5 gram", "isCorrect": false }
+      ]
+    }
+  ]
+}

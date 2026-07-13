@@ -6,6 +6,11 @@ public class QuizManager : GameEventListener<bool>
 {
     [SerializeField] TextAsset questionData;
 
+    [Header("Level Questions (opsional)")]
+    [Tooltip("Kumpulan soal per level. Index 0 = Level 1 (Mudah), 1 = Level 2 (Sedang), 2 = Level 3 (Sulit). " +
+             "Jika kosong / level belum dipilih, dipakai questionData default.")]
+    [SerializeField] TextAsset[] levelQuestionData;
+
     [Header("Broadcaster")]
     [SerializeField] QuestionEvent questionEvent;
     [SerializeField] SummaryEvent summaryEvent;
@@ -17,9 +22,34 @@ public class QuizManager : GameEventListener<bool>
     int correctAnswer = 0;
     int wrongAnswer = 0;
 
+    // 0 = belum dipilih (pakai questionData default), 1..3 = level.
+    private int selectedLevel = 0;
+
+    /// <summary>Dipanggil oleh tombol level (QuizLevelSelector). 1 = Mudah, 2 = Sedang, 3 = Sulit.</summary>
+    public void SetLevel(int level)
+    {
+        selectedLevel = level;
+    }
+
     public void StartQuiz()
     {
-        string rawData = questionData.text;
+        TextAsset source = questionData;
+
+        if (selectedLevel >= 1 &&
+            levelQuestionData != null &&
+            selectedLevel <= levelQuestionData.Length &&
+            levelQuestionData[selectedLevel - 1] != null)
+        {
+            source = levelQuestionData[selectedLevel - 1];
+        }
+
+        if (source == null)
+        {
+            Debug.LogError("[QuizManager] Tidak ada sumber soal (questionData / levelQuestionData) yang terisi.");
+            return;
+        }
+
+        string rawData = source.text;
         randomizedQuestions = new Question[0];
         randomizedQuestions = GetShuffleQuestion(rawData);
         InitQuestion();
